@@ -4,9 +4,61 @@ Camera-aware 3D reference reconstruction from concept art using existing, demons
 
 ## Current status
 
-**Stage 1/14 — Safe Project / Install Framework**
+**Stage 3/14 — Atlas learned-camera dependency compatibility gate prepared.**
 
-The current bootstrap is deliberately non-destructive. It inventories the machine, discovers portable/venv/Comfy Desktop installations, records pre-existing DA3/MoGe/Atlas assets, tracks disk ownership, and prepares a controlled `C:\ConceptGhost` workspace. Atlas Camera, DA3, MoGe and model weights are **not installed yet**.
+Stage 2 Atlas Camera core has been proven to load in the target ComfyUI. Stage 3 addresses the exact runtime failure observed in `AtlasInput`: the learned solve needs GeoCalib and `cv2`.
+
+## Hard non-interference rule
+
+ConceptGhost must not overwrite or re-resolve the environment used by existing Single View / MultiView workflows.
+
+Stage 3 therefore:
+
+- never upgrades/downgrades Torch, Torchvision, NumPy, Kornia, Transformers, xformers, ComfyUI packages, or other existing packages;
+- never writes to non-Atlas `custom_nodes` projects;
+- never modifies existing workflow JSON files;
+- reuses existing GeoCalib or `cv2` if they already work;
+- **blocks** instead of reinstalling when an existing GeoCalib/OpenCV distribution looks broken;
+- installs missing GeoCalib from a pinned Git commit with `--no-deps`;
+- installs missing OpenCV from a pinned wheel with `--no-deps --only-binary=:all:`;
+- snapshots the entire pip freeze plus every non-Atlas custom-node tree before/after;
+- fails the compatibility gate if any pre-existing package changes, disappears, or any non-Atlas custom-node tree changes.
+
+The installer intentionally leaves the existing `kornia` version unchanged. Atlas documents `<0.8.3` as a coexistence repair for LTXVideo, but changing a shared Kornia install would violate this project's preservation rule. We first test GeoCalib against the already-working environment and only reconsider Kornia if there is direct evidence of incompatibility.
+
+## Stage 3 usage
+
+1. **Close ComfyUI completely.**
+2. Run `ATLAS_CAMERA_DEPS.bat` by double-click or command line. Default is dry-run.
+3. Review the plan. It should show only additive GeoCalib/OpenCV actions or reuse actions.
+4. If there are no blockers, run:
+
+   `ATLAS_CAMERA_DEPS.bat --apply`
+
+5. Restart ComfyUI.
+6. Open `C:\ConceptGhost\workflows\reference\atlas\atlas_input_quickstart_workflow.json`.
+7. Load an image and run the learned solve.
+
+The first actual learned solve may download GeoCalib model weights through Torch Hub. The storage tracker records the GeoCalib cache baseline so only new cache growth is charged to ConceptGhost.
+
+## Compatibility evidence
+
+Every Stage 3 run mirrors evidence to:
+
+- `G:\My Drive\ConceptGhost\Reports\AtlasCameraDeps\<timestamp>`
+- `G:\My Drive\ConceptGhost\Tests\Compatibility\Stage3_<timestamp>`
+- `G:\My Drive\ConceptGhost\Logs\...`
+
+Evidence includes before/after pip freeze, environment probes, non-Atlas custom-node fingerprints, deltas, install manifest, runtime import probe, and command log.
+
+## Storage tracking
+
+Persistent storage ledger:
+
+- `C:\ConceptGhost\manifests\storage_usage.txt`
+- `G:\My Drive\ConceptGhost\Storage\ConceptGhost_Disk_Usage.txt`
+
+The tracker separates project-owned bytes from shared/pre-existing ComfyUI assets and includes Stage 3 package bytes plus only the growth of the GeoCalib model cache above its pre-install baseline.
 
 ## Planned backbone
 
@@ -15,11 +67,4 @@ The current bootstrap is deliberately non-destructive. It inventories the machin
 - MoGe: independent monocular geometry/mesh path
 - Maya: matched-camera ghost scene for manual blockout
 
-## Safety rules
-
-- Public repository contains generic code and documentation only.
-- Machine inventories, local paths, logs, model weights and generated outputs are ignored.
-- Existing user files/models must be detected and preserved.
-- External downloads remain disabled until the inventory gate is approved.
-
-See `docs/superpowers/plans/2026-09-15-concept-ghost-roadmap.md` for the implementation roadmap.
+See `docs/superpowers/plans/2026-09-15-concept-ghost-roadmap.md` and `docs/STAGE3_COMPATIBILITY_GATE.md`.
