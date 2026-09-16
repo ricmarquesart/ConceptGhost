@@ -17,7 +17,6 @@ class AtlasCoreTests(unittest.TestCase):
         project = base / "ConceptGhost"
         comfy = base / "ComfyUI"
         (project / "manifests").mkdir(parents=True)
-        (project / "workflows" / "reference" / "atlas").mkdir(parents=True)
         (comfy / "custom_nodes").mkdir(parents=True)
         (comfy / "main.py").write_text("# marker\n", encoding="utf-8")
         inventory = {
@@ -61,6 +60,8 @@ class AtlasCoreTests(unittest.TestCase):
             self.assertTrue(result["core_only"])
             self.assertFalse(result["pip_changes"])
             self.assertEqual(result["pinned_commit"], ATLAS_PINNED_COMMIT)
+            self.assertEqual(Path(result["reference_workflow_root"]), project / "Workflows" / "Atlas")
+            self.assertEqual(Path(result["manifest_root"]), project / "Manifests")
 
     def test_conflicting_existing_folder_blocks_install(self):
         with tempfile.TemporaryDirectory() as td:
@@ -89,10 +90,11 @@ class AtlasCoreTests(unittest.TestCase):
             head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=target, text=True).strip()
             self.assertEqual(head, commit)
             for name in REFERENCE_WORKFLOWS:
-                self.assertTrue((project / "workflows" / "reference" / "atlas" / name).exists())
-            manifest = json.loads((project / "manifests" / "atlas_core_install.json").read_text(encoding="utf-8"))
+                self.assertTrue((project / "Workflows" / "Atlas" / name).exists())
+            manifest = json.loads((project / "Manifests" / "atlas_core_install.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["atlas_commit"], commit)
             self.assertFalse(manifest["preexisting"])
+            self.assertFalse((project / "workflows" / "reference" / "atlas").exists())
 
     def test_apply_is_idempotent_and_does_not_update_existing_repo(self):
         with tempfile.TemporaryDirectory() as td:
