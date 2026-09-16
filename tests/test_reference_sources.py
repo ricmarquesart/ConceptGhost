@@ -9,6 +9,7 @@ README_PATH = ROOT / "references" / "README.md"
 COLLECTOR_PATH = ROOT / "tools" / "DOWNLOAD_REFERENCE_CODE.bat"
 VERIFIER_BAT = ROOT / "tools" / "VERIFY_REFERENCE_CODE.bat"
 VERIFIER_PY = ROOT / "scripts" / "cg_verify_references.py"
+ATLAS_REPAIR_V2 = ROOT / "tools" / "REPAIR_ATLAS_REFERENCE_V2.bat"
 
 
 class ReferenceSourceTests(unittest.TestCase):
@@ -78,6 +79,19 @@ class ReferenceSourceTests(unittest.TestCase):
         self.assertIn("SOURCE_LOCK.json", text)
         self.assertIn("Google Drive", text)
         self.assertIn("Do not vendor", text)
+
+    def test_atlas_repair_v2_uses_fresh_sibling_and_never_mutates_broken_mirror(self):
+        self.assertTrue(ATLAS_REPAIR_V2.is_file(), "tools/REPAIR_ATLAS_REFERENCE_V2.bat must exist")
+        text = ATLAS_REPAIR_V2.read_text(encoding="utf-8", errors="ignore")
+        lower = text.lower()
+        self.assertIn("atlas-camera-pinned-9f9ff451", lower)
+        self.assertIn("9f9ff4511154769aa2f8c0bd40387278a69b0078", lower)
+        self.assertIn("rev-parse head", lower)
+        self.assertIn("remote get-url origin", lower)
+        self.assertNotIn("index.lock", lower)
+        self.assertNotIn("del /f /q", lower)
+        self.assertNotIn("rmdir", lower)
+        self.assertNotIn("custom_nodes", lower)
 
 
 if __name__ == "__main__":
