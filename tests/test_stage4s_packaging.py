@@ -8,16 +8,17 @@ class Stage4SPackagingTests(unittest.TestCase):
         required = [
             'release-package:',
             'needs: unit-tests',
-            'ConceptGhost_Stage04S_v0.4.5.zip',
-            'ConceptGhost_Stage04S_v0.4.5_SHA256.txt',
-            'ConceptGhost_Stage04S_v0.4.5_validation.txt',
-            'stage04s_v0.4.5_tests.log',
-            'stage04s_v0.4.5_smoke.log',
+            'ConceptGhost_Stage04S_v0.4.6.zip',
+            'ConceptGhost_Stage04S_v0.4.6_SHA256.txt',
+            'ConceptGhost_Stage04S_v0.4.6_validation.txt',
+            'stage04s_v0.4.6_tests.log',
+            'stage04s_v0.4.6_smoke.log',
             'actions/upload-artifact@v4',
-            'ConceptGhost_Stage04S_v0.4.5_READY',
+            'ConceptGhost_Stage04S_v0.4.6_READY',
             'git archive --format=zip',
             'Expand-Archive',
             'CRLF',
+            'scripts/cg_find_python.ps1',
         ]
         for token in required:
             with self.subTest(token=token):
