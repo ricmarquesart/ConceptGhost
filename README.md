@@ -4,9 +4,9 @@ Camera-aware 3D reference reconstruction from concept art using existing, demons
 
 ## Current status
 
-**Stage 3/14 — Atlas learned-camera dependency compatibility gate prepared.**
+**Stage 3/14 — Atlas learned-camera dependency compatibility gate passed; upstream reference lock is now part of the project infrastructure.**
 
-Stage 2 Atlas Camera core has been proven to load in the target ComfyUI. Stage 3 addresses the exact runtime failure observed in `AtlasInput`: the learned solve needs GeoCalib and `cv2`.
+Stage 2 Atlas Camera core has been proven to load in the target ComfyUI. Stage 3 installed the learned-camera dependencies through a protected compatibility gate and the Atlas quickstart completed a real solve on the target machine.
 
 ## Hard non-interference rule
 
@@ -25,6 +25,22 @@ Stage 3 therefore:
 - fails the compatibility gate if any pre-existing package changes, disappears, or any non-Atlas custom-node tree changes.
 
 The installer intentionally leaves the existing `kornia` version unchanged. Atlas documents `<0.8.3` as a coexistence repair for LTXVideo, but changing a shared Kornia install would violate this project's preservation rule. We first test GeoCalib against the already-working environment and only reconsider Kornia if there is direct evidence of incompatibility.
+
+## Permanent upstream references
+
+ConceptGhost follows a **baseline-first** development rule. The exact public revisions used as implementation evidence are pinned in:
+
+- `references/SOURCE_LOCK.json`
+- `references/README.md`
+- `docs/REFERENCE_CODE_AUDIT.md`
+
+Frozen physical copies are kept in Google Drive under `G:\My Drive\ConceptGhost\References\Upstream_Code`. The full third-party repositories are intentionally not vendored into this repository; GitHub stores the immutable source lock, audit, project-owned adapters, collector, verifier, and tests.
+
+Before a camera/depth/geometry/mesh/DCC stage begins, verify the locked references with:
+
+`tools\VERIFY_REFERENCE_CODE.bat`
+
+If a required mirror is missing or is not at the locked commit, stop that stage until the reference is restored or deliberately re-audited.
 
 ## Stage 3 usage
 
@@ -67,4 +83,4 @@ The tracker separates project-owned bytes from shared/pre-existing ComfyUI asset
 - MoGe: independent monocular geometry/mesh path
 - Maya: matched-camera ghost scene for manual blockout
 
-See `docs/superpowers/plans/2026-09-15-concept-ghost-roadmap.md` and `docs/STAGE3_COMPATIBILITY_GATE.md`.
+See `docs/superpowers/plans/2026-09-15-concept-ghost-roadmap.md`, `docs/STAGE3_COMPATIBILITY_GATE.md`, and `docs/REFERENCE_CODE_AUDIT.md`.
