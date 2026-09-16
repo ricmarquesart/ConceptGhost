@@ -255,3 +255,184 @@ def build_migration_inventory(legacy_root: Path, contract: PathContract) -> dict
         "blockers": blockers,
         "read_only": True,
     }
+
+
+class MigrationBlocked(RuntimeError):
+    """Raised when Stage 4S detects a condition that must stop migration."""
+
+
+def copy_one_verified(src: Path, dst: Path) -> dict:
+    """Copy one file atomically to destination storage and preserve the source."""
+    import shutil
+    import tempfile
+
+    src = Path(src)
+    dst = Path(dst)
+    if not src.is_file() or src.is_symlink():
+        raise MigrationBlocked(f"source is not a regular file: {src}")
+
+    source_hash = sha256_file(src)
+    if dst.exists():
+        if not dst.is_file() or dst.is_symlink():
+            raise MigrationBlocked(f"destination is not a regular file: {dst}")
+        dest_hash = sha256_file(dst)
+        if dest_hash != source_hash:
+            raise MigrationBlocked(f"destination conflict: {dst}")
+        return {
+            "action": "reuse-identical",
+            "source": str(src),
+            "destination": str(dst),
+            "sha256": source_hash,
+        }
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=dst.name + ".", suffix=".conceptghost-copying", dir=str(dst.parent))
+    os.close(fd)
+    tmp = Path(tmp_name)
+    try:
+        shutil.copy2(src, tmp)
+        temp_hash = sha256_file(tmp)
+        if temp_hash != source_hash:
+            raise MigrationBlocked(f"copy hash mismatch: {src} -> {dst}")
+        os.replace(tmp, dst)
+    finally:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+
+    if not src.exists():
+        raise MigrationBlocked(f"source disappeared during copy: {src}")
+    return {
+        "action": "copied",
+        "source": str(src),
+        "destination": str(dst),
+        "sha256": source_hash,
+    }
+
+
+def verify_project_copies(result: dict) -> dict:
+    """Re-hash copy results and prove that every source file still exists."""
+    verified_items: list[dict] = []
+    remaining: list[str] = []
+    blockers = list(result.get("blocked", []))
+
+    for item in result.get("items", []):
+        src = Path(item["source"])
+        dst = Path(item["destination"])
+        record = dict(item)
+        if src.is_file():
+            remaining.append(str(src))
+        else:
+            record["verified"] = False
+            blockers.append(f"source missing after copy: {src}")
+            verified_items.append(record)
+            continue
+        if not dst.is_file():
+            record["verified"] = False
+            blockers.append(f"destination missing after copy: {dst}")
+            verified_items.append(record)
+            continue
+        source_hash = sha256_file(src)
+        destination_hash = sha256_file(dst)
+        record["source_sha256"] = source_hash
+        record["destination_sha256"] = destination_hash
+        record["verified"] = source_hash == destination_hash == item.get("sha256")
+        if not record["verified"]:
+            blockers.append(f"verification hash mismatch: {src} -> {dst}")
+        verified_items.append(record)
+
+    expected_count = int(result.get("project_file_count", len(verified_items)))
+    all_verified = (
+        not blockers
+        and len(verified_items) == expected_count
+        and len(remaining) == expected_count
+        and all(x.get("verified") for x in verified_items)
+    )
+    verified = dict(result)
+    verified["items"] = verified_items
+    verified["blocked"] = blockers
+    verified["source_files_remaining"] = remaining
+    verified["all_verified"] = all_verified
+    verified["status"] = "verified" if all_verified else "blocked"
+    return verified
+
+
+def copy_project_items(inventory: dict) -> dict:
+    """Copy all PROJECT files from an inventory after a complete fail-closed preflight."""
+    project_items = [x for x in inventory.get("items", []) if x.get("classification") == "PROJECT"]
+    project_files = [x for x in project_items if x.get("kind") == "file"]
+    blockers = list(inventory.get("blockers", []))
+
+    if inventory.get("status") != "ready":
+        return {
+            "schema_version": 1,
+            "status": "blocked",
+            "copied": 0,
+            "reused_identical": 0,
+            "blocked": blockers or ["inventory is not ready"],
+            "items": [],
+            "project_file_count": len(project_files),
+            "source_files_remaining": [x["source"] for x in project_files if Path(x["source"]).exists()],
+            "all_verified": False,
+        }
+
+    if len(project_files) != len(project_items):
+        blockers.append("PROJECT links or non-file objects require explicit handling and are not copied in Stage 4S.")
+
+    for item in project_files:
+        src = Path(item["source"])
+        dst = Path(item["destination"])
+        expected_hash = item.get("sha256")
+        if not src.is_file() or src.is_symlink():
+            blockers.append(f"source is not a regular file: {src}")
+            continue
+        source_hash = sha256_file(src)
+        if source_hash != expected_hash:
+            blockers.append(f"source changed since inventory: {src}")
+            continue
+        if dst.exists():
+            if not dst.is_file() or dst.is_symlink():
+                blockers.append(f"destination is not a regular file: {dst}")
+            elif sha256_file(dst) != source_hash:
+                blockers.append(f"destination conflict: {dst}")
+
+    if blockers:
+        return {
+            "schema_version": 1,
+            "status": "blocked",
+            "copied": 0,
+            "reused_identical": 0,
+            "blocked": blockers,
+            "items": [],
+            "project_file_count": len(project_files),
+            "source_files_remaining": [x["source"] for x in project_files if Path(x["source"]).exists()],
+            "all_verified": False,
+        }
+
+    copied = 0
+    reused = 0
+    results: list[dict] = []
+    for item in project_files:
+        try:
+            result = copy_one_verified(Path(item["source"]), Path(item["destination"]))
+        except MigrationBlocked as exc:
+            blockers.append(str(exc))
+            break
+        result["relative_path"] = item["relative_path"]
+        results.append(result)
+        if result["action"] == "copied":
+            copied += 1
+        elif result["action"] == "reuse-identical":
+            reused += 1
+
+    report = {
+        "schema_version": 1,
+        "status": "copied" if not blockers else "blocked",
+        "copied": copied,
+        "reused_identical": reused,
+        "blocked": blockers,
+        "items": results,
+        "project_file_count": len(project_files),
+        "source_files_remaining": [x["source"] for x in project_files if Path(x["source"]).exists()],
+        "all_verified": False,
+    }
+    return verify_project_copies(report) if not blockers else report
