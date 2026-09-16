@@ -22,7 +22,10 @@ Before Stage 8 Maya/export work, also read:
 
 ```text
 docs/superpowers/specs/2026-09-16-conceptghost-output-handoff-contract.md
+docs/superpowers/specs/2026-09-16-conceptghost-stage8-maya-export-design.md
 ```
+
+Stage 8 implementation must follow the approved Maya handoff architecture: `.ma` is the artist entry point; the dense Canonical Point Cloud lives in the companion `.usda` as `UsdGeomPoints` and is displayed in Maya through a MayaUSD proxy/stage; `.ply` preserves a portable canonical copy; `.fbx` carries the matched camera and validated optional meshes through a separate Maya Worker.
 
 If older documentation conflicts with these files, stop and reconcile the conflict before implementation.
 
@@ -120,6 +123,25 @@ These are complementary outputs, not mutually exclusive choices.
 - `.ply` = portable Canonical Point Cloud.
 
 Respect FBX point-cloud limitations.
+
+Approved Stage 8 implementation structure:
+
+```text
+.ma
+├── native matchedCamera_LOCKED
+├── artistCamera
+├── sourcePlate using run-local source image
+└── MayaUSD proxy/stage
+        ↓
+      .usda
+        ↓
+   UsdGeomPoints / Canonical Point Cloud
+
+.fbx = matched camera + validated optional meshes
+.ply = portable Canonical Point Cloud
+```
+
+Maya/FBX generation must run through a separate Maya Worker rather than importing Maya runtime dependencies into the protected ComfyUI Python process. Prefer relative asset paths and require a move-the-whole-run-folder portability test.
 
 ### Stage 9 — controlled A/B benchmark and parameter freeze
 
