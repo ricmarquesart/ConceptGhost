@@ -1,7 +1,7 @@
 # ConceptGhost — Runtime Behavior Policy
 
 Date: 2026-09-16
-Status: Active design policy — camera Auto, geometry selection, Compare Both behavior, preset scope/default, and mandatory Maya Ghost approved
+Status: Active design policy — camera Auto, geometry selection, Compare Both behavior, preset scope/default, mandatory Maya Ghost, and mandatory canonical evidence approved
 Project: ConceptGhost
 
 > Where this policy conflicts with earlier high-level wording in the Master Workflow Architecture, this policy is authoritative until the final architecture spec is consolidated.
@@ -164,7 +164,7 @@ Compare Both = OFF
 Camera = Auto
 ```
 
-The default therefore prioritizes the **highest validated reference quality available in the current ConceptGhost version**, even when this costs more processing time, VRAM/RAM, disk usage, or point-cloud size.
+The default prioritizes the **highest validated reference quality available in the current ConceptGhost version**, even when this costs more processing time, VRAM/RAM, disk usage, or point-cloud size.
 
 `Max Reference` means the highest-quality **validated and stable** settings, not blindly setting every numerical parameter to its theoretical maximum. A setting that causes instability, out-of-memory failures, severe noise, or worse reference fidelity does not qualify as a better default.
 
@@ -237,13 +237,90 @@ Useful upstream outputs are preserved for diagnosis.
 
 Internal development/baseline workflows may bypass Maya generation when a stage specifically tests only an upstream component. That exception does not create a Maya toggle in the production-facing Master.
 
-## 8. No hidden success substitution
+## 8. Canonical Point Cloud and essential diagnostics are mandatory
+
+The production-facing Master automatically preserves the canonical evidence required to construct, validate, reproduce, and debug the Maya Ghost.
+
+The user does **not** perform an extra step for this and does not need any non-local service. These artifacts are produced by the same local run.
+
+### 8.1 Mandatory canonical geometry
+
+For every run that reaches canonical geometry, ConceptGhost saves the authoritative **Canonical Point Cloud** used by the downstream Maya Ghost path.
+
+Expected canonical outputs include, where supported by the final exporter:
+
+```text
+geometry/canonical/pointcloud.ply
+geometry/canonical/pointcloud.usda
+geometry/canonical/geometry.json
+```
+
+The exact interchange file set may evolve during Maya validation, but at least one reusable canonical point-cloud representation plus its metadata must be preserved.
+
+The Canonical Point Cloud is not an extra geometry engine. It is the normalized ConceptGhost representation created from:
+
+```text
+source pixels
++ selected DA3 or MoGe depth/geometry evidence
++ authoritative Atlas camera
+= ConceptGhost Canonical Point Cloud
+```
+
+### 8.2 Mandatory essential diagnostics
+
+The following evidence is always generated/saved when the corresponding stage is reached:
+
+```text
+manifest.json
+diagnostics/reprojection_report.json
+diagnostics/reprojection_overlay.png
+```
+
+`manifest.json` records run configuration, versions, source identity, selected engines, resolved preset parameters, warnings, and generated outputs.
+
+`reprojection_report.json` records the machine-readable reprojection gate result and metrics.
+
+`reprojection_overlay.png` provides a visual check that canonical 3D points project back consistently through the authoritative Atlas camera.
+
+The user is not expected to open these files in normal operation. They exist so ConceptGhost can be audited and problems can be diagnosed without rerunning blindly.
+
+### 8.3 Optional diagnostics remain optional
+
+Large or specialist diagnostic artifacts may remain optional, for example:
+- additional full-resolution depth visualizations;
+- confidence-map exports beyond what the selected engine already needs internally;
+- normals previews;
+- verbose native-engine dumps;
+- extra comparison renders;
+- other heavy review artifacts not required for the core quality gate.
+
+A future UI control labeled along the lines of `Extra Diagnostics` may control these optional artifacts only. It must not disable the manifest, reprojection report, reprojection overlay, or required canonical point cloud.
+
+### 8.4 Local-only execution policy
+
+The normal ConceptGhost processing path is local:
+
+```text
+source image
+-> Atlas
+-> DA3 or MoGe
+-> canonicalization
+-> reprojection
+-> Maya Ghost
+```
+
+No cloud upload, external API, or remote compute is required by this output policy.
+
+Google Drive is used for ConceptGhost project documentation/tools according to the project workflow, not as a dependency of an individual image-processing run.
+
+## 9. No hidden success substitution
 
 A successful node execution is not automatically a valid ConceptGhost result.
 
 - camera solvers must pass the camera-quality gate;
 - geometry engines remain explicit user choices;
 - successful secondary comparison geometry is not silently promoted;
+- canonical evidence and essential diagnostics are preserved automatically;
 - `PASS` requires the mandatory end-to-end Maya Ghost product.
 
 ## Related documents
