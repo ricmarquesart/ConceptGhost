@@ -1,9 +1,9 @@
 # ConceptGhost Roadmap Addendum — Master Workflow Integration
 
 Date: 2026-09-16
-Status: Approved integration policy; updated with mandatory output/handoff gate
+Status: Approved integration policy; updated with mandatory output/handoff gate and post-V1 technology-watch stage
 
-This addendum clarifies how Stages 3-14 converge into one final user-facing workflow.
+This addendum clarifies how Stages 3-15 converge into one final user-facing workflow and one post-V1 research stage.
 
 ## MANDATORY DEVELOPMENT READ GATE
 
@@ -15,10 +15,22 @@ docs/superpowers/specs/2026-09-16-conceptghost-runtime-behavior-policy.md
 docs/superpowers/specs/2026-09-16-conceptghost-master-workflow-ui-layout.md
 ```
 
+Before Stage 7 implementation, also read:
+
+```text
+docs/superpowers/specs/2026-09-16-conceptghost-stage7-normalizer-design.md
+```
+
 Before Stage 8 Maya/export work, also read:
 
 ```text
 docs/superpowers/specs/2026-09-16-conceptghost-output-handoff-contract.md
+```
+
+For future Stage 15, read:
+
+```text
+docs/superpowers/research/2026-09-16-conceptghost-technology-refinement-and-alternatives.md
 ```
 
 If older documentation conflicts with these files, stop and reconcile the conflict before implementation.
@@ -54,16 +66,32 @@ No Geometry Auto.
 ### Stage 7 — canonical integration
 Create:
 - CameraBundle;
-- GeometryBundle;
+- GeometryEvidence / GeometryBundle;
 - CanonicalGeometry;
 - SceneBundle;
-- coordinate/scale conventions;
-- mandatory reprojection gate.
+- explicit coordinate/scale conventions;
+- Integration Consistency reprojection gate;
+- Geometry Health gate.
+
+Canonical convention:
+
+```text
+Right-handed
+Y-Up
++X = right
++Y = up
+-Z = camera forward
+```
 
 Atlas is camera authority.
 DA3/MoGe supply depth/shape evidence.
 Original image supplies color.
 ConceptGhost Canonical Scene is final-space authority.
+
+Stage 7 must also benchmark integration refinements without silently changing the public baselines:
+- Atlas-conditioned DA3 where the official DA3 API safely supports provided intrinsics/extrinsics;
+- MoGe auto-FOV versus Atlas-FOV conditioning;
+- raw/native evidence preserved separately from cleaned canonical output.
 
 ### Stage 8 — first complete artist handoff
 Generate the Maya Ghost and all standard companion formats together:
@@ -84,10 +112,16 @@ These are not mutually exclusive choices.
 
 FBX point-cloud limitations must be respected; do not claim point-cloud equivalence with USD/PLY.
 
-### Stage 9 — A/B benchmark
+### Stage 9 — A/B benchmark and parameter freeze
 DA3 versus MoGe under the same Atlas camera and canonical conventions.
 
 Use evidence to freeze Max Reference / Balanced / Fast Test values.
+
+Parameter selection policy:
+- start from upstream defaults;
+- test documented/community alternatives;
+- benchmark on ConceptGhost scenes;
+- freeze only after measured evidence.
 
 ### Stages 10-12 — optional meshes
 - Stage 10: Atlas relief mesh.
@@ -109,6 +143,32 @@ Freeze:
 
 ### Stage 14 — future camera extension
 PCS/fSpy/manual advanced camera path after the core V1 is stable.
+
+### Stage 15 — post-V1 alternative engine evaluation / technology watch
+
+Stage 15 begins only after Stages 3-14 are complete. It does not alter the current V1 path.
+
+Objectives:
+- re-check releases and public demos at that future date;
+- evaluate new geometry/camera engines in isolation;
+- compare them against the frozen V1 on the same benchmark scenes;
+- integrate only through clean GeometryAdapter/CameraAdapter contracts;
+- never destabilize the proven V1 environment.
+
+Initial candidate queue:
+
+```text
+MoGe-3
+VGGT
+UniDepth V2
+Depth Pro
+Metric3D V2
+GeoWizard
+Depth Anything V2 Metric Outdoor reference baseline
+newly released relevant monocular geometry systems
+```
+
+No candidate is promoted because of a demo alone.
 
 ## Runtime rules that development must preserve
 
@@ -138,7 +198,8 @@ A complete production result targets:
 ```text
 valid Atlas Camera
 + valid Canonical Geometry
-+ Reprojection PASS
++ Integration Consistency PASS
++ Geometry Health acceptable
 + usable .ma/.usda Maya Ghost
 + required .fbx companion
 + required .ply companion
