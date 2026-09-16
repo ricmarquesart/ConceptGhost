@@ -1,7 +1,7 @@
 # ConceptGhost Master Workflow — UI Layout Policy
 
 Date: 2026-09-16
-Status: Approved visual-direction decision
+Status: Approved visual-direction and field-guidance decisions
 Project: ConceptGhost
 
 ## Decision
@@ -54,6 +54,75 @@ Contains Atlas relief, MoGe mesh, and DA3 mesh branches. These remain outside th
 - Downstream groups consume standardized ConceptGhost contracts rather than direct DA3/MoGe internals whenever the contract is available.
 - Output and status groups live at the right edge so the graph reads naturally from input to result.
 - Development/debug fixtures may expose additional nodes, but the production-facing master workflow should preserve this spatial organization.
+
+## Main versus Advanced controls
+
+The production-facing master workflow separates normal-use controls from engine-specific tuning.
+
+### Main controls
+Keep visible and easy to understand:
+- source image;
+- preset;
+- camera mode;
+- geometry engine;
+- Compare Both;
+- output switches.
+
+### Advanced groups
+Keep engine-specific tuning in clearly marked groups:
+- `ADVANCED — ATLAS`;
+- `ADVANCED — DA3`;
+- `ADVANCED — MoGe`;
+- later optional export/mesh-specific advanced groups when required.
+
+Advanced parameters remain accessible, but should not dominate normal workflow use.
+
+## Mandatory field-help policy
+
+Every user-editable field must include concise guidance. No exposed setting may rely on the user already knowing Atlas, DA3, MoGe, camera intrinsics, depth filtering, reprojection, MayaUSD, or mesh terminology.
+
+For every exposed field, the UI/documentation must answer three questions:
+
+1. **What does this control?** — plain-language description of the parameter.
+2. **What does changing it affect?** — practical effect on camera, geometry, quality, runtime, memory, filtering, export, or reliability.
+3. **What is ideal for normal use?** — recommended/default value or preset, including when a different value is appropriate.
+
+Where useful, also include a short warning for risky values or known trade-offs.
+
+### Example
+
+```text
+Confidence Threshold: 0.10
+
+What it controls:
+Removes DA3 points whose confidence is below the selected value.
+
+Effect:
+Higher values produce cleaner geometry but can remove useful surfaces.
+Lower values preserve more points but may increase noise.
+
+Recommended:
+0.10 for Balanced. Increase only when low-confidence noise is visibly harmful.
+```
+
+### Presentation rule
+
+The normal canvas should remain compact. Field guidance should therefore use a two-level presentation:
+
+- a short always-visible one-line hint beside or below the field when practical;
+- a fuller tooltip/help description for the effect, recommended value, and trade-offs.
+
+If ComfyUI limitations prevent a true tooltip for a specific field, the same information must be provided through an adjacent note/help node or clearly linked field reference. Missing explanation is not acceptable simply because a native widget lacks tooltip support.
+
+### Preset-aware recommendations
+
+When a recommended value depends on the selected preset, the guidance should say so explicitly, for example:
+
+- `Fast Test`: prioritize speed and low resource use;
+- `Balanced`: default recommendation for normal work;
+- `Max Reference`: prioritize reference fidelity even when runtime and file size increase.
+
+The UI should distinguish **recommended/default** from merely **allowed** values.
 
 ## Approved visual direction
 
