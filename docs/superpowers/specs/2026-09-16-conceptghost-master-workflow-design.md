@@ -1,7 +1,7 @@
 # ConceptGhost Master Workflow Architecture
 
 Date: 2026-09-16
-Status: Approved architecture sections 1-3
+Status: Approved architecture sections 1-4
 Project: ConceptGhost
 
 > This document supersedes the old V1 workflow split described in Section 13 of `2026-09-15-concept-ghost-blockout-design.md`. The final user-facing architecture is one master workflow, not separate DA3 and MoGe production workflows.
@@ -359,3 +359,189 @@ The manifest records source image, camera solver, geometry engine(s), model/chec
 ConceptGhost succeeds when the artist can open the Maya Ghost scene, view the source through the matched camera with strong projective agreement, leave the camera into a free perspective view, and use the colored ghost geometry as meaningful spatial guidance for manual blockout.
 
 Depth maps, confidence maps, point clouds, and optional meshes remain important diagnostic/reference outputs, but the primary product is the Maya Ghost Scene.
+
+## 10. Run bundle, output contract, and execution status
+
+Each execution is treated as one auditable run: one source image + one configuration + one self-contained result bundle. Outputs must not be scattered across ComfyUI without a traceable run identity.
+
+### Run identity and directory layout
+
+Each run receives a deterministic scene name and unique run ID, for example:
+
+```text
+village_001
+2026-09-16_001
+```
+
+The run bundle is written as:
+
+```text
+ConceptGhost_Output/<scene>/<run_id>/
+|-- source/
+|-- camera/
+|-- diagnostics/
+|-- geometry/
+|-- maya/
+|-- meshes/
+|-- compare/
+|-- logs/
+`-- manifest.json
+```
+
+### Source package
+
+`source/` records the original image and source metadata such as filename, width, height, aspect ratio, original path, and file hash. The source hash prevents accidental mixing of runs from different images with identical filenames.
+
+### Output A — camera package
+
+`camera/` stores the normalized CameraBundle plus Atlas-native evidence and review material. Expected files include, where available:
+
+- `camera.json`
+- `atlas_native.json`
+- `intrinsics.json`
+- `projection.json`
+- `overlay.png`
+- `camera_report.json`
+
+The downstream pipeline consumes the normalized CameraBundle rather than depending directly on an Atlas-private serialization.
+
+### Output B — diagnostics package
+
+`diagnostics/` preserves engine evidence without fabricating unavailable data. Candidate artifacts include:
+
+- raw depth;
+- display depth;
+- confidence;
+- valid/sky mask;
+- normals;
+- engine-native camera information;
+- reprojection overlay;
+- `reprojection_report.json`;
+- `diagnostics.json`.
+
+For every expected diagnostic, the manifest records one of: `available`, `not_available`, `not_requested`, or `failed`.
+
+### Output C — geometry package
+
+Native and canonical geometry are kept separate. Example:
+
+```text
+geometry/
+|-- native/
+|   `-- <engine>/
+|       `-- engine-native geometry
+`-- canonical/
+    |-- pointcloud.ply
+    |-- pointcloud.usda
+    `-- geometry.json
+```
+
+The primary Maya Ghost consumes canonical geometry, not the engine-native point cloud directly. Native geometry remains preserved for debugging and comparison.
+
+### Reprojection is both a gate and a visible output
+
+The reprojection test must generate machine-readable metrics and a visual overlay. At minimum, the report records status, tested point count, mean pixel error, median pixel error, and maximum pixel error.
+
+A significant reprojection failure preserves diagnostics but blocks publication of a valid Maya Ghost result.
+
+### Compare Both output layout
+
+When `Compare Both = OFF`, only the selected geometry engine is executed.
+
+When `Compare Both = ON`, DA3 and MoGe remain independent:
+
+```text
+geometry/
+|-- da3/
+|   |-- native/
+|   `-- canonical/
+`-- moge/
+    |-- native/
+    `-- canonical/
+
+compare/
+|-- comparison.json
+|-- da3_preview.png
+|-- moge_preview.png
+`-- side_by_side.png
+```
+
+`Compare Both` is comparison, not fusion.
+
+In Maya, the intended reference hierarchy is:
+
+```text
+CG_REFERENCE
+|-- DA3_Ghost
+`-- MoGe_Ghost
+```
+
+One branch may be visible by default while the other remains hidden for inspection.
+
+### Output D — Maya Ghost package
+
+`maya/` contains the primary V1 deliverable. USD remains the preferred point-cloud interchange unless Maya validation proves a more robust alternative. Candidate contents are:
+
+- `ConceptGhost_<scene>.usda`;
+- optional native Maya scene when justified by validation;
+- an open/import helper if useful;
+- `maya_manifest.json`.
+
+Expected scene organization:
+
+```text
+ConceptGhost_<scene>
+|-- CG_CAMERAS
+|   |-- matchedCamera_LOCKED
+|   `-- artistCamera
+|-- CG_SOURCE
+|   `-- sourcePlate
+|-- CG_REFERENCE
+|   `-- <engine>_Ghost
+|-- CG_OPTIONAL_MESH
+`-- CG_METADATA
+```
+
+### Outputs E1/E2/E3 — optional meshes
+
+Optional meshes are written under `meshes/atlas_relief`, `meshes/moge`, and `meshes/da3` as requested. Their existence never implies quality. Every evaluated mesh is classified `useful`, `limited`, or `reject`.
+
+### Central manifest
+
+`manifest.json` is the run authority. It records at minimum:
+
+- run ID and timestamps;
+- source path and source hash;
+- selected camera solver and camera confidence;
+- selected geometry engine and `Compare Both` state;
+- model/checkpoint and relevant parameters;
+- canonical coordinate convention and scale mode;
+- reprojection result;
+- generated outputs;
+- warnings;
+- component versions;
+- overall run status.
+
+### Overall execution states
+
+Every run resolves to exactly one high-level state:
+
+- `PASS` — valid camera + valid canonical geometry + reprojection pass + Maya Ghost generated.
+- `PARTIAL` — useful intermediate outputs exist, but a non-core or downstream component failed; successful outputs are preserved.
+- `FAIL` — no valid end-to-end Maya Ghost may be presented, for example because camera solve is unusable, no usable geometry exists, or canonical reprojection fails.
+
+Intermediate success must never silently substitute for the primary success criterion. A DA3 PLY, an Atlas camera, or a generated GLB alone is not a ConceptGhost `PASS`.
+
+The core acceptance equation is:
+
+```text
+Atlas Camera
++ Canonical Geometry
++ Reprojection PASS
++ Maya Ghost usable
+= ConceptGhost PASS
+```
+
+### User-facing result summary
+
+The Master workflow should expose a concise run result showing status, camera engine, geometry engine, reprojection status, point-cloud status, Maya Ghost readiness, optional mesh state, and final output path. The user should not have to inspect internal nodes to determine whether a run succeeded.
