@@ -1,8 +1,10 @@
 # ConceptGhost — Runtime Behavior Policy
 
 Date: 2026-09-16
-Status: Active design policy — camera Auto, geometry selection, Compare Both failure behavior, and preset scope approved
+Status: Active design policy — camera Auto, geometry selection, Compare Both behavior, preset scope/default, and mandatory Maya Ghost approved
 Project: ConceptGhost
+
+> Where this policy conflicts with earlier high-level wording in the Master Workflow Architecture, this policy is authoritative until the final architecture spec is consolidated.
 
 ## Purpose
 
@@ -12,28 +14,22 @@ This document complements the architecture, roadmap, and UI-layout specification
 ## 1. Camera control
 
 User-facing camera choices:
-
 - `Auto`
 - `Atlas Learned`
 - `Atlas VP`
 
 ### 1.1 `Camera = Auto` — approved behavior
 
-`Auto` is deterministic and uses an ordered fallback:
-
 ```text
 1. Run Atlas Learned
 2. Evaluate the camera-quality acceptance criteria
 3. If Atlas Learned PASSES:
       use Atlas Learned
-      do not run Atlas VP as a replacement
-4. If Atlas Learned FAILS the camera-quality criteria:
+4. If Atlas Learned FAILS:
       run Atlas VP as fallback
-5. Evaluate Atlas VP
-6. If Atlas VP PASSES:
-      use Atlas VP
-      record that fallback occurred
-7. If both fail:
+5. If Atlas VP PASSES:
+      use Atlas VP and record the fallback
+6. If both fail:
       camera stage FAIL
       preserve diagnostics
       do not publish a valid Maya Ghost
@@ -47,21 +43,18 @@ If the user selects `Atlas Learned`, ConceptGhost runs that requested solver and
 
 If the user selects `Atlas VP`, ConceptGhost runs Atlas VP directly.
 
-A future explicit option may allow fallback from a manually selected solver, but V1 should keep manual selections literal and predictable.
-
 ## 2. Camera-quality decision
 
-The exact numerical/visual acceptance thresholds will be defined from Stage 3 evidence and benchmark scenes before the production Master Workflow is frozen.
+The exact numerical/visual thresholds are defined from Stage 3 evidence and benchmark scenes before the production Master Workflow is frozen.
 
-The policy is fixed even if the thresholds evolve:
-
-- a solver must pass the current documented quality gate before becoming the authoritative camera;
-- fallback occurs because the primary solver failed the gate, not merely because another solver also exists;
-- quality-gate evidence is preserved in diagnostics.
+Fixed policy:
+- a solver must pass the documented quality gate before becoming authoritative;
+- fallback occurs because the primary solver failed the gate;
+- quality-gate evidence is preserved.
 
 ## 3. Camera provenance
 
-Every run must record at minimum:
+Every run records at minimum:
 
 ```text
 camera.requested_mode
@@ -73,105 +66,44 @@ camera.final_solver
 camera.final_status
 ```
 
-Example:
-
-```text
-requested_mode: auto
-primary_solver: atlas_learned
-primary_status: fail
-fallback_attempted: true
-fallback_reason: camera_quality_gate_failed
-final_solver: atlas_vp
-final_status: pass
-```
-
-The user-facing result must clearly show the solver actually used.
+The user-facing result clearly shows the solver actually used.
 
 ## 4. Geometry control — approved V1 behavior
 
 V1 deliberately has no `Geometry = Auto`.
 
-User-facing geometry choices are:
-
-- `DA3` — default
+Choices:
+- `DA3` — default geometry engine
 - `MoGe`
 
-The separate `Compare Both` switch controls whether the alternate engine is also executed for comparison.
+`Compare Both` controls whether the alternate engine is also executed.
 
 ### 4.1 Default geometry
-
-The default production-facing geometry engine in V1 is:
 
 ```text
 Geometry = DA3
 Compare Both = OFF
 ```
 
-This default may be revisited only after Stage 9 A/B evidence, but the V1 architecture does not require an automatic engine chooser.
-
 ### 4.2 No silent geometry fallback
 
-If the user explicitly selects DA3, ConceptGhost does not silently replace DA3 with MoGe because DA3 failed.
+DA3 is not silently replaced by MoGe, and MoGe is not silently replaced by DA3.
 
-If the user explicitly selects MoGe, ConceptGhost does not silently replace MoGe with DA3 because MoGe failed.
-
-The selected engine is part of the run's reproducible configuration.
-
-The alternate engine can be run only when `Compare Both = ON` or when the user explicitly selects it in a new run.
+The selected engine is part of the reproducible run configuration.
 
 ### 4.3 Compare Both remains comparison, not Auto
 
-`Compare Both = ON` means:
-
 ```text
-selected Geometry engine = primary comparison branch
+selected engine = primary branch
 alternate engine = secondary comparison branch
 both execute independently
-both keep native outputs
+both preserve native outputs
 both normalize independently
 no automatic fusion
 no hidden engine substitution
 ```
 
-The run manifest must preserve which engine was selected as primary and which was executed only because `Compare Both` was enabled.
-
-### 4.4 Geometry provenance
-
-Every run must record at minimum:
-
-```text
-geometry.requested_engine
-geometry.compare_both
-geometry.primary_engine
-geometry.primary_status
-geometry.secondary_engine
-geometry.secondary_status
-geometry.final_authoritative_engine
-```
-
-For a normal DA3-only run:
-
-```text
-requested_engine: da3
-compare_both: false
-primary_engine: da3
-secondary_engine: none
-```
-
-For a DA3-primary comparison run:
-
-```text
-requested_engine: da3
-compare_both: true
-primary_engine: da3
-secondary_engine: moge
-```
-
 ## 5. Compare Both — primary failure / secondary success policy
-
-Approved V1 behavior:
-
-If `Compare Both = ON`, the geometry engine selected by the user remains the authoritative primary branch for that run.
 
 Example:
 
@@ -186,39 +118,18 @@ MoGe = PASS
 Result:
 
 ```text
-overall run status = PARTIAL
-DA3 remains requested/primary engine
-MoGe successful outputs are preserved
-MoGe is clearly reported as PASS
-MoGe is NOT silently promoted to authoritative geometry
-no official Maya Ghost is published from MoGe for that run
+run.status = PARTIAL
+DA3 remains requested/primary
+MoGe outputs are preserved and reported as PASS
+MoGe is not promoted to primary
+no authoritative Maya Ghost is published from MoGe in that run
 ```
 
-The successful secondary branch remains available for diagnosis, comparison, previews, native/canonical outputs, and evidence.
+To make MoGe authoritative, the user starts a new explicit run with `Geometry = MoGe`.
 
-To make MoGe authoritative, the user starts a new explicit run with:
+The reverse case follows the same rule.
 
-```text
-Geometry = MoGe
-```
-
-The same rule applies in reverse when MoGe is primary and DA3 is the successful secondary branch.
-
-### 5.1 Why this rule exists
-
-V1 prioritizes:
-
-- reproducibility;
-- explicit user intent;
-- traceable comparisons;
-- no hidden `Geometry = Auto`;
-- no silent change to the meaning of a run.
-
-A successful secondary comparison result is useful evidence, but it does not rewrite the configuration that created the run.
-
-### 5.2 Required status/provenance
-
-When this case occurs, the manifest must record enough information to make the outcome unambiguous, including:
+Required provenance includes:
 
 ```text
 geometry.requested_engine
@@ -228,33 +139,47 @@ geometry.secondary_engine
 geometry.secondary_status
 geometry.secondary_usable
 geometry.promoted_to_primary = false
-run.status = partial
-maya_ghost.authoritative = false
+run.status
+maya_ghost.authoritative
 ```
 
-The user-facing summary should say, in plain language, that the primary engine failed, the comparison engine succeeded, and a new explicit run with the successful engine is required before publishing it as the authoritative Maya Ghost.
+## 6. Preset scope and default — approved V1 behavior
 
-## 6. Preset scope — approved V1 behavior
+Presets control **quality, speed, resource use, filtering, and output density**. They do not choose Camera, DA3/MoGe, or Compare Both.
 
-V1 presets control **quality, speed, resource use, and output density**. They do not choose the camera solver, geometry engine, or comparison mode on the user's behalf.
+User-facing presets:
 
-User-facing presets are:
-
+- `Max Reference` — **DEFAULT**
+- `Balanced`
 - `Fast Test`
-- `Balanced` — default for normal work
-- `Max Reference`
 
-Presets may adjust engine-specific and shared parameters such as:
+### 6.1 Default policy
 
+ConceptGhost opens with:
+
+```text
+Preset = Max Reference
+Geometry = DA3
+Compare Both = OFF
+Camera = Auto
+```
+
+The default therefore prioritizes the **highest validated reference quality available in the current ConceptGhost version**, even when this costs more processing time, VRAM/RAM, disk usage, or point-cloud size.
+
+`Max Reference` means the highest-quality **validated and stable** settings, not blindly setting every numerical parameter to its theoretical maximum. A setting that causes instability, out-of-memory failures, severe noise, or worse reference fidelity does not qualify as a better default.
+
+### 6.2 What presets may change
+
+Presets may adjust validated parameters such as:
 - input/processing resolution where supported;
-- point-cloud sampling or density;
+- point-cloud sampling/density;
 - confidence/validity thresholds;
-- edge and noise filtering;
+- edge/noise filtering;
 - diagnostic/output density;
-- memory/runtime trade-offs;
-- other validated quality-versus-speed parameters.
+- runtime/memory trade-offs;
+- other quality-versus-cost parameters demonstrated by baseline/benchmark evidence.
 
-Presets must **not** silently change:
+Presets must not silently change:
 
 ```text
 camera.requested_mode
@@ -262,69 +187,64 @@ geometry.requested_engine
 geometry.compare_both
 ```
 
-Examples:
+### 6.3 Reproducibility
 
-```text
-Preset = Fast Test
-Geometry = DA3
-Camera = Auto
-
--> may use lower-cost DA3/resolution/filter settings
--> still uses DA3
--> Camera remains Auto
-```
-
-```text
-Preset = Max Reference
-Geometry = MoGe
-Compare Both = OFF
-
--> may increase quality/density/cost settings
--> still uses MoGe only
--> does not enable DA3 or Compare Both
-```
-
-### 6.1 Reproducibility
-
-The manifest must record both the preset name and the resolved parameter values used by that preset. A preset label alone is not sufficient for audit or reproduction because preset internals may evolve between ConceptGhost versions.
-
-At minimum:
+The manifest records:
 
 ```text
 preset.name
 preset.version
 preset.resolved_parameters
+preset.manual_overrides
 ```
 
-Any advanced user override must also be recorded so a run can distinguish:
+A preset name alone is not sufficient because preset internals may evolve.
+
+Design principle:
 
 ```text
-Balanced default
+Preset -> how much validated quality/cost?
+Camera/Geometry/Compare Both -> what processing path?
 ```
 
-from:
+## 7. Maya Ghost is mandatory in the production-facing V1
+
+The main ConceptGhost product is the Maya Ghost Scene.
+
+Therefore the production-facing `ConceptGhost_Master.json` has **no `Maya Ghost ON/OFF` toggle**.
+
+When all mandatory upstream gates pass:
 
 ```text
-Balanced + manual override
+valid Camera
++ valid authoritative Canonical Geometry
++ Reprojection PASS
 ```
 
-### 6.2 Design principle
+ConceptGhost automatically attempts to generate the Maya Ghost package.
 
-Preset answers: **How much quality/cost do I want?**
+A valid end-to-end run cannot be marked `PASS` unless the Maya Ghost package is successfully generated and usable under the current acceptance criteria.
 
-Camera/Geometry/Compare Both answer: **What processing path do I want?**
+If camera, geometry, and reprojection succeed but Maya export/assembly fails:
 
-These responsibilities remain separate in V1.
+```text
+run.status = PARTIAL
+maya_ghost.status = FAILED
+maya_ghost.authoritative = false
+```
 
-## 7. No hidden success substitution
+Useful upstream outputs are preserved for diagnosis.
 
-A successful Atlas Learned execution is not automatically a valid camera if it fails ConceptGhost quality criteria.
+Internal development/baseline workflows may bypass Maya generation when a stage specifically tests only an upstream component. That exception does not create a Maya toggle in the production-facing Master.
 
-Likewise, a successfully executed Atlas VP node is not sufficient by itself.
+## 8. No hidden success substitution
 
-The final camera authority is the solver that passes the documented ConceptGhost camera-quality gate.
+A successful node execution is not automatically a valid ConceptGhost result.
 
-For geometry, successful execution of a node or export is not sufficient to redefine which engine the user selected. V1 prioritizes reproducibility over hidden automatic substitution.
+- camera solvers must pass the camera-quality gate;
+- geometry engines remain explicit user choices;
+- successful secondary comparison geometry is not silently promoted;
+- `PASS` requires the mandatory end-to-end Maya Ghost product.
 
 ## Related documents
 
