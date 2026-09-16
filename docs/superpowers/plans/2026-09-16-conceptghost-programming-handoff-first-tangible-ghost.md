@@ -7,10 +7,35 @@ Read first:
 
 ```text
 docs/superpowers/specs/2026-09-16-conceptghost-execution-priority-first-tangible-ghost.md
+docs/superpowers/specs/2026-09-16-conceptghost-synergy-architecture-v1.md
 docs/superpowers/plans/2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
 docs/superpowers/specs/2026-09-16-conceptghost-stage7-normalizer-design.md
 docs/superpowers/specs/2026-09-16-conceptghost-stage8-maya-export-design.md
 ```
+
+## Mandatory synergy rule
+
+Do not reproduce the earlier failure mode where Atlas, DA3, MoGe, and exporters merely run beside each other and emit unrelated outputs.
+
+For the selected DA3 or MoGe path, use the preserved reference code as cooperating specialists:
+
+```text
+Atlas camera authority / conditioning
++ selected geometry engine
++ explicit depth semantics
++ Atlas-ray canonical reconstruction
++ confidence/masks/sky validity
++ edge/streamer cleanup logic
++ normals/boundaries when available
++ conditional ground/gravity evidence
++ canonical validation
++ OpenUSD/MayaUSD handoff
+= one final Canonical Ghost
+```
+
+`Compare Both` remains a comparison and must not become silent fusion.
+
+Read `2026-09-16-conceptghost-synergy-architecture-v1.md` before touching Stage 6–8 integration.
 
 ## One instruction
 
@@ -22,8 +47,8 @@ Immediate target:
 one image
 -> ConceptGhost_Master.json
 -> Atlas Camera Auto
--> DA3
--> ConceptGhost Normalizer
+-> Geometry = DA3 or MoGe (Compare Both remains diagnostic)
+-> Synergistic Integration Core
 -> Canonical Colored Point Cloud
 -> pointcloud.ply
 -> Ghost.usda
@@ -86,4 +111,4 @@ Drive file ID:
 1PLQF7cZx11y5_m2YbqaQF7jwyxX8-4R-
 ```
 
-Use that plan as the detailed implementation checklist, with the new First Tangible Ghost priority directive taking precedence on sequencing: get the point-cloud Ghost in front of the user before fine benchmark or mesh work.
+Use that plan as the detailed implementation checklist, but Synergy Architecture v1 is authoritative if an older plan step can be interpreted as isolated branch execution. The first tangible point-cloud Ghost still comes before fine benchmark or mesh work.
