@@ -4,9 +4,32 @@ Camera-aware 3D reference reconstruction from concept art using existing, demons
 
 ## Current status
 
-**Stage 4/14 — Depth Anything V3 baseline / colored point-cloud gate.**
+**Stage 4/14 — Depth Anything V3 baseline / colored point-cloud gate, with Stage 4S storage cutover in final regression.**
 
-Stages 0–3 are technically proven on the target ComfyUI: inventory and safe framework, Atlas Camera core, protected GeoCalib/OpenCV additions, and a completed learned-camera solve. Stage 4 now adds the public `PozzettiAndrea/ComfyUI-DepthAnythingV3` path so the project can test dense scene reference geometry without replacing the existing Single View / MultiView / Trellis stack.
+Stages 0–3 are technically proven on the target ComfyUI: inventory and safe framework, Atlas Camera core, protected GeoCalib/OpenCV additions, and a completed learned-camera solve. Stage 4 adds the public `PozzettiAndrea/ComfyUI-DepthAnythingV3` path. The isolated DA3 worker repair is complete; the remaining Stage 4 functional gate is the real colored point-cloud run.
+
+Stage 4S separates durable project files from heavy local runtime state without rebuilding the working DA3 environment.
+
+## Stage 4S storage contract
+
+Authoritative durable project data lives under:
+
+`G:\My Drive\ConceptGhost`
+
+New runtime/cache/worker state lives under:
+
+`C:\ConceptGhostRuntime`
+
+The already-working DA3 isolated environment and Pixi cache under `C:\ConceptGhost\cache` are **grandfathered runtime** during Stage 4S. They are not moved or rebuilt merely for storage cleanup.
+
+Durable G: data includes workflows, references, manifests, reports, logs, tests/packages, outputs and the permanent storage ledger. The canonical workflow roots are:
+
+- `G:\My Drive\ConceptGhost\Workflows\Atlas`
+- `G:\My Drive\ConceptGhost\Workflows\DA3`
+- `G:\My Drive\ConceptGhost\Workflows\MoGe`
+- `G:\My Drive\ConceptGhost\Workflows\Project`
+
+Stage 4S is deliberately non-destructive. Its migration gate supports inventory, verified copy and read-only cutover verification. It exposes no delete/remove action. Any future cleanup of verified legacy duplicates requires a separate explicit approval.
 
 ## Hard non-interference rule
 
@@ -18,11 +41,10 @@ ConceptGhost must not overwrite or re-resolve software used by existing projects
 - reuses an existing correct DA3 checkout untouched, and blocks a conflicting target;
 - fingerprints every other `custom_nodes` project before/after;
 - avoids comfy-env 0.3.89's workspace-wide installer entirely;
-- builds a DA3-only shadow workspace under `C:\ConceptGhost\cache\da3-comfy-env`, then adds only the DA3 runtime junction expected by comfy-env;
-- strips only the optional flash/sage CUDA accelerators from the **shadow build config** so the worker retains the host Torch/CUDA ABI and the upstream workflow can fall back to SDPA; the upstream DA3 checkout stays untouched;
-- keeps the pixi download cache project-owned under `C:\ConceptGhost\cache\pixi`;
+- builds a DA3-only shadow workspace, with the active pre-4S worker grandfathered under `C:\ConceptGhost\cache`;
+- strips only optional flash/sage CUDA accelerators from the **shadow build config**, leaving the upstream DA3 checkout untouched;
 - downloads no DA3 checkpoint during installation;
-- copies the public upstream workflows verbatim rather than recreating point-cloud math.
+- copies public upstream workflows byte-for-byte rather than recreating point-cloud math.
 
 ## Permanent upstream references
 
@@ -40,34 +62,40 @@ Before a camera/depth/geometry/mesh/DCC stage begins, verify the locked referenc
 
 If a required mirror is missing or is not at the locked commit, stop that stage until the reference is restored or deliberately re-audited.
 
-## Stage 4 usage
+## Stage 4S operator gates
 
-1. Close ComfyUI completely.
-2. Run `DA3_BASELINE.bat`. It is a dry-run by default.
-3. Review the generated plan and compatibility report.
-4. Only after the plan is approved, run `DA3_BASELINE.bat --apply`.
-5. Restart ComfyUI and open:
+`STORAGE_MIGRATION.bat` is dry-run by default. `--copy` copies only PROJECT files with SHA-256 verification while preserving C: sources. `--cutover-check` independently re-verifies every source/destination pair, the seven required Atlas/DA3 workflows, `References\SOURCE_LOCK.json`, and `References\Upstream_Code`.
 
-   `C:\ConceptGhost\workflows\reference\da3\advanced_3d.json`
+`STAGE4S_FINALIZE.bat` is a final read-only evidence gate. It writes `stage4s_cutover_report.json` and an informational `stage4s_cleanup_plan.json`. The cleanup plan has no execution path and records that separate explicit approval is required before any future deletion stage.
 
-6. Load the same test image and run the **unmodified upstream workflow**.
-7. The first run may download `da3_large.safetensors` into `ComfyUI\models\depthanything3`.
-8. Gate 4 closes only when the workflow produces a colored PLY point cloud and that point cloud can be inspected as useful scene reference.
+`STORAGE.bat` records four separate ownership totals:
+
+- G: durable project bytes;
+- C: new runtime bytes;
+- C: grandfathered runtime bytes;
+- external attributable ComfyUI/custom-node/model additions.
+
+Nested paths and junction targets are not double-counted.
+
+## Stage 4 functional usage
+
+After Stage 4S regression is closed, open the unmodified DA3 upstream workflow from:
+
+`G:\My Drive\ConceptGhost\Workflows\DA3\advanced_3d.json`
+
+Load the same test image and run the workflow. Gate 4 closes only when it produces a colored PLY point cloud that can be inspected as useful scene reference.
 
 ## Compatibility evidence
 
-Stage 4 mirrors reports and compatibility evidence to:
+Stage 4S writes persistent evidence to:
 
-- `G:\My Drive\ConceptGhost\Reports\DA3Baseline\<timestamp>`
-- `G:\My Drive\ConceptGhost\Tests\Compatibility\Stage4_<timestamp>`
+- `G:\My Drive\ConceptGhost\Reports\StorageMigration\<timestamp>`
+- `G:\My Drive\ConceptGhost\Tests\Compatibility\Stage4S_<timestamp>`
 - `G:\My Drive\ConceptGhost\Logs\...`
 
-Persistent storage tracking remains at:
+The permanent storage ledger is:
 
-- `C:\ConceptGhost\manifests\storage_usage.txt`
-- `G:\My Drive\ConceptGhost\Storage\ConceptGhost_Disk_Usage.txt`
-
-The storage tracker separates project-owned bytes from shared/pre-existing ComfyUI assets and records the DA3-only shadow environment, its project-owned pixi cache, the DA3 checkout/junction, and any checkpoint growth attributable to Stage 4.
+`G:\My Drive\ConceptGhost\Storage\ConceptGhost_Disk_Usage.txt`
 
 ## Planned backbone
 
@@ -76,4 +104,4 @@ The storage tracker separates project-owned bytes from shared/pre-existing Comfy
 - MoGe: independent monocular geometry/mesh comparison
 - Maya: matched-camera ghost scene for manual blockout
 
-See `docs/STAGE4_DA3_BASELINE.md`, `docs/superpowers/plans/2026-09-15-concept-ghost-roadmap.md`, and `docs/REFERENCE_CODE_AUDIT.md`.
+See `docs/STAGE4_DA3_BASELINE.md`, `docs/STAGE4S_STORAGE_MIGRATION.md`, `docs/superpowers/plans/2026-09-16-conceptghost-storage-layout-migration.md`, and `docs/REFERENCE_CODE_AUDIT.md`.
