@@ -83,6 +83,8 @@ if exist "%DST%" (
     echo [SKIP] %NAME% non-git destination already exists>>"%LOG%"
     exit /b 0
   )
+  call :guard_stale_lock "%DST%" "%NAME%"
+  if errorlevel 1 exit /b 0
   set "EXISTING_URL="
   for /f "delims=" %%R in ('git -C "%DST%" remote get-url origin 2^>nul') do set "EXISTING_URL=%%R"
   if /I not "!EXISTING_URL!"=="%URL%" (
@@ -105,8 +107,15 @@ if errorlevel 1 (
   echo [FAIL] checkout %NAME% %REV%
   echo [FAIL] checkout %NAME% %REV%>>"%LOG%"
 ) else (
-  echo [OK] %NAME%
-  echo [OK] %NAME% @ %REV%>>"%LOG%"
+  set "ACTUAL_HEAD="
+  for /f "delims=" %%H in ('git -C "%DST%" rev-parse HEAD 2^>nul') do set "ACTUAL_HEAD=%%H"
+  if /I not "!ACTUAL_HEAD!"=="%REV%" (
+    echo [FAIL] %NAME% HEAD mismatch after checkout
+    echo [FAIL] %NAME% expected=%REV% actual=!ACTUAL_HEAD!>>"%LOG%"
+  ) else (
+    echo [OK] %NAME%
+    echo [OK] %NAME% @ %REV%>>"%LOG%"
+  )
 )
 exit /b 0
 
@@ -123,6 +132,8 @@ if exist "%DST%" (
     echo [SKIP] %NAME% non-git destination already exists>>"%LOG%"
     exit /b 0
   )
+  call :guard_stale_lock "%DST%" "%NAME%"
+  if errorlevel 1 exit /b 0
 ) else (
   git clone --filter=blob:none --no-checkout "%URL%" "%DST%" >>"%LOG%" 2>&1
   if errorlevel 1 (
@@ -142,4 +153,46 @@ if errorlevel 1 (
   echo [OK] %NAME%
   echo [OK] %NAME% @ %REV% paths=%PATHS%>>"%LOG%"
 )
+exit /b 0
+
+:guard_stale_lock
+set "LOCK_REPO=%~1"
+set "LOCK_NAME=%~2"
+set "LOCK_FILE=%LOCK_REPO%\.git\index.lock"
+if not exist "%LOCK_FILE%" exit /b 0
+
+echo [WARN] %LOCK_NAME% has .git\index.lock; checking whether it is stale...
+echo [WARN] %LOCK_NAME% index.lock detected>>"%LOG%"
+
+tasklist /FI "IMAGENAME eq git.exe" /NH 2>nul | find /I "git.exe" >nul
+if not errorlevel 1 (
+  echo [SKIP] %LOCK_NAME% git.exe is active; lock is not removed.
+  echo [SKIP] %LOCK_NAME% git.exe is active; index.lock preserved>>"%LOG%"
+  exit /b 1
+)
+
+set "CG_LOCK_PATH=%LOCK_FILE%"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=$env:CG_LOCK_PATH; if (!(Test-Path -LiteralPath $p)) { exit 3 }; try { $age=((Get-Date)-(Get-Item -LiteralPath $p).LastWriteTime).TotalSeconds } catch { exit 2 }; if ($age -ge 120) { exit 0 } else { exit 1 }" >nul 2>&1
+set "LOCK_AGE_RC=%ERRORLEVEL%"
+if "%LOCK_AGE_RC%"=="3" exit /b 0
+if not "%LOCK_AGE_RC%"=="0" (
+  if "%LOCK_AGE_RC%"=="1" (
+    echo [SKIP] %LOCK_NAME% lock is recent ^(<120 seconds^); nothing removed.
+    echo [SKIP] %LOCK_NAME% lock is recent; index.lock preserved>>"%LOG%"
+  ) else (
+    echo [SKIP] %LOCK_NAME% lock age could not be verified; nothing removed.
+    echo [SKIP] %LOCK_NAME% lock age verification failed; index.lock preserved>>"%LOG%"
+  )
+  exit /b 1
+)
+
+del /F /Q "%LOCK_FILE%" >nul 2>&1
+if exist "%LOCK_FILE%" (
+  echo [FAIL] %LOCK_NAME% stale index.lock could not be removed.
+  echo [FAIL] %LOCK_NAME% stale index.lock removal failed>>"%LOG%"
+  exit /b 1
+)
+
+echo [REPAIRED] %LOCK_NAME% stale index.lock removed safely.
+echo [REPAIRED] %LOCK_NAME% stale index.lock removed after age/process checks>>"%LOG%"
 exit /b 0
