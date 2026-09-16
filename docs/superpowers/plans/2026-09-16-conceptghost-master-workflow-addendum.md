@@ -11,9 +11,17 @@ Before implementing or modifying Stages 6-13, read and reconcile:
 
 ```text
 docs/superpowers/specs/2026-09-16-conceptghost-integrated-architecture-v2.md
+docs/superpowers/specs/2026-09-16-conceptghost-execution-priority-first-tangible-ghost.md
+docs/superpowers/plans/2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
 docs/superpowers/specs/2026-09-16-conceptghost-runtime-behavior-policy.md
 docs/superpowers/specs/2026-09-16-conceptghost-master-workflow-ui-layout.md
 docs/superpowers/research/2026-09-16-conceptghost-consolidated-research-and-implementation-guidance.md
+```
+
+Drive mirror of the Stage 6–8 execution plan:
+
+```text
+G:\My Drive\ConceptGhost\Documentation\Roadmap\2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
 ```
 
 Before Stage 8 Maya/export work, also read:
@@ -35,7 +43,73 @@ Before Stage 10 Atlas relief-mesh work, also read:
 docs/superpowers/specs/2026-09-16-conceptghost-stage10-atlas-relief-mesh-design.md
 ```
 
+Before Stage 11 MoGe mesh work, also read:
+
+```text
+docs/superpowers/specs/2026-09-16-conceptghost-stage11-moge-mesh-design.md
+```
+
 If older documentation conflicts with these files, stop and reconcile the conflict before implementation.
+
+## EXECUTION PRIORITY RESET — FIRST TANGIBLE GHOST
+
+Implementation priority is now explicitly different from architecture-detail priority.
+
+Immediate objective:
+
+```text
+one image
+-> one integrated Master workflow run
+-> Atlas camera
+-> DA3/MoGe geometry evidence
+-> ConceptGhost Normalizer
+-> canonical colored point cloud
+-> Maya Ghost package
+```
+
+This is the **FIRST TANGIBLE GHOST** milestone and it is the next decisive gate for the project. The user's decision to continue investing in ConceptGhost depends primarily on judging this first integrated point-cloud result.
+
+Therefore, the effective implementation order is:
+
+```text
+Stage 6
+-> Stage 7
+-> Stage 8
+-> FIRST TANGIBLE GHOST GATE
+-> only then heavy Stage 9 refinement and serious Stage 10-12 mesh work
+```
+
+Use **best-known defaults** derived from upstream/public references now. Do not block the first integrated Ghost on a full benchmark campaign.
+
+The primary evaluation gate is:
+
+```text
+POINT CLOUD USABILITY GATE
+```
+
+Question:
+
+> Is the point cloud useful enough to estimate distance, proportion, shape, and relative height for manual blockout in Maya?
+
+Possible outcomes:
+
+```text
+PASS     -> continue and refine
+MARGINAL -> continue, but focus only on major defects
+FAIL     -> user decides whether the project still deserves continuation
+```
+
+Before that first tangible Ghost exists, do not let the following dominate project time unless they block execution or validity:
+
+```text
+fine threshold tuning
+mesh repair/retopo detail
+large parameter sweeps
+full benchmark campaigns
+small-quality polishing
+```
+
+Stages 10-12 remain approved architecture, but they are blocked behind point-cloud usefulness in practical implementation priority.
 
 ## Stages 3-5 — public baselines first
 
@@ -116,6 +190,8 @@ The `.ma` contains native matched camera, artist camera, source plate, and MayaU
 
 Maya/FBX generation uses a separate Maya Worker. Prefer relative paths and test moving the entire run folder.
 
+Implementation note for current priority: the first user-visible Ghost should not be delayed by non-critical FBX polish if `.ma`, `.usda`, and `.ply` are already sufficient to let the user inspect the point cloud in Maya. FBX remains part of the Stage 8/production contract, but the first tangible point-cloud judgment comes first.
+
 ## Stage 9 — benchmark and preset freeze
 
 Benchmark images are chosen by the user for each benchmark session. No permanent fixed corpus and no automatic public-image selection.
@@ -172,9 +248,11 @@ processing resolution
 
 Depth Anything V2 Metric Outdoor may remain a low-cost exterior reference baseline, not a hidden V1 engine switch.
 
+Timing note: Stage 9 remains approved, but it must not block the first integrated Ghost. Before the first tangible Ghost exists, use best-known defaults. Run the full benchmark/preset-freeze effort only after the user has judged the first integrated point-cloud result as promising enough to continue.
+
 ## Stage 10 — Atlas relief mesh
 
-Stage 10 is an OPTIONAL E1 branch. It does not replace the Canonical Point Cloud.
+Stage 10 is an OPTIONAL E1 branch. It does not replace the Canonical Point Cloud. In current execution priority, Stage 10 is architecturally approved but practically deferred until the core point-cloud Ghost has passed the first tangible usability gate.
 
 Reuse the pinned Atlas relief implementation first:
 
@@ -234,11 +312,22 @@ Read the Stage 10 spec for canonical-space adaptation, repair/retopo separation,
 
 ## Stage 11 — MoGe mesh
 
-MoGe mesh remains an independent optional branch. Failure never invalidates the core Ghost.
+MoGe mesh remains an independent optional branch. Failure never invalidates the core Ghost. Practical implementation priority is deferred until the core point-cloud Ghost has proven useful enough to justify serious mesh work.
+
+Approved Stage 11 architecture:
+- preserve MoGe native mesh independently from the normalized point-cloud path;
+- obey the Stage 9 Auto-FOV vs Atlas-FOV decision rather than making a second camera-policy decision;
+- canonicalize the native mesh into the same ConceptGhost scene space;
+- add a Mesh-to-Ghost Consistency Gate distinct from reprojection and Geometry Health;
+- characterize discontinuity behavior without brute-force parameter sweeps;
+- classify `useful | limited | reject`;
+- include in Maya/FBX only when classification permits it.
+
+See `docs/superpowers/specs/2026-09-16-conceptghost-stage11-moge-mesh-design.md`.
 
 ## Stage 12 — DA3 mesh
 
-DA3 mesh remains an independent optional branch. Failure never invalidates the core Ghost.
+DA3 mesh remains an independent optional branch. Failure never invalidates the core Ghost. Practical implementation priority is deferred until the core point-cloud Ghost has proven useful enough to justify serious mesh work.
 
 ## Stage 13 — final packaging
 
@@ -279,7 +368,7 @@ Any adopted candidate enters through a clean GeometryAdapter/CameraAdapter bound
 - DA3 default, MoGe selectable, no silent geometry fallback.
 - Compare Both = independent comparison, never implicit fusion.
 - Primary-fails/secondary-passes = PARTIAL; secondary is not promoted.
-- Max Reference = default preset.
+- Max Reference = default preset, interpreted for now as the best-known upstream/public default rather than a fully benchmark-frozen optimum.
 - Maya Ghost, Canonical Point Cloud, manifest, reprojection report, and reprojection overlay are mandatory.
 - Extra diagnostics and optional meshes may remain optional.
 - Every run gets a unique run ID.
