@@ -1,0 +1,48 @@
+schema_version: 1
+
+project:
+  root: C:\ConceptGhost
+  output_root: C:\ConceptGhost\output
+
+comfyui:
+  root: auto
+  require_exact_before_external_install: true
+
+camera:
+  engine: atlas_learned
+
+geometry:
+  engine: da3
+  compare_both: false
+
+outputs:
+  camera: true
+  diagnostics: true
+  pointcloud: true
+  maya: true
+  atlas_relief_mesh: false
+  moge_mesh: false
+  da3_mesh: false
+
+presets:
+  active: balanced
+  fast_test:
+    description: low-cost validation preset
+  balanced:
+    description: default quality/performance preset, finalized after A/B testing
+  max_reference:
+    description: prioritize dense reference geometry over speed/storage
+
+storage:
+  track_every_write: true
+  prevent_duplicate_models: true
+  verify_hashes: true
+  preserve_preexisting: true
+  preserve_modified_on_uninstall: true
+  cache_root: C:\ConceptGhost\cache\downloads
+
+safety:
+  allow_external_downloads: false
+  allow_external_writes: false
+  stage_limit: 1
+  note: Stage 0/1 bootstrap only. Atlas, DA3 and MoGe are intentionally not installed yet.
