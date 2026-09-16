@@ -69,6 +69,10 @@ if exist "G:\My Drive" (
   echo WARNING: G:\My Drive is not mounted. Local reports remain in C:\ConceptGhost\manifests.
 )
 
+if defined CG_PYTHON if exist "C:\ConceptGhost" (
+  "%CG_PYTHON%" "%~dp0scripts\cg_storage.py" --reason "inventory" >nul 2>&1
+)
+
 echo.
 echo ============================================================
 if "%CG_EXIT%"=="0" (
@@ -76,6 +80,7 @@ if "%CG_EXIT%"=="0" (
   echo Local reports: C:\ConceptGhost\manifests
   echo Drive reports: %CG_REPORT_DIR%
   echo Drive log:     %CG_REPORT_ROOT%\Logs\INVENTORY_%CG_STAMP%.log
+  echo Storage TXT:   %CG_REPORT_ROOT%\Storage\ConceptGhost_Disk_Usage.txt
 ) else (
   echo ConceptGhost inventory stopped with error code %CG_EXIT%.
   echo Check the log path shown above or copy this window for diagnosis.
