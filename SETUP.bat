@@ -71,12 +71,17 @@ if exist "G:\My Drive" (
   echo WARNING: G:\My Drive is not mounted. Local reports remain under C:\ConceptGhost.
 )
 
+if defined CG_PYTHON if exist "C:\ConceptGhost" (
+  "%CG_PYTHON%" "%~dp0scripts\cg_storage.py" --reason "setup" >nul 2>&1
+)
+
 echo.
 echo ============================================================
 if "%CG_EXIT%"=="0" (
   echo ConceptGhost setup finished.
   echo Drive reports: %CG_REPORT_DIR%
   echo Drive log:     %CG_REPORT_ROOT%\Logs\SETUP_%CG_STAMP%.log
+  echo Storage TXT:   %CG_REPORT_ROOT%\Storage\ConceptGhost_Disk_Usage.txt
   echo Review the result above before running SETUP.bat --apply.
 ) else (
   echo ConceptGhost setup stopped with error code %CG_EXIT%.
