@@ -11,6 +11,7 @@ Before implementing or modifying Stages 6-13, read and reconcile:
 
 ```text
 docs/superpowers/specs/2026-09-16-conceptghost-integrated-architecture-v2.md
+docs/superpowers/specs/2026-09-16-conceptghost-synergy-architecture-v1.md
 docs/superpowers/specs/2026-09-16-conceptghost-execution-priority-first-tangible-ghost.md
 docs/superpowers/plans/2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
 docs/superpowers/specs/2026-09-16-conceptghost-runtime-behavior-policy.md
@@ -50,6 +51,8 @@ docs/superpowers/specs/2026-09-16-conceptghost-stage11-moge-mesh-design.md
 ```
 
 If older documentation conflicts with these files, stop and reconcile the conflict before implementation.
+
+For Stages 6–8, **Synergy Architecture v1 is authoritative** on how preserved reference code must cooperate. A workflow that merely executes Atlas/DA3/MoGe as isolated branches does not satisfy the architecture.
 
 ## EXECUTION PRIORITY RESET — FIRST TANGIBLE GHOST
 
@@ -119,9 +122,9 @@ Stages 10-12 remain approved architecture, but they are blocked behind point-clo
 
 Do not hide an upstream failure behind ConceptGhost adapters.
 
-## Stage 6 — Master Alpha
+## Stage 6 — Synergistic Master Orchestrator
 
-One `ConceptGhost_Master.json` with:
+One `ConceptGhost_Master.json` remains the single user-facing workflow with:
 - one source image;
 - Camera = Auto / Atlas Learned / Atlas VP;
 - Geometry = DA3 / MoGe;
@@ -139,9 +142,24 @@ Compare Both = OFF
 
 No Geometry Auto.
 
-## Stage 7 — canonical integration and refinement
+Stage 6 must not merely place independent upstream workflows side by side. It orchestrates shared services for camera, geometry evidence, refinement, validation, and export so the selected DA3 or MoGe path produces one final Canonical Ghost.
 
-Create CameraBundle, GeometryEvidence/GeometryBundle, CanonicalGeometry, SceneBundle, explicit coordinate/scale conventions, Integration Consistency Gate, and Geometry Health Gate.
+`Compare Both` retains its original diagnostic meaning: DA3 and MoGe are processed independently under the same Atlas camera and compared. No hidden DA3+MoGe fusion is allowed.
+
+## Stage 7 — Synergistic Integration Core
+
+Stage 7 is the main cooperation layer, not merely a coordinate converter.
+
+Create CameraBundle, GeometryEvidence/GeometryBundle, EvidencePack, ReliabilityMap, SurfaceBoundaryMap, CanonicalGeometry, SceneBundle, explicit coordinate/scale conventions, Integration Consistency Gate, and Geometry Health Gate.
+
+The selected geometry engine is improved by the surrounding specialized evidence where available:
+- Atlas camera conditioning before geometry inference where supported;
+- explicit depth-semantics adaptation and Atlas-ray reconstruction;
+- confidence/mask/sky validity;
+- DA3-Blender-derived edge/streamer filtering concepts;
+- MoGe depth+normal boundary evidence when MoGe is selected;
+- conditional Atlas ground/gravity stabilization when evidence is strong;
+- robust registration before any future auxiliary geometry is allowed to modify the primary result.
 
 Authority:
 
