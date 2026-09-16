@@ -1,3 +1,5 @@
+> MANDATORY: Read `docs/superpowers/specs/2026-09-16-conceptghost-synergy-architecture-v1.md` before implementation.
+
 # ConceptGhost Stage 6–8 Vertical Slice Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -10,6 +12,7 @@
 
 **Specs:**
 - `Documentation/Architecture/2026-09-16-conceptghost-integrated-architecture-v2.md`
+- `Documentation/Architecture/2026-09-16-conceptghost-synergy-architecture-v1.md`
 - `Documentation/Architecture/2026-09-16-conceptghost-runtime-behavior-policy.md`
 - `Documentation/Architecture/2026-09-16-conceptghost-master-workflow-ui-layout.md`
 - `Documentation/Architecture/2026-09-16-conceptghost-output-handoff-contract.md`
@@ -36,6 +39,29 @@
 - Project is Drive/version-file based rather than a Git working tree. Every implementation artifact is versioned, hashed, and uploaded without overwriting previous stage artifacts.
 
 ---
+
+## Synergy amendment — overrides any isolated-branch interpretation
+
+The vertical slice is not complete if Atlas, DA3/MoGe, normalization, filtering, and export only coexist in one graph. The selected DA3 or MoGe path must produce one integrated Canonical Ghost using the Synergy Architecture v1 contract.
+
+Minimum V0.1 cooperation required before the First Tangible Ghost:
+
+```text
+Atlas camera authority
+→ camera conditioning hook where the selected engine supports it
+→ selected engine EvidencePack
+→ explicit depth-semantics adapter
+→ Atlas-ray Canonical reconstruction
+→ confidence/mask/sky validity
+→ edge-aware streamer reduction
+→ MoGe normal-boundary evidence when available
+→ optional confidence-gated ground stabilization when safely available
+→ Integration Consistency + Geometry Health
+→ one CanonicalGeometry
+→ PLY + USDA + MA
+```
+
+Do not add automatic DA3+MoGe fusion. `Compare Both` remains two independent end-to-end Ghosts for comparison.
 
 ## File Structure Locked for This Sprint
 
