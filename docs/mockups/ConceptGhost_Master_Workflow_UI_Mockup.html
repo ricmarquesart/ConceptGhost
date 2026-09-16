@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<title>ConceptGhost — Master Workflow UI Mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  :root{
+    --bg:#16181d; --panel:#22252c; --panel2:#2a2e36; --text:#f2f4f7; --muted:#aeb5c0;
+    --line:#515867; --accent:#8fb3ff; --ok:#86d19b; --warn:#e5c27a; --danger:#e28b8b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+  .wrap{max-width:1450px;margin:0 auto;padding:28px}
+  h1{font-size:26px;margin:0 0 6px}
+  .sub{color:var(--muted);margin-bottom:28px}
+  .flow{display:grid;grid-template-columns:310px 1fr 360px;gap:22px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--panel);border:1px solid #343945;border-radius:14px;padding:16px 16px 14px;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+  .card h2{font-size:15px;margin:0 0 10px;letter-spacing:.2px}
+  .muted{color:var(--muted);font-size:12px;line-height:1.45}
+  .field{background:var(--panel2);border:1px solid #3d4350;border-radius:9px;padding:9px 10px;margin:7px 0;font-size:13px}
+  .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#303845;color:#dbe6ff;font-size:11px;margin-right:5px}
+  .branch{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+  .box{border:1px dashed var(--line);border-radius:12px;padding:14px;background:#1c1f25}
+  .arrow{text-align:center;color:#778196;font-size:26px;line-height:1}
+  .result{border:1px solid #3c5f47;background:#1d2b22}
+  .result .big{font-size:20px;font-weight:700;color:#b9efc8;margin:4px 0 8px}
+  .diag{border-left:3px solid var(--accent)}
+  .optional{border-left:3px solid var(--warn)}
+  .status{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px;margin:6px 0}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .danger{color:var(--danger)}
+  .legend{margin-top:28px;background:#1d2026;border:1px solid #303642;border-radius:12px;padding:14px 16px;color:var(--muted);font-size:12px;line-height:1.6}
+  .section-title{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:#9ba4b3;margin-bottom:8px}
+  @media (max-width: 1000px){.flow{grid-template-columns:1fr}.branch{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ConceptGhost_Master.json — proposta visual</h1>
+  <div class="sub">Um único input, módulos internos organizados por função, vários outputs e um resultado principal: Maya Ghost.</div>
+
+  <div class="flow">
+    <div class="col">
+      <div class="card">
+        <div class="section-title">01 · Input & Run Control</div>
+        <h2>CONCEPTGHOST — MASTER INPUT</h2>
+        <div class="field">Image · concept_village.png</div>
+        <div class="field">Preset · Balanced</div>
+        <div class="field">Camera · Auto</div>
+        <div class="field">Geometry · DA3</div>
+        <div class="field">Compare Both · OFF</div>
+        <div style="margin-top:10px">
+          <span class="pill">Maya Ghost ON</span>
+          <span class="pill">Diagnostics ON</span>
+          <span class="pill">Point Cloud ON</span>
+        </div>
+        <div class="muted" style="margin-top:10px">Única área que o usuário normalmente precisa editar.</div>
+      </div>
+
+      <div class="card diag">
+        <div class="section-title">02 · Camera Branch</div>
+        <h2>Atlas Camera</h2>
+        <div class="field">Learned / VP / Auto</div>
+        <div class="muted">Produz CameraBundle, overlay, intrinsics e diagnóstico. Atlas é a autoridade de câmera.</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <div class="section-title">03 · Geometry Branch</div>
+        <h2>Geometry Router</h2>
+        <div class="branch">
+          <div class="box">
+            <strong>DA3</strong>
+            <div class="muted">Depth · Confidence · Native PLY · Intrinsics</div>
+          </div>
+          <div class="box">
+            <strong>MoGe</strong>
+            <div class="muted">Depth · Point Map · Normals · Mask · FOV</div>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:10px">Compare Both = ON ativa os dois, mas mantém as geometrias independentes.</div>
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="card">
+        <div class="section-title">04 · Canonicalization</div>
+        <h2>ConceptGhost Normalizer</h2>
+        <div class="branch">
+          <div class="box"><strong>CameraBundle</strong><div class="muted">Atlas projection / K / orientation</div></div>
+          <div class="box"><strong>GeometryBundle</strong><div class="muted">DA3 ou MoGe native evidence</div></div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="box"><strong>CanonicalGeometry</strong><div class="muted">XYZ + RGB + validity + source pixel + canonical camera reference</div></div>
+      </div>
+
+      <div class="card diag">
+        <div class="section-title">05 · Quality Gate</div>
+        <h2>Reprojection Gate</h2>
+        <div class="status"><span>Camera valid</span><span class="ok">PASS</span></div>
+        <div class="status"><span>Canonical geometry</span><span class="ok">PASS</span></div>
+        <div class="status"><span>Reprojection error</span><span class="ok">PASS</span></div>
+        <div class="muted">Se falhar, diagnostics são salvos, mas o Maya Ghost não é publicado como válido.</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card result">
+        <div class="section-title">06 · Primary Output</div>
+        <h2>CONCEPTGHOST — RUN RESULT</h2>
+        <div class="big">★ MAYA GHOST READY</div>
+        <div class="status"><span>Camera</span><span class="ok">Atlas Learned</span></div>
+        <div class="status"><span>Geometry</span><span class="ok">DA3</span></div>
+        <div class="status"><span>Reprojection</span><span class="ok">PASS</span></div>
+        <div class="status"><span>Point Cloud</span><span class="ok">Generated</span></div>
+        <div class="status"><span>Run Status</span><span class="ok">PASS</span></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">07 · Standard Outputs</div>
+        <h2>Run Bundle</h2>
+        <div class="field">source/</div>
+        <div class="field">camera/</div>
+        <div class="field">diagnostics/</div>
+        <div class="field">geometry/</div>
+        <div class="field">maya/</div>
+        <div class="field">compare/</div>
+        <div class="field">logs/</div>
+        <div class="field">manifest.json</div>
+      </div>
+
+      <div class="card optional">
+        <div class="section-title">08 · Optional Branches</div>
+        <h2>Meshes</h2>
+        <div class="field">Atlas Relief · optional</div>
+        <div class="field">MoGe Mesh · optional</div>
+        <div class="field">DA3 Mesh · optional</div>
+        <div class="muted">Nunca bloqueiam o sucesso do caminho Camera + Point Cloud + Maya Ghost.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <strong>Princípio de layout:</strong> esquerda = controles e câmera; centro = processamento e validação; direita = resultados.
+    Internamente modular, externamente um único workflow. A intenção é evitar “spaghetti graph” usando grupos claramente delimitados e conexões longas apenas entre contratos padronizados.
+  </div>
+</div>
+</body>
+</html>
