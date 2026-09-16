@@ -1,0 +1,306 @@
+# Stage 4S dual-root overrides. Earlier Stage 4 helpers remain intact for
+# compatibility/tests; these definitions become the public runtime entrypoints.
+try:
+    from .cg_paths import resolve_da3_runtime_layout, resolve_inventory_path, resolve_stage4s_contract
+except ImportError:
+    from cg_paths import resolve_da3_runtime_layout, resolve_inventory_path, resolve_stage4s_contract
+
+
+def _resolve_environment_stage4s(legacy_project_root: Path, contract) -> tuple[Path, Path]:
+    inv_path = resolve_inventory_path(contract, legacy_project_root)
+    if not inv_path.is_file():
+        raise RuntimeError(f"Inventory not found: {inv_path}. Run INVENTORY.bat first.")
+    inv = _load_json(inv_path)
+    selected = inv.get("comfyui", {}).get("selected") or {}
+    comfy = Path(selected.get("root") or "")
+    py = Path(selected.get("python_executable") or "")
+    if not (comfy / "main.py").is_file():
+        raise RuntimeError("ComfyUI root from inventory is invalid.")
+    if not py.is_file():
+        raise RuntimeError("ComfyUI Python from inventory is invalid.")
+    return comfy, py
+
+
+def _copy_reference_workflows_stage4s(repo_root: Path, contract) -> list[dict[str, Any]]:
+    dest_root = contract.workflows / "DA3"
+    dest_root.mkdir(parents=True, exist_ok=True)
+    results = []
+    for name in REFERENCE_WORKFLOWS:
+        source = repo_root / "workflows" / name
+        if not source.is_file():
+            raise RuntimeError(f"Required upstream DA3 workflow missing: {source}")
+        dest = dest_root / name
+        data = source.read_bytes()
+        if dest.exists() and dest.read_bytes() != data:
+            raise RuntimeError(f"Reference workflow already exists with different content; refusing overwrite: {dest}")
+        if not dest.exists():
+            dest.write_bytes(data)
+            action = "copy"
+        else:
+            action = "reuse_identical"
+        results.append({"name": name, "source": str(source), "path": str(dest), "action": action, "sha256": sha256_file(dest)})
+    return results
+
+
+def _prepare_shadow_comfyui_stage4s(*, comfy_root: Path, da3_root: Path, shadow: Path) -> Path:
+    shadow = Path(shadow)
+    if shadow.exists():
+        shutil.rmtree(shadow)
+    (shadow / "custom_nodes" / DA3_DIRNAME / "nodes").mkdir(parents=True, exist_ok=True)
+    (shadow / "comfy").mkdir(parents=True, exist_ok=True)
+    (shadow / "main.py").write_text("# ConceptGhost Stage 4 shadow ComfyUI marker\n", encoding="utf-8")
+    source_cfg = Path(da3_root) / "nodes" / "comfy-env.toml"
+    if not source_cfg.is_file():
+        raise RuntimeError(f"DA3 isolation config missing: {source_cfg}")
+    safe_cfg = make_safe_shadow_config(source_cfg.read_text(encoding="utf-8"))
+    (shadow / "custom_nodes" / DA3_DIRNAME / "nodes" / "comfy-env.toml").write_text(safe_cfg, encoding="utf-8")
+    for req in Path(comfy_root).glob("requirements*.txt"):
+        if req.is_file():
+            shutil.copy2(req, shadow / req.name)
+    return shadow
+
+
+def plan_da3_baseline(*, project_root: Path) -> dict[str, Any]:
+    legacy_project_root = Path(project_root)
+    contract = resolve_stage4s_contract(legacy_project_root)
+    comfy, python_exe = _resolve_environment_stage4s(legacy_project_root, contract)
+    target = comfy / "custom_nodes" / DA3_DIRNAME
+    probe = _probe_packages(python_exe)
+    repo_state = inspect_repo(target)
+    plan = build_install_plan_from_probe(probe, repo_state)
+    resolver = None
+    resolver_output = None
+    if not plan["blockers"] and plan["bridge_requirements"]:
+        with tempfile.TemporaryDirectory(prefix="cg_da3_resolver_") as td:
+            report, resolver_output, rc = _resolver_preflight(python_exe, plan["bridge_requirements"], Path(td))
+        installed = _installed_versions(python_exe)
+        resolver = assess_resolver_report(installed, report)
+        resolver["returncode"] = rc
+        if rc != 0:
+            plan["blockers"].append("pip resolver dry-run failed; no installation will be attempted.")
+        elif not resolver["safe"]:
+            plan["blockers"].append("pip resolver proposes changing an existing/protected package; Stage 4 is blocked.")
+
+    workspace_root, pixi_home = _workspace_paths()
+    runtime_layout = resolve_da3_runtime_layout(contract, legacy_project_root=legacy_project_root)
+    project_workspace = Path(runtime_layout["workspace"])
+    project_env = Path(runtime_layout["isolated_env"])
+    runtime_link = Path(workspace_root) / ".pixi" / "envs" / DA3_ENV_NAME
+    link_state = _runtime_link_state(runtime_link, project_env)
+    if link_state.get("action") == "blocked_existing_path":
+        plan["blockers"].append(
+            "The expected DA3 runtime environment path already exists and is not ConceptGhost-owned; Stage 4 will not overwrite it."
+        )
+    return {
+        "schema_version": 1,
+        "status": "error" if plan["blockers"] else "dry-run",
+        "stage": 4,
+        "component": "DA3 Baseline",
+        "comfyui_root": str(comfy),
+        "python_executable": str(python_exe),
+        "target": str(target),
+        "probe": probe,
+        "repo_state": repo_state,
+        "install_plan": plan,
+        "resolver_assessment": resolver,
+        "resolver_output_tail": resolver_output[-5000:] if resolver_output else None,
+        "comfy_env_workspace": str(workspace_root),
+        "comfy_env_pixi_home": str(pixi_home),
+        "project_comfy_env_workspace": str(project_workspace),
+        "project_isolated_env": str(project_env),
+        "runtime_env_link": str(runtime_link),
+        "runtime_env_link_state": link_state,
+        "shadow_comfyui": runtime_layout["shadow_comfyui"],
+        "project_pixi_cache": runtime_layout["pixi_cache"],
+        "grandfathered_runtime": bool(runtime_layout["grandfathered_runtime"]),
+        "runtime_source_manifest": runtime_layout.get("source_manifest"),
+        "model_dir": str(comfy / "models" / "depthanything3"),
+        "reference_workflow_root": str(contract.workflows / "DA3"),
+        "manifest_root": str(contract.manifests),
+        "log_root": str(contract.logs),
+        "runtime_cache_root": str(contract.cache),
+        "project_root": str(contract.project_root),
+        "runtime_root": str(contract.runtime_root),
+        "note": (
+            "Stage 4S sends durable manifests/workflows/logs to Google Drive and new runtime state to C:\\ConceptGhostRuntime. "
+            "An already-materialized Stage 4 DA3 worker may remain under legacy C:\\ConceptGhost and is marked grandfathered instead of rebuilt."
+        ),
+    }
+
+
+def persist_stage4_plan(plan_doc: dict[str, Any], project_root: Path) -> dict[str, str]:
+    contract = resolve_stage4s_contract(Path(project_root))
+    manifest_path = contract.manifests / "stage4_plan.json"
+    log_path = contract.logs / "da3_baseline_plan.json"
+    atomic_write_json(manifest_path, plan_doc)
+    atomic_write_json(log_path, plan_doc)
+    return {"manifest": str(manifest_path), "log": str(log_path)}
+
+
+def apply_da3_baseline(*, project_root: Path) -> dict[str, Any]:
+    legacy_project_root = Path(project_root)
+    contract = resolve_stage4s_contract(legacy_project_root)
+    plan_doc = plan_da3_baseline(project_root=legacy_project_root)
+    blockers = plan_doc["install_plan"]["blockers"]
+    if blockers:
+        raise RuntimeError("Stage 4 blocked:\n- " + "\n- ".join(blockers))
+
+    comfy = Path(plan_doc["comfyui_root"])
+    python_exe = Path(plan_doc["python_executable"])
+    target = Path(plan_doc["target"])
+    manifests = contract.manifests
+    logs = contract.logs
+    manifests.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
+
+    freeze_before_text, freeze_before = _pip_freeze(python_exe)
+    custom_before = snapshot_protected_custom_nodes(comfy / "custom_nodes")
+    workspace_root = Path(plan_doc["comfy_env_workspace"])
+    pixi_home = Path(plan_doc["comfy_env_pixi_home"])
+    project_workspace = Path(plan_doc["project_comfy_env_workspace"])
+    project_env = Path(plan_doc["project_isolated_env"])
+    runtime_link = Path(plan_doc["runtime_env_link"])
+    workspace_before = _snapshot_workspace_envs(workspace_root)
+    workspace_bytes_before = path_size(workspace_root)
+    project_workspace_bytes_before = path_size(project_workspace)
+    pixi_home_bytes_before = path_size(pixi_home)
+    model_dir = Path(plan_doc["model_dir"])
+    model_bytes_before = path_size(model_dir)
+    target_bytes_before = path_size(target)
+
+    atomic_write_text(manifests / "stage4_pip_freeze_before.txt", freeze_before_text)
+    atomic_write_json(manifests / "stage4_custom_nodes_before.json", custom_before)
+    atomic_write_json(manifests / "stage4_comfy_env_before.json", workspace_before)
+    atomic_write_json(manifests / "stage4_plan.json", plan_doc)
+
+    repo_action = plan_doc["install_plan"]["repo"]["action"]
+    if repo_action == "clone":
+        _clone_pinned(target)
+    elif repo_action != "reuse_existing_untouched":
+        raise RuntimeError(f"Unsupported/unsafe DA3 repo action: {repo_action}")
+
+    resolver_assessment = plan_doc.get("resolver_assessment") or {"safe": True, "allowed_additions": {}}
+    additions = resolver_assessment.get("allowed_additions") or {}
+    install_output = _install_additions(python_exe, additions)
+    bridge_probe = _bridge_import_probe(python_exe)
+    if not bridge_probe.get("ok"):
+        raise RuntimeError(f"Host bridge import probe failed: {bridge_probe}")
+
+    project_pixi_cache = Path(plan_doc["project_pixi_cache"])
+    project_pixi_cache.mkdir(parents=True, exist_ok=True)
+    shadow = _prepare_shadow_comfyui_stage4s(
+        comfy_root=comfy,
+        da3_root=target,
+        shadow=Path(plan_doc["shadow_comfyui"]),
+    )
+    env = os.environ.copy()
+    env["COMFY_ENV_ROOT"] = str(project_workspace)
+    env["PIXI_CACHE_DIR"] = str(project_pixi_cache)
+    if not project_env.is_dir():
+        comfy_cmd = build_isolated_workspace_command(python_exe, shadow)
+        cp = _run(comfy_cmd, cwd=shadow, env=env, timeout=7200)
+        comfy_env_output = (cp.stdout or "") + ("\n" + cp.stderr if cp.stderr else "")
+        if cp.returncode != 0:
+            raise RuntimeError(f"Project-isolated comfy-env DA3 build failed:\n{comfy_env_output[-9000:]}")
+    else:
+        comfy_env_output = "Reused existing ConceptGhost-owned/grandfathered DA3 isolated environment."
+
+    worker_python = project_env / ("python.exe" if os.name == "nt" else "bin/python")
+    if not worker_python.is_file():
+        raise RuntimeError(f"DA3 isolated worker Python missing after build: {worker_python}")
+    runtime_link_action = _create_runtime_link(runtime_link, project_env)
+    reference_workflows = _copy_reference_workflows_stage4s(target, contract)
+
+    freeze_after_text, freeze_after = _pip_freeze(python_exe)
+    allowed_additions = set(additions)
+    freeze_delta = compare_freeze_maps(freeze_before, freeze_after, allowed_additions=allowed_additions)
+    custom_after = snapshot_protected_custom_nodes(comfy / "custom_nodes")
+    custom_delta = compare_protected_custom_node_snapshots(custom_before, custom_after)
+    workspace_after = _snapshot_workspace_envs(workspace_root)
+    workspace_delta = _compare_workspace_existing(workspace_before, workspace_after)
+    unexpected_workspace_additions = sorted(set(workspace_delta.get("added", {})) - {DA3_ENV_NAME})
+    workspace_delta["unexpected_added"] = unexpected_workspace_additions
+    workspace_delta["safe_existing"] = workspace_delta["safe_existing"] and not unexpected_workspace_additions
+
+    atomic_write_text(manifests / "stage4_pip_freeze_after.txt", freeze_after_text)
+    atomic_write_json(manifests / "stage4_environment_delta.json", freeze_delta)
+    atomic_write_json(manifests / "stage4_custom_nodes_after.json", custom_after)
+    atomic_write_json(manifests / "stage4_custom_nodes_delta.json", custom_delta)
+    atomic_write_json(manifests / "stage4_comfy_env_after.json", workspace_after)
+    atomic_write_json(manifests / "stage4_comfy_env_delta.json", workspace_delta)
+
+    safe = freeze_delta["safe"] and custom_delta["safe"] and workspace_delta["safe_existing"]
+    workspace_after_bytes = path_size(workspace_root)
+    project_workspace_after_bytes = path_size(project_workspace)
+    pixi_home_after_bytes = path_size(pixi_home)
+    manifest = {
+        "schema_version": 1,
+        "stage": 4,
+        "timestamp": utc_now(),
+        "component": "DA3 Baseline",
+        "safe": safe,
+        "comfyui_root": str(comfy),
+        "python_executable": str(python_exe),
+        "target": str(target),
+        "repo_action": repo_action,
+        "repo_remote": _git_output(["config", "--get", "remote.origin.url"], target),
+        "repo_commit": _git_output(["rev-parse", "HEAD"], target),
+        "preexisting_repo": bool(plan_doc["repo_state"].get("exists")),
+        "bridge_additions": additions,
+        "bridge_import_probe": bridge_probe,
+        "freeze_delta": freeze_delta,
+        "protected_custom_nodes_delta": custom_delta,
+        "comfy_env_workspace_delta": workspace_delta,
+        "reference_workflows": reference_workflows,
+        "bytes_added_repo": max(0, path_size(target) - target_bytes_before),
+        "bytes_added_host_packages": max(0, _package_bytes(python_exe, list(additions)) if additions else 0),
+        "comfy_env_workspace": str(workspace_root),
+        "comfy_env_workspace_before_bytes": workspace_bytes_before,
+        "comfy_env_workspace_after_bytes": workspace_after_bytes,
+        "bytes_added_workspace": 0,
+        "project_comfy_env_workspace": str(project_workspace),
+        "project_comfy_env_workspace_before_bytes": project_workspace_bytes_before,
+        "project_comfy_env_workspace_after_bytes": project_workspace_after_bytes,
+        "project_comfy_env_workspace_added_bytes": max(0, project_workspace_after_bytes - project_workspace_bytes_before),
+        "project_isolated_env": str(project_env),
+        "grandfathered_runtime": bool(plan_doc["grandfathered_runtime"]),
+        "runtime_source_manifest": plan_doc.get("runtime_source_manifest"),
+        "shadow_comfyui": str(shadow),
+        "runtime_env_link": str(runtime_link),
+        "runtime_env_link_action": runtime_link_action,
+        "comfy_env_pixi_home": str(pixi_home),
+        "comfy_env_pixi_home_before_bytes": pixi_home_bytes_before,
+        "comfy_env_pixi_home_after_bytes": pixi_home_after_bytes,
+        "bytes_added_pixi_home": max(0, pixi_home_after_bytes - pixi_home_bytes_before),
+        "project_pixi_cache": str(project_pixi_cache),
+        "project_pixi_cache_bytes": path_size(project_pixi_cache),
+        "model_dir": str(model_dir),
+        "model_dir_before_bytes": model_bytes_before,
+        "model_dir_after_bytes": path_size(model_dir),
+        "install_output_tail": install_output[-5000:],
+        "comfy_env_output_tail": comfy_env_output[-9000:],
+        "path_contract": {"project_root": str(contract.project_root), "runtime_root": str(contract.runtime_root)},
+        "next_gate": f"Restart ComfyUI, open {contract.workflows / 'DA3' / 'advanced_3d.json'}, run the unchanged upstream workflow, and confirm a colored PLY point cloud.",
+    }
+    atomic_write_json(manifests / "da3_baseline_install.json", manifest)
+    atomic_write_json(logs / "da3_baseline_report.json", manifest)
+    if not safe:
+        raise RuntimeError("Stage 4 compatibility guard detected unexpected drift. Do not continue; review manifest deltas.")
+    return manifest
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="ConceptGhost Stage 4 DA3 baseline installer")
+    ap.add_argument("--project-root", default=str(DEFAULT_PROJECT_ROOT))
+    ap.add_argument("--apply", action="store_true")
+    args = ap.parse_args(argv)
+    try:
+        legacy_project_root = Path(args.project_root)
+        result = apply_da3_baseline(project_root=legacy_project_root) if args.apply else plan_da3_baseline(project_root=legacy_project_root)
+        if not args.apply:
+            persist_stage4_plan(result, legacy_project_root)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if result.get("status") != "error" else 2
+    except Exception as exc:
+        print(json.dumps({"status": "error", "stage": 4, "component": "DA3 Baseline", "error": str(exc)}, indent=2, ensure_ascii=False))
+        return 1
