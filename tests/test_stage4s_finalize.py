@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -66,9 +68,65 @@ class Stage4SFinalizeTests(unittest.TestCase):
         self.assertIn("cg_stage4s_finalize.py", text)
         self.assertIn("G:\\My Drive\\ConceptGhost\\Reports\\StorageMigration", text)
         self.assertIn("--evidence-dir", text)
+        self.assertIn("scripts\\cg_find_python.ps1", text)
         self.assertNotIn("--delete", text.lower())
         self.assertNotIn("--remove", text.lower())
         self.assertIn("pause >nul", text.lower())
+
+    def test_python_locator_has_manifest_and_comfy_desktop_fallbacks(self):
+        locator = ROOT / "scripts" / "cg_find_python.ps1"
+        self.assertTrue(locator.is_file())
+        text = locator.read_text(encoding="utf-8")
+        for token in (
+            "da3_baseline_install.json",
+            "atlas_camera_deps_install.json",
+            "preinstall_inventory.json",
+            "Comfy Desktop",
+            "installations.json",
+            ".venv",
+            "python.exe",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+
+    @unittest.skipUnless(os.name == "nt", "PowerShell locator integration test is Windows-only")
+    def test_python_locator_prefers_project_da3_manifest(self):
+        locator = ROOT / "scripts" / "cg_find_python.ps1"
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            project = base / "project"
+            legacy = base / "legacy"
+            appdata = base / "appdata"
+            fake_python = base / "Comfy Python" / "python.exe"
+            fake_python.parent.mkdir(parents=True)
+            fake_python.write_bytes(b"fake")
+            manifests = project / "Manifests"
+            manifests.mkdir(parents=True)
+            (manifests / "da3_baseline_install.json").write_text(
+                json.dumps({"python_executable": str(fake_python)}), encoding="utf-8"
+            )
+
+            cp = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(locator),
+                    "-ProjectRoot",
+                    str(project),
+                    "-LegacyRoot",
+                    str(legacy),
+                    "-AppDataRoot",
+                    str(appdata),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(cp.returncode, 0, cp.stderr)
+            self.assertEqual(Path(cp.stdout.strip()), fake_python.resolve())
 
 
 if __name__ == "__main__":
