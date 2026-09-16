@@ -1,60 +1,146 @@
 # ConceptGhost Roadmap Addendum — Master Workflow Integration
 
 Date: 2026-09-16
-Status: Approved integration policy
+Status: Approved integration policy; updated with mandatory output/handoff gate
 
-This addendum clarifies how Stages 3-13 converge into one final user-facing workflow.
+This addendum clarifies how Stages 3-14 converge into one final user-facing workflow.
 
-## Master workflow policy
+## MANDATORY DEVELOPMENT READ GATE
 
-- Stages 3-5 validate Atlas, DA3, and MoGe independently using upstream workflows unchanged.
-- Stage 6 creates `ConceptGhost_Master.json` Alpha with one image input, camera selection, geometry selection, `Compare Both`, presets, and output switches.
-- Stage 7 creates CameraBundle, GeometryBundle, CanonicalGeometry, SceneBundle, and a mandatory reprojection gate.
-- Stage 8 produces the first complete V1 product: ConceptGhost Maya Ghost Scene.
-- Stage 9 selects defaults through A/B evidence under a common Atlas camera authority.
-- Stages 10-12 add optional Atlas/MoGe/DA3 mesh branches without changing the mandatory success path.
-- Stage 13 freezes `ConceptGhost_Master.json` as the single production-facing ComfyUI workflow.
+Before implementing or modifying Stages 6-13, read and reconcile:
 
-## User-facing workflow rule
+```text
+docs/superpowers/specs/2026-09-16-conceptghost-integrated-architecture-v2.md
+docs/superpowers/specs/2026-09-16-conceptghost-runtime-behavior-policy.md
+docs/superpowers/specs/2026-09-16-conceptghost-master-workflow-ui-layout.md
+```
 
-Do not ship separate final workflows such as `concept_ghost_da3.json` and `concept_ghost_moge.json` as the primary UX.
+Before Stage 8 Maya/export work, also read:
 
-The production interface is one:
+```text
+docs/superpowers/specs/2026-09-16-conceptghost-output-handoff-contract.md
+```
 
-`ConceptGhost_Master.json`
+If older documentation conflicts with these files, stop and reconcile the conflict before implementation.
 
-Development/test fixtures may remain separate for baseline debugging.
+## Stage convergence
 
-## Engine rule
+### Stages 3-5 — public baselines first
+- Stage 3: Atlas camera baseline.
+- Stage 4: DA3 upstream `advanced_3d.json` unchanged.
+- Stage 5: official/native MoGe baseline unchanged.
 
-Default mode runs one geometry engine:
-- DA3 or
-- MoGe.
+Do not hide an upstream failure behind ConceptGhost adapters.
 
-`Compare Both = ON` runs both independently and preserves separate outputs. No DA3+MoGe fusion in V1.
+### Stage 6 — Master Alpha
+Create one `ConceptGhost_Master.json` with:
+- one source image;
+- Camera = Auto / Atlas Learned / Atlas VP;
+- Geometry = DA3 / MoGe;
+- Compare Both;
+- presets.
 
-## Camera/geometry rule
+Defaults:
 
-- Atlas is authoritative for camera/projection.
-- DA3 or MoGe is authoritative for depth/shape evidence.
-- Original image is authoritative for color.
-- ConceptGhost Canonical Scene is authoritative for final Maya/USD space.
+```text
+Preset = Max Reference
+Camera = Auto
+Geometry = DA3
+Compare Both = OFF
+```
 
-## Mandatory Stage 7 reprojection gate
+No Geometry Auto.
 
-Canonical geometry must reproject through the selected Atlas camera back to its source pixels within a small numerical tolerance before Maya handoff.
+### Stage 7 — canonical integration
+Create:
+- CameraBundle;
+- GeometryBundle;
+- CanonicalGeometry;
+- SceneBundle;
+- coordinate/scale conventions;
+- mandatory reprojection gate.
 
-A significant reprojection mismatch blocks Stage 8 acceptance.
+Atlas is camera authority.
+DA3/MoGe supply depth/shape evidence.
+Original image supplies color.
+ConceptGhost Canonical Scene is final-space authority.
 
-## Primary output
+### Stage 8 — first complete artist handoff
+Generate the Maya Ghost and all standard companion formats together:
 
-The primary V1 output is the ConceptGhost Maya Ghost Scene, not a raw depth map, PLY, or optional mesh.
+```text
+ConceptGhost_<scene>_Ghost.ma
+ConceptGhost_<scene>_Ghost.usda
+ConceptGhost_<scene>_Ghost.fbx
+pointcloud.ply
+```
 
-## Run/output contract clarified
+These are not mutually exclusive choices.
 
-- Each Master execution creates one self-contained run bundle with source, camera, diagnostics, geometry, Maya, optional meshes, compare artifacts, logs, and a central `manifest.json`.
-- Native engine geometry and ConceptGhost canonical geometry remain separate. Maya consumes canonical geometry.
-- Reprojection produces both numeric metrics and a visual diagnostic, and a significant mismatch blocks a valid Stage 8 Maya Ghost.
-- `Compare Both` preserves independent DA3 and MoGe branches; it never implies fusion.
-- Overall run status is `PASS | PARTIAL | FAIL`.
-- `PASS` requires camera + canonical geometry + reprojection pass + generated usable Maya Ghost. Intermediate PLY/GLB/camera outputs alone are never sufficient.
+`.ma` is the normal Maya entry point.
+`.usda` is the primary technical dense-Ghost representation.
+`.fbx` is the camera/mesh portability companion.
+`.ply` is the portable Canonical Point Cloud.
+
+FBX point-cloud limitations must be respected; do not claim point-cloud equivalence with USD/PLY.
+
+### Stage 9 — A/B benchmark
+DA3 versus MoGe under the same Atlas camera and canonical conventions.
+
+Use evidence to freeze Max Reference / Balanced / Fast Test values.
+
+### Stages 10-12 — optional meshes
+- Stage 10: Atlas relief mesh.
+- Stage 11: MoGe mesh.
+- Stage 12: DA3 mesh.
+
+Classify each mesh `useful | limited | reject`.
+
+Optional mesh failure does not invalidate a valid canonical Ghost.
+
+### Stage 13 — final packaging
+Freeze:
+- one production Master workflow;
+- multi-format handoff contract;
+- dependency-safe installer/uninstaller;
+- documentation;
+- acceptance tests;
+- storage/non-overwrite policy.
+
+### Stage 14 — future camera extension
+PCS/fSpy/manual advanced camera path after the core V1 is stable.
+
+## Runtime rules that development must preserve
+
+- Camera Auto = Atlas Learned first, Atlas VP only after quality-gate failure.
+- DA3 default, MoGe selectable, no silent geometry fallback.
+- Compare Both is independent comparison, never implicit fusion.
+- Primary-fails/secondary-passes => PARTIAL; secondary is not promoted.
+- Max Reference is the default preset.
+- Maya Ghost, Canonical Point Cloud, manifest, reprojection report, and reprojection overlay are mandatory core outputs.
+- Extra diagnostics and optional meshes may remain optional.
+- Each run gets a unique run ID.
+- Never overwrite or automatically delete earlier runs.
+- Disk-space preflight before expensive Max Reference processing.
+
+## Production success semantics
+
+The final package distinguishes:
+
+```text
+maya_ghost_ready
+deliverable_package_complete
+run.status
+```
+
+A complete production result targets:
+
+```text
+valid Atlas Camera
++ valid Canonical Geometry
++ Reprojection PASS
++ usable .ma/.usda Maya Ghost
++ required .fbx companion
++ required .ply companion
+= complete ConceptGhost production result
+```
