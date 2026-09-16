@@ -6,7 +6,7 @@ Camera-aware 3D reference reconstruction from concept art using existing, demons
 
 **Stage 1/14 — Safe Project / Install Framework**
 
-The current bootstrap is deliberately non-destructive. It inventories the machine, discovers ComfyUI installations, records pre-existing DA3/MoGe/Atlas assets, tracks disk ownership, and prepares a controlled `C:\ConceptGhost` workspace. Atlas Camera, DA3, MoGe and model weights are **not installed yet**.
+The current bootstrap is deliberately non-destructive. It inventories the machine, discovers portable/venv/Comfy Desktop installations, records pre-existing DA3/MoGe/Atlas assets, tracks disk ownership, and prepares a controlled `C:\ConceptGhost` workspace. Atlas Camera, DA3, MoGe and model weights are **not installed yet**.
 
 ## Planned backbone
 
