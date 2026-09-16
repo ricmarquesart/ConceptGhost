@@ -7,7 +7,7 @@ Read first:
 
 ```text
 docs/superpowers/specs/2026-09-16-conceptghost-execution-priority-first-tangible-ghost.md
-G:\My Drive\ConceptGhost\Documentation\Roadmap\2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
+docs/superpowers/plans/2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
 docs/superpowers/specs/2026-09-16-conceptghost-stage7-normalizer-design.md
 docs/superpowers/specs/2026-09-16-conceptghost-stage8-maya-export-design.md
 ```
@@ -68,7 +68,13 @@ Stages 10-12 remain designed but implementation-deferred until that judgment.
 
 ## Existing detailed execution plan
 
-Do not create a competing Stage 6–8 plan. The detailed vertical-slice plan already exists on Google Drive:
+Do not create a competing Stage 6–8 plan. The detailed vertical-slice plan exists in GitHub and is mirrored on Google Drive:
+
+```text
+docs/superpowers/plans/2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
+```
+
+Drive mirror:
 
 ```text
 G:\My Drive\ConceptGhost\Documentation\Roadmap\2026-09-16-conceptghost-stage6-8-vertical-slice-plan.md
