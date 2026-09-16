@@ -1,7 +1,7 @@
 # ConceptGhost Master Workflow — UI Layout Policy
 
 Date: 2026-09-16
-Status: Approved visual-direction and field-guidance decisions
+Status: Approved visual-direction, field-guidance, and Advanced-collapse decisions
 Project: ConceptGhost
 
 ## Decision
@@ -76,6 +76,22 @@ Keep engine-specific tuning in clearly marked groups:
 - later optional export/mesh-specific advanced groups when required.
 
 Advanced parameters remain accessible, but should not dominate normal workflow use.
+
+### Advanced-collapse policy
+
+All `ADVANCED` groups open **collapsed by default** whenever the production-facing Master Workflow is loaded.
+
+The normal first view should expose the main controls, major processing blocks, quality status, and final outputs without presenting engine-specific tuning fields.
+
+Rules:
+- `ADVANCED — ATLAS` starts collapsed.
+- `ADVANCED — DA3` starts collapsed.
+- `ADVANCED — MoGe` starts collapsed.
+- Future optional advanced groups for Maya/export/meshes also start collapsed unless a later validated UX need requires otherwise.
+- Expanding an Advanced group is an intentional user action for fine tuning or diagnosis.
+- A collapsed group must still make its identity and current high-level state understandable from its title/summary.
+- Warnings that can invalidate a run must never be hidden only inside a collapsed Advanced group; critical warnings/status remain visible in the normal canvas.
+- Collapsing a group is a visual/UX behavior only and must not silently disable the engine or alter its configured values.
 
 ## Mandatory field-help policy
 
