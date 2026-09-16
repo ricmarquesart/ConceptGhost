@@ -25,6 +25,12 @@ docs/superpowers/specs/2026-09-16-conceptghost-output-handoff-contract.md
 docs/superpowers/specs/2026-09-16-conceptghost-stage8-maya-export-design.md
 ```
 
+Before Stage 9 benchmark/preset work, also read:
+
+```text
+docs/superpowers/specs/2026-09-16-conceptghost-stage9-benchmark-preset-design.md
+```
+
 Stage 8 implementation must follow the approved Maya handoff architecture: `.ma` is the artist entry point; the dense Canonical Point Cloud lives in the companion `.usda` as `UsdGeomPoints` and is displayed in Maya through a MayaUSD proxy/stage; `.ply` preserves a portable canonical copy; `.fbx` carries the matched camera and validated optional meshes through a separate Maya Worker.
 
 If older documentation conflicts with these files, stop and reconcile the conflict before implementation.
@@ -145,20 +151,77 @@ Maya/FBX generation must run through a separate Maya Worker rather than importin
 
 ### Stage 9 — controlled A/B benchmark and parameter freeze
 
-Compare DA3 and MoGe under the same Atlas camera and canonical conventions.
+Benchmark images are chosen by the user for each benchmark session. ConceptGhost does not define a permanent fixed corpus, does not automatically add public images, and does not require a fixed image count.
 
-Use evidence to freeze:
-- Max Reference;
-- Balanced;
-- Fast Test.
+Within one benchmark session, every candidate must use the exact same user-selected source images.
 
-Parameter policy:
-1. upstream baseline;
-2. documented/community high-quality candidate;
-3. camera-conditioned candidate;
-4. controlled ConceptGhost benchmark.
+Compare:
+
+```text
+DA3 baseline
+DA3 Atlas-conditioned
+MoGe Auto FOV
+MoGe Atlas FOV
+```
+
+All candidates pass through the same Stage 7 canonical/gate logic and Stage 8 Maya Ghost export before artist review.
+
+A technically invalid candidate is marked `TECHNICALLY_INVALID`; it is not merely ranked lower.
+
+Automatic metrics are evidence only. The final practical-quality decision belongs to the user after Maya review, especially:
+
+```text
+matched-camera agreement
+foreground/background separation
+ground continuity
+architecture / large planes
+thin structures
+streamers
+noise
+occlusion boundaries
+off-camera usefulness
+blockout usefulness
+```
+
+Presets are frozen per engine and versioned:
+
+```text
+DA3 Fast Test v1
+DA3 Balanced v1
+DA3 Max Reference v1
+
+MoGe Fast Test v1
+MoGe Balanced v1
+MoGe Max Reference v1
+```
+
+A user-facing preset name may resolve to different engine-specific numeric parameters.
+
+Parameter study is progressive, not brute force:
+
+```text
+processing resolution / model mode
+-> camera conditioning
+-> confidence policy
+-> edge/discontinuity filtering
+-> point density
+-> only then secondary cleanup parameters
+```
+
+Stage 9 must produce evidence-based decisions for:
+
+```text
+DA3 Atlas conditioning -> adopt | experimental | reject
+MoGe Atlas FOV         -> adopt | experimental | reject
+confidence policy
+edge filtering
+point density
+processing resolution
+```
 
 Also retain Depth Anything V2 Metric Outdoor as a low-cost/reference exterior baseline because Atlas itself reverted to it after a four-scene exterior A/B. Do not add it to the main V1 selector without evidence.
+
+Future Stage 15 engines reuse the Stage 9 benchmark framework, again with user-selected images.
 
 ### Stages 10-12 — optional meshes
 
