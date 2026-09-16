@@ -126,7 +126,9 @@ class Stage4SFinalizeTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(cp.returncode, 0, cp.stderr)
-            self.assertEqual(Path(cp.stdout.strip()), fake_python.resolve())
+            located = cp.stdout.strip()
+            self.assertTrue(located)
+            self.assertTrue(os.path.samefile(located, fake_python), (located, str(fake_python)))
 
 
 if __name__ == "__main__":
