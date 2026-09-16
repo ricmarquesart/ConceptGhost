@@ -196,7 +196,6 @@ class DA3BaselineTests(unittest.TestCase):
         self.assertTrue(str(project_env).replace("\\", "/").endswith("ConceptGhost/cache/da3-comfy-env/.pixi/envs/depthanythingv3-nodes"))
         self.assertTrue(str(runtime_link).replace("\\", "/").endswith("Programs/comfy-env/.pixi/envs/depthanythingv3-nodes"))
 
-
     def test_storage_deltas_track_workspace_and_pixi_home_growth(self):
         result = compute_storage_deltas(
             workspace_before=100, workspace_after=145,
@@ -218,10 +217,10 @@ class DA3BaselineTests(unittest.TestCase):
             root = Path(td) / "ConceptGhost"
             plan = {"schema_version": 1, "status": "dry-run", "stage": 4, "component": "DA3 Baseline"}
             paths = persist_stage4_plan(plan, root)
-            self.assertTrue((root / "manifests" / "stage4_plan.json").is_file())
-            self.assertTrue((root / "logs" / "da3_baseline_plan.json").is_file())
-            self.assertEqual(paths["manifest"], str(root / "manifests" / "stage4_plan.json"))
-            self.assertIn('"stage": 4', (root / "manifests" / "stage4_plan.json").read_text(encoding="utf-8"))
+            self.assertTrue((root / "Manifests" / "stage4_plan.json").is_file())
+            self.assertTrue((root / "Logs" / "da3_baseline_plan.json").is_file())
+            self.assertEqual(paths["manifest"], str(root / "Manifests" / "stage4_plan.json"))
+            self.assertIn('"stage": 4', (root / "Manifests" / "stage4_plan.json").read_text(encoding="utf-8"))
 
     def test_shadow_config_removes_optional_cuda_backends_but_keeps_runtime_deps(self):
         source = """[dependencies]\nav = "*"\n[cuda]\npackages = ["flash_attn", "sageattention"]\n[pypi-dependencies]\neinops = ">=0.7.0,<1.0.0"\n"""
