@@ -54,7 +54,8 @@ class ReferenceSourceTests(unittest.TestCase):
         bat = VERIFIER_BAT.read_text(encoding="utf-8", errors="ignore").lower()
         py = VERIFIER_PY.read_text(encoding="utf-8", errors="ignore").lower()
         self.assertIn("cg_verify_references.py", bat)
-        self.assertIn("source_lock.json", py)
+        self.assertIn("source_lock.json", bat)
+        self.assertIn('"--lock"', py)
         self.assertIn("rev-parse", py)
         for forbidden in ["checkout", "fetch", "pull", "reset --hard", "clean -", "clone", "pip install"]:
             self.assertNotIn(forbidden, py)
