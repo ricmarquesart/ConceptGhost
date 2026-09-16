@@ -35,7 +35,12 @@ MigrationClass: TypeAlias = Literal[
 ]
 
 PROJECT_PREFIXES = {"workflows", "manifests", "logs", "docs", "output", "maya"}
-GRANDFATHERED_RUNTIME_PREFIXES = {"cache/da3-comfy-env", "cache/pixi"}
+GRANDFATHERED_RUNTIME_PREFIXES = {
+    "cache/da3-comfy-env",
+    "cache/pixi",
+    "cache/da3-shadow-comfyui",
+    "config/da3_host_paths.json",
+}
 BOOTSTRAP_PREFIXES = {"scripts"}
 TEMP_PREFIXES = {"temp", "cache/downloads"}
 PROJECT_ROOT_FILES = {"config.yml"}
