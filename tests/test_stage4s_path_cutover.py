@@ -55,6 +55,25 @@ class Stage4SPathCutoverTests(unittest.TestCase):
             self.assertEqual(Path(layout["pixi_cache"]), legacy_pixi)
             self.assertEqual(Path(layout["shadow_comfyui"]), legacy_shadow)
 
+    def test_da3_runtime_can_grandfather_unmigrated_legacy_manifest(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            contract = PathContract.from_roots(base / "drive", base / "runtime")
+            legacy_root = base / "legacy"
+            legacy_workspace = legacy_root / "cache" / "da3-comfy-env"
+            legacy_env = legacy_workspace / ".pixi" / "envs" / "depthanythingv3-nodes"
+            legacy_env.mkdir(parents=True)
+            legacy_manifest = legacy_root / "manifests" / "da3_baseline_install.json"
+            legacy_manifest.parent.mkdir(parents=True)
+            legacy_manifest.write_text(json.dumps({
+                "project_comfy_env_workspace": str(legacy_workspace),
+                "project_isolated_env": str(legacy_env),
+            }), encoding="utf-8")
+            layout = resolve_da3_runtime_layout(contract, legacy_project_root=legacy_root)
+            self.assertTrue(layout["grandfathered_runtime"])
+            self.assertEqual(Path(layout["isolated_env"]), legacy_env)
+            self.assertEqual(Path(layout["source_manifest"]), legacy_manifest)
+
     def test_new_da3_runtime_uses_runtime_contract(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
