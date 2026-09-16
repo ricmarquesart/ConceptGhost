@@ -158,6 +158,33 @@ def build_storage_snapshot(
         )
 
     attributable_c = parts["project_root"]["size_bytes"]
+
+    stage3_manifest = load_json(project_root / "manifests" / "atlas_camera_deps_install.json", {})
+    if stage3_manifest:
+        package_bytes = int(stage3_manifest.get("bytes_added_packages") or 0)
+        parts["atlas_camera_deps_added"] = {
+            "path": str(Path(stage3_manifest.get("python_executable") or "ComfyUI Python site-packages")),
+            "exists": True,
+            "size_bytes": package_bytes,
+            "classification": "related-external-attributable",
+            "note": "Additive GeoCalib/OpenCV files attributed by Stage 3 manifest; protected package replacements are forbidden.",
+        }
+        attributable_c += package_bytes
+        cache_text = stage3_manifest.get("geocalib_model_cache")
+        if cache_text:
+            cache_path = Path(cache_text)
+            before_cache = int(stage3_manifest.get("geocalib_model_cache_before_bytes") or 0)
+            current_cache = path_size(cache_path)
+            added_cache = max(0, current_cache - before_cache)
+            parts["geocalib_model_cache_added"] = {
+                "path": str(cache_path),
+                "exists": cache_path.exists(),
+                "size_bytes": added_cache,
+                "classification": "related-external-attributable",
+                "note": "Only growth above the pre-Stage-3 GeoCalib cache baseline is attributed to ConceptGhost.",
+            }
+            attributable_c += added_cache
+
     atlas_manifest = load_json(project_root / "manifests" / "atlas_core_install.json", {})
     if atlas_manifest and not atlas_manifest.get("preexisting", True):
         target_text = atlas_manifest.get("target")
@@ -216,7 +243,7 @@ def format_txt(snapshot: dict[str, Any], history: list[dict[str, Any]]) -> str:
         "C: COMPONENTS",
         "-" * 78,
     ]
-    for key in ["project_root", "project_output", "project_cache", "project_logs", "project_manifests", "atlas_camera", "da3_models", "moge_models"]:
+    for key in ["project_root", "project_output", "project_cache", "project_logs", "project_manifests", "atlas_camera", "atlas_camera_deps_added", "geocalib_model_cache_added", "da3_models", "moge_models"]:
         rec = p.get(key)
         if rec:
             lines.append(f"{key:24} {human_bytes(rec['size_bytes']):>12}  {rec['path']}")
