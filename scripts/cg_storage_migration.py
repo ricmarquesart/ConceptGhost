@@ -45,6 +45,15 @@ BOOTSTRAP_PREFIXES = {"scripts"}
 TEMP_PREFIXES = {"temp", "cache/downloads"}
 PROJECT_ROOT_FILES = {"config.yml"}
 DEFAULT_LEGACY_ROOT = Path(r"C:\ConceptGhost")
+REQUIRED_CANONICAL_WORKFLOWS = (
+    "workflows/reference/atlas/atlas_photo_to_atlas_scene_workflow.json",
+    "workflows/reference/atlas/atlas_input_quickstart_workflow.json",
+    "workflows/reference/atlas/atlas_hero_02_photo_to_editable_scene_workflow.json",
+    "workflows/reference/atlas/atlas_export_fanout_workflow.json",
+    "workflows/reference/da3/advanced.json",
+    "workflows/reference/da3/advanced_3d.json",
+    "workflows/reference/da3/bas_relief.json",
+)
 
 
 class MigrationBlocked(RuntimeError):
@@ -402,7 +411,12 @@ def copy_project_items(inventory: dict) -> dict:
     return verify_project_copies(report) if not blockers else report
 
 
-def cutover_check(inventory: dict) -> dict:
+def cutover_check(
+    inventory: dict,
+    *,
+    required_workflows: tuple[str, ...] | list[str] | None = None,
+    require_reference_provenance: bool = False,
+) -> dict:
     blockers = list(inventory.get("blockers", []))
     verified: list[dict] = []
     project_items = [x for x in inventory.get("items", []) if x.get("classification") == "PROJECT"]
@@ -443,7 +457,66 @@ def cutover_check(inventory: dict) -> dict:
         if not record["verified"]:
             blockers.append(f"cutover hash mismatch: {src} -> {dst}")
         verified.append(record)
-    safe = not blockers and len(verified) == len(project_items) and all(x.get("verified") for x in verified)
+
+    required = tuple(required_workflows or ())
+    item_lookup = {_normalized_relative(Path(x.get("relative_path", ""))): x for x in project_items}
+    canonical_workflows: list[dict] = []
+    for rel_text in required:
+        normalized = _normalized_relative(Path(rel_text))
+        item = item_lookup.get(normalized)
+        if item is None:
+            blockers.append(f"Required canonical workflow missing from inventory: {rel_text}")
+            canonical_workflows.append({"relative_path": rel_text, "verified": False})
+            continue
+        if item.get("kind") != "file":
+            blockers.append(f"Required canonical workflow is not a regular file: {rel_text}")
+            canonical_workflows.append({"relative_path": rel_text, "verified": False})
+            continue
+        src, dst = Path(item["source"]), Path(item["destination"])
+        expected = item.get("sha256")
+        source_exists = src.is_file() and not src.is_symlink()
+        destination_exists = dst.is_file() and not dst.is_symlink()
+        source_hash = sha256_file(src) if source_exists else None
+        destination_hash = sha256_file(dst) if destination_exists else None
+        ok = bool(expected and source_exists and destination_exists and source_hash == destination_hash == expected)
+        canonical_workflows.append(
+            {
+                "relative_path": rel_text,
+                "source": str(src),
+                "destination": str(dst),
+                "sha256": expected,
+                "source_sha256": source_hash,
+                "destination_sha256": destination_hash,
+                "verified": ok,
+            }
+        )
+        if not ok:
+            blockers.append(f"Canonical workflow verification failed: {rel_text}")
+
+    canonical_workflows_verified = all(x.get("verified") for x in canonical_workflows) if required else True
+
+    project_root = Path(inventory.get("project_root") or ".")
+    source_lock = project_root / "References" / "SOURCE_LOCK.json"
+    upstream_code = project_root / "References" / "Upstream_Code"
+    provenance = {
+        "source_lock": str(source_lock),
+        "source_lock_exists": source_lock.is_file(),
+        "upstream_code": str(upstream_code),
+        "upstream_code_exists": upstream_code.is_dir(),
+        "read_only": True,
+    }
+    if require_reference_provenance:
+        if not provenance["source_lock_exists"]:
+            blockers.append(f"Reference provenance missing: {source_lock}")
+        if not provenance["upstream_code_exists"]:
+            blockers.append(f"Reference provenance missing: {upstream_code}")
+
+    safe = (
+        not blockers
+        and len(verified) == len(project_items)
+        and all(x.get("verified") for x in verified)
+        and canonical_workflows_verified
+    )
     return {
         "schema_version": 1,
         "mode": "cutover-check",
@@ -452,6 +525,9 @@ def cutover_check(inventory: dict) -> dict:
         "blockers": blockers,
         "verified": verified,
         "project_file_count": len(project_items),
+        "canonical_workflows": canonical_workflows,
+        "canonical_workflows_verified": canonical_workflows_verified,
+        "reference_provenance": provenance,
         "legacy_sources_deleted": False,
         "read_only": True,
     }
@@ -513,7 +589,11 @@ def run_cli(args: argparse.Namespace) -> dict:
         operation = copy_project_items(inventory)
         operation["mode"] = "copy"
     elif args.cutover_check:
-        operation = cutover_check(inventory)
+        operation = cutover_check(
+            inventory,
+            required_workflows=REQUIRED_CANONICAL_WORKFLOWS,
+            require_reference_provenance=True,
+        )
     else:
         operation = {
             "schema_version": 1,
