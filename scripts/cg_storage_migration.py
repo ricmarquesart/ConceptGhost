@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
-"""Stage 4S legacy storage inventory and classification.
+"""ConceptGhost Stage 4S storage migration safety layer.
 
-Task 2 is deliberately read-only. It classifies the legacy C:\\ConceptGhost
-workspace, hashes durable project files, maps their future G: destinations, and
-blocks on unknown ownership. It never copies, moves, or deletes data.
+Stages 4S.2-4 inventory the legacy C:\\ConceptGhost tree, classify ownership,
+map durable project files to canonical G: destinations, optionally copy them
+with SHA-256 verification, and perform a read-only cutover readiness check.
+Legacy source files are never moved or removed by this module.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
+import json
 import os
+import shutil
+import sys
+import tempfile
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from .cg_paths import PathContract
+try:
+    from .cg_paths import PathContract, load_path_contract, validate_path_contract
+except ImportError:  # direct execution: python scripts\cg_storage_migration.py
+    package_root = Path(__file__).resolve().parents[1]
+    if str(package_root) not in sys.path:
+        sys.path.insert(0, str(package_root))
+    from scripts.cg_paths import PathContract, load_path_contract, validate_path_contract
 
 MigrationClass: TypeAlias = Literal[
     "PROJECT",
@@ -22,21 +34,16 @@ MigrationClass: TypeAlias = Literal[
     "UNKNOWN",
 ]
 
-PROJECT_PREFIXES = {
-    "workflows",
-    "manifests",
-    "logs",
-    "docs",
-    "output",
-    "maya",
-}
-GRANDFATHERED_RUNTIME_PREFIXES = {
-    "cache/da3-comfy-env",
-    "cache/pixi",
-}
+PROJECT_PREFIXES = {"workflows", "manifests", "logs", "docs", "output", "maya"}
+GRANDFATHERED_RUNTIME_PREFIXES = {"cache/da3-comfy-env", "cache/pixi"}
 BOOTSTRAP_PREFIXES = {"scripts"}
 TEMP_PREFIXES = {"temp", "cache/downloads"}
 PROJECT_ROOT_FILES = {"config.yml"}
+DEFAULT_LEGACY_ROOT = Path(r"C:\ConceptGhost")
+
+
+class MigrationBlocked(RuntimeError):
+    """Raised when Stage 4S must stop instead of overwriting or guessing."""
 
 
 def _normalized_relative(rel: Path) -> str:
@@ -52,7 +59,6 @@ def _matches_prefix(path_text: str, prefix: str) -> bool:
 
 
 def classify_legacy_path(rel: Path) -> MigrationClass:
-    """Classify a path relative to the legacy root using locked Stage 4S rules."""
     rel = Path(rel)
     normalized = _normalized_relative(rel)
     if not normalized or ".." in rel.parts:
@@ -76,26 +82,21 @@ def _tail_after(rel: Path, count: int) -> Path:
 
 
 def destination_for_project_path(rel: Path, contract: PathContract) -> Path:
-    """Map one PROJECT legacy path to its canonical durable G: destination."""
     rel = Path(rel)
     if classify_legacy_path(rel) != "PROJECT":
         raise ValueError(f"Not a PROJECT path: {rel}")
-
     normalized = _normalized_relative(rel)
-
     if normalized == "config.yml":
         return contract.project_root / "Config" / "config.yml"
 
-    workflow_prefixes = (
+    for prefix, folder, consumed in (
         ("workflows/reference/atlas", "Atlas", 3),
         ("workflows/reference/da3", "DA3", 3),
         ("workflows/reference/moge", "MoGe", 3),
         ("workflows/project", "Project", 2),
-    )
-    for prefix, folder, consumed in workflow_prefixes:
+    ):
         if _matches_prefix(normalized, prefix):
             return contract.workflows / folder / _tail_after(rel, consumed)
-
     if _matches_prefix(normalized, "manifests"):
         return contract.manifests / _tail_after(rel, 1)
     if _matches_prefix(normalized, "logs"):
@@ -106,7 +107,6 @@ def destination_for_project_path(rel: Path, contract: PathContract) -> Path:
         return contract.outputs / "Legacy_C_ConceptGhost" / _tail_after(rel, 1)
     if _matches_prefix(normalized, "maya"):
         return contract.outputs / "Maya" / "Legacy_C_ConceptGhost" / _tail_after(rel, 1)
-
     raise ValueError(f"PROJECT path has no Stage 4S destination mapping: {rel}")
 
 
@@ -141,7 +141,6 @@ def _link_target(path: Path) -> str | None:
 
 
 def _iter_leaf_entries_no_follow(root: Path):
-    """Yield files and links without traversing symlink/junction targets."""
     stack = [Path(root)]
     while stack:
         current = stack.pop()
@@ -167,7 +166,6 @@ def _iter_leaf_entries_no_follow(root: Path):
 
 
 def build_migration_inventory(legacy_root: Path, contract: PathContract) -> dict:
-    """Build a read-only fail-closed inventory for the legacy ConceptGhost root."""
     legacy_root = Path(legacy_root)
     items: list[dict] = []
     blockers: list[str] = []
@@ -179,7 +177,6 @@ def build_migration_inventory(legacy_root: Path, contract: PathContract) -> dict
         "UNKNOWN": 0,
         "links": 0,
     }
-
     if not legacy_root.is_dir():
         blockers.append(f"Legacy root is missing or unavailable: {legacy_root}")
         return {
@@ -205,14 +202,12 @@ def build_migration_inventory(legacy_root: Path, contract: PathContract) -> dict
         counts[classification] += 1
         if kind == "link":
             counts["links"] += 1
-
         record = {
             "relative_path": rel_text,
             "source": str(path),
             "classification": classification,
             "kind": kind,
         }
-
         if scan_error is not None:
             record["error"] = str(scan_error)
             blockers.append(f"Could not inspect {rel_text}: {scan_error}")
@@ -237,9 +232,8 @@ def build_migration_inventory(legacy_root: Path, contract: PathContract) -> dict
                 except ValueError as exc:
                     record["project_inventory_error"] = str(exc)
                     blockers.append(f"PROJECT inventory failed for link {rel_text}: {exc}")
-        elif kind == "other":
+        else:
             blockers.append(f"Unsupported filesystem object at {rel_text}")
-
         if classification == "UNKNOWN":
             blockers.append(f"Unknown ownership/classification: {rel_text}")
         items.append(record)
@@ -257,33 +251,17 @@ def build_migration_inventory(legacy_root: Path, contract: PathContract) -> dict
     }
 
 
-class MigrationBlocked(RuntimeError):
-    """Raised when Stage 4S detects a condition that must stop migration."""
-
-
 def copy_one_verified(src: Path, dst: Path) -> dict:
-    """Copy one file atomically to destination storage and preserve the source."""
-    import shutil
-    import tempfile
-
-    src = Path(src)
-    dst = Path(dst)
+    src, dst = Path(src), Path(dst)
     if not src.is_file() or src.is_symlink():
         raise MigrationBlocked(f"source is not a regular file: {src}")
-
     source_hash = sha256_file(src)
     if dst.exists():
         if not dst.is_file() or dst.is_symlink():
             raise MigrationBlocked(f"destination is not a regular file: {dst}")
-        dest_hash = sha256_file(dst)
-        if dest_hash != source_hash:
+        if sha256_file(dst) != source_hash:
             raise MigrationBlocked(f"destination conflict: {dst}")
-        return {
-            "action": "reuse-identical",
-            "source": str(src),
-            "destination": str(dst),
-            "sha256": source_hash,
-        }
+        return {"action": "reuse-identical", "source": str(src), "destination": str(dst), "sha256": source_hash}
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=dst.name + ".", suffix=".conceptghost-copying", dir=str(dst.parent))
@@ -291,33 +269,23 @@ def copy_one_verified(src: Path, dst: Path) -> dict:
     tmp = Path(tmp_name)
     try:
         shutil.copy2(src, tmp)
-        temp_hash = sha256_file(tmp)
-        if temp_hash != source_hash:
+        if sha256_file(tmp) != source_hash:
             raise MigrationBlocked(f"copy hash mismatch: {src} -> {dst}")
         os.replace(tmp, dst)
     finally:
         if tmp.exists():
             tmp.unlink(missing_ok=True)
-
     if not src.exists():
         raise MigrationBlocked(f"source disappeared during copy: {src}")
-    return {
-        "action": "copied",
-        "source": str(src),
-        "destination": str(dst),
-        "sha256": source_hash,
-    }
+    return {"action": "copied", "source": str(src), "destination": str(dst), "sha256": source_hash}
 
 
 def verify_project_copies(result: dict) -> dict:
-    """Re-hash copy results and prove that every source file still exists."""
     verified_items: list[dict] = []
     remaining: list[str] = []
     blockers = list(result.get("blocked", []))
-
     for item in result.get("items", []):
-        src = Path(item["source"])
-        dst = Path(item["destination"])
+        src, dst = Path(item["source"]), Path(item["destination"])
         record = dict(item)
         if src.is_file():
             remaining.append(str(src))
@@ -331,15 +299,13 @@ def verify_project_copies(result: dict) -> dict:
             blockers.append(f"destination missing after copy: {dst}")
             verified_items.append(record)
             continue
-        source_hash = sha256_file(src)
-        destination_hash = sha256_file(dst)
+        source_hash, destination_hash = sha256_file(src), sha256_file(dst)
         record["source_sha256"] = source_hash
         record["destination_sha256"] = destination_hash
         record["verified"] = source_hash == destination_hash == item.get("sha256")
         if not record["verified"]:
             blockers.append(f"verification hash mismatch: {src} -> {dst}")
         verified_items.append(record)
-
     expected_count = int(result.get("project_file_count", len(verified_items)))
     all_verified = (
         not blockers
@@ -348,20 +314,20 @@ def verify_project_copies(result: dict) -> dict:
         and all(x.get("verified") for x in verified_items)
     )
     verified = dict(result)
-    verified["items"] = verified_items
-    verified["blocked"] = blockers
-    verified["source_files_remaining"] = remaining
-    verified["all_verified"] = all_verified
-    verified["status"] = "verified" if all_verified else "blocked"
+    verified.update(
+        items=verified_items,
+        blocked=blockers,
+        source_files_remaining=remaining,
+        all_verified=all_verified,
+        status="verified" if all_verified else "blocked",
+    )
     return verified
 
 
 def copy_project_items(inventory: dict) -> dict:
-    """Copy all PROJECT files from an inventory after a complete fail-closed preflight."""
     project_items = [x for x in inventory.get("items", []) if x.get("classification") == "PROJECT"]
     project_files = [x for x in project_items if x.get("kind") == "file"]
     blockers = list(inventory.get("blockers", []))
-
     if inventory.get("status") != "ready":
         return {
             "schema_version": 1,
@@ -374,13 +340,11 @@ def copy_project_items(inventory: dict) -> dict:
             "source_files_remaining": [x["source"] for x in project_files if Path(x["source"]).exists()],
             "all_verified": False,
         }
-
     if len(project_files) != len(project_items):
         blockers.append("PROJECT links or non-file objects require explicit handling and are not copied in Stage 4S.")
 
     for item in project_files:
-        src = Path(item["source"])
-        dst = Path(item["destination"])
+        src, dst = Path(item["source"]), Path(item["destination"])
         expected_hash = item.get("sha256")
         if not src.is_file() or src.is_symlink():
             blockers.append(f"source is not a regular file: {src}")
@@ -394,7 +358,6 @@ def copy_project_items(inventory: dict) -> dict:
                 blockers.append(f"destination is not a regular file: {dst}")
             elif sha256_file(dst) != source_hash:
                 blockers.append(f"destination conflict: {dst}")
-
     if blockers:
         return {
             "schema_version": 1,
@@ -408,8 +371,7 @@ def copy_project_items(inventory: dict) -> dict:
             "all_verified": False,
         }
 
-    copied = 0
-    reused = 0
+    copied = reused = 0
     results: list[dict] = []
     for item in project_files:
         try:
@@ -419,11 +381,8 @@ def copy_project_items(inventory: dict) -> dict:
             break
         result["relative_path"] = item["relative_path"]
         results.append(result)
-        if result["action"] == "copied":
-            copied += 1
-        elif result["action"] == "reuse-identical":
-            reused += 1
-
+        copied += result["action"] == "copied"
+        reused += result["action"] == "reuse-identical"
     report = {
         "schema_version": 1,
         "status": "copied" if not blockers else "blocked",
@@ -436,3 +395,145 @@ def copy_project_items(inventory: dict) -> dict:
         "all_verified": False,
     }
     return verify_project_copies(report) if not blockers else report
+
+
+def cutover_check(inventory: dict) -> dict:
+    blockers = list(inventory.get("blockers", []))
+    verified: list[dict] = []
+    project_items = [x for x in inventory.get("items", []) if x.get("classification") == "PROJECT"]
+    if inventory.get("status") != "ready" and not blockers:
+        blockers.append("inventory is not ready")
+    for item in project_items:
+        rel = item.get("relative_path", "<unknown>")
+        if item.get("kind") != "file":
+            blockers.append(f"PROJECT item is not a regular file: {rel}")
+            continue
+        src, dst = Path(item["source"]), Path(item["destination"])
+        expected = item.get("sha256")
+        record = {
+            "relative_path": rel,
+            "source": str(src),
+            "destination": str(dst),
+            "expected_sha256": expected,
+            "source_exists": src.is_file() and not src.is_symlink(),
+            "destination_exists": dst.is_file() and not dst.is_symlink(),
+        }
+        if not record["source_exists"]:
+            blockers.append(f"source missing or not regular: {src}")
+            record["verified"] = False
+            verified.append(record)
+            continue
+        source_hash = sha256_file(src)
+        record["source_sha256"] = source_hash
+        if source_hash != expected:
+            blockers.append(f"source changed since inventory: {src}")
+        if not record["destination_exists"]:
+            blockers.append(f"destination missing or not regular: {dst}")
+            record["verified"] = False
+            verified.append(record)
+            continue
+        destination_hash = sha256_file(dst)
+        record["destination_sha256"] = destination_hash
+        record["verified"] = source_hash == destination_hash == expected
+        if not record["verified"]:
+            blockers.append(f"cutover hash mismatch: {src} -> {dst}")
+        verified.append(record)
+    safe = not blockers and len(verified) == len(project_items) and all(x.get("verified") for x in verified)
+    return {
+        "schema_version": 1,
+        "mode": "cutover-check",
+        "safe": safe,
+        "status": "ready" if safe else "blocked",
+        "blockers": blockers,
+        "verified": verified,
+        "project_file_count": len(project_items),
+        "legacy_sources_deleted": False,
+        "read_only": True,
+    }
+
+
+def _atomic_write_json(path: Path, value: object) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as fh:
+            json.dump(value, fh, indent=2, ensure_ascii=False)
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_name, path)
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="ConceptGhost Stage 4S non-destructive storage migration gate")
+    parser.add_argument("--config", help="Path to ConceptGhost config.yml; package config is used when present.")
+    parser.add_argument("--legacy-root", default=str(DEFAULT_LEGACY_ROOT), help=r"Legacy workspace (default: C:\ConceptGhost).")
+    parser.add_argument("--report-json", help="Optional persistent JSON evidence path.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--copy", action="store_true", help="Copy PROJECT files to G: with SHA-256 verification while preserving sources.")
+    mode.add_argument("--cutover-check", action="store_true", help="Read-only verification that PROJECT source/destination hashes match.")
+    return parser
+
+
+def _resolve_contract(config_arg: str | None) -> PathContract:
+    if config_arg:
+        config_path: Path | None = Path(config_arg).expanduser()
+    else:
+        default_config = Path(__file__).resolve().parents[1] / "config.yml"
+        config_path = default_config if default_config.is_file() else None
+    return load_path_contract(config_path)
+
+
+def run_cli(args: argparse.Namespace) -> dict:
+    contract = _resolve_contract(args.config)
+    path_errors = validate_path_contract(contract, require_drive=True)
+    mode = "copy" if args.copy else ("cutover-check" if args.cutover_check else "dry-run")
+    if path_errors:
+        return {
+            "schema_version": 1,
+            "mode": mode,
+            "status": "blocked",
+            "blockers": path_errors,
+            "project_root": str(contract.project_root),
+            "runtime_root": str(contract.runtime_root),
+            "legacy_root": str(Path(args.legacy_root)),
+            "legacy_sources_deleted": False,
+        }
+    inventory = build_migration_inventory(Path(args.legacy_root), contract)
+    if args.copy:
+        operation = copy_project_items(inventory)
+        operation["mode"] = "copy"
+    elif args.cutover_check:
+        operation = cutover_check(inventory)
+    else:
+        operation = {
+            "schema_version": 1,
+            "mode": "dry-run",
+            "status": inventory.get("status", "blocked"),
+            "inventory": inventory,
+            "blockers": list(inventory.get("blockers", [])),
+            "legacy_sources_deleted": False,
+            "read_only": True,
+        }
+    operation.setdefault("project_root", str(contract.project_root))
+    operation.setdefault("runtime_root", str(contract.runtime_root))
+    operation.setdefault("legacy_root", str(Path(args.legacy_root)))
+    operation.setdefault("legacy_sources_deleted", False)
+    return operation
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_arg_parser().parse_args(argv)
+    result = run_cli(args)
+    if args.report_json:
+        _atomic_write_json(Path(args.report_json), result)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 2 if result.get("status") == "blocked" or result.get("safe") is False else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

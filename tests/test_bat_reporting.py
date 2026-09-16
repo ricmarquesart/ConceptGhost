@@ -25,7 +25,6 @@ class BatReportingTests(unittest.TestCase):
         self.assertIn("command_output.log", bat)
         self.assertIn("%temp%", bat)
 
-
     def test_all_operational_bats_refresh_storage_tracker(self):
         for name in ["INVENTORY.bat", "SETUP.bat", "UNINSTALL.bat", "ATLAS_CORE.bat", "ATLAS_CAMERA_DEPS.bat", "DA3_BASELINE.bat", "TEST.bat"]:
             bat = self._text(name)
@@ -46,9 +45,6 @@ class BatReportingTests(unittest.TestCase):
         self.assertIn(r"reports\uninstall", bat)
         self.assertIn("command_output.log", bat)
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 class Stage2BatTests(unittest.TestCase):
     @classmethod
@@ -102,3 +98,27 @@ class Stage4BatTests(unittest.TestCase):
         self.assertIn("press any key to close", bat)
         self.assertIn("pause >nul", bat)
         self.assertIn("cg_storage.py", bat)
+
+
+class Stage4SStorageMigrationBatTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.root = Path(__file__).resolve().parents[1]
+
+    def test_storage_migration_bat_is_dry_run_by_default(self):
+        data = (self.root / "STORAGE_MIGRATION.bat").read_bytes()
+        text = data.decode("utf-8").lower()
+        self.assertIn("cg_storage_migration.py", text)
+        self.assertIn(r"reports\storagemigration", text)
+        self.assertIn(r"tests\compatibility\stage4s_", text)
+        self.assertIn("--copy", text)
+        self.assertIn("--cutover-check", text)
+        self.assertNotIn("--delete", text)
+        self.assertIn("dry run", text)
+        self.assertIn("pause >nul", text)
+        self.assertIn(b"\r\n", data)
+        self.assertNotIn(b"\n", data.replace(b"\r\n", b""))
+
+
+if __name__ == "__main__":
+    unittest.main()
