@@ -1,8 +1,10 @@
 # ConceptGhost Master Workflow — UI Layout Policy
 
 Date: 2026-09-16
-Status: Approved visual-direction, field-guidance, and Advanced-collapse decisions
+Status: Approved visual direction, field guidance, Advanced collapse, mandatory Maya Ghost, and Max Reference default
 Project: ConceptGhost
+
+> Runtime behavior is governed by `2026-09-16-conceptghost-runtime-behavior-policy.md`.
 
 ## Decision
 
@@ -12,133 +14,119 @@ Project: ConceptGhost
 - Center: geometry routing, normalization, canonicalization, and reprojection/quality gates.
 - Right: run status, standardized outputs, Maya Ghost, and optional mesh outputs.
 
-This is an architectural usability rule, not a cosmetic preference. The workflow must remain readable as DA3, MoGe, Maya, diagnostics, and mesh branches are added.
-
 ## Primary canvas zones
 
 ### 01 — Master Input & Run Control
-Contains the single source-image input and the small set of normal user controls:
-- preset;
-- camera mode;
-- geometry engine;
-- Compare Both;
-- output switches.
 
-### 02 — Atlas Camera
-Contains the camera-solving branch and emits the standardized CameraBundle.
-
-### 03 — Geometry Router
-Contains DA3 and MoGe branches. Normal mode runs one engine. Compare Both runs both independently.
-
-### 04 — ConceptGhost Normalizer
-Converts engine-specific camera/geometry evidence into CameraBundle, GeometryBundle, CanonicalGeometry, and SceneBundle-compatible data.
-
-### 05 — Reprojection / Quality Gate
-Validates canonical geometry against the selected Atlas camera before Maya acceptance.
-
-### 06 — Run Result
-Shows PASS / PARTIAL / FAIL and makes Maya Ghost readiness visually obvious.
-
-### 07 — Standard Outputs
-Shows the run-bundle outputs and paths: source, camera, diagnostics, geometry, Maya, compare, logs, and manifest.
-
-### 08 — Optional Meshes
-Contains Atlas relief, MoGe mesh, and DA3 mesh branches. These remain outside the mandatory success path.
-
-## Readability rules
-
-- User-editable controls stay concentrated at the left edge of the graph.
-- Internal processing is grouped by responsibility rather than by individual node type.
-- Long connections should be routed through clear lanes/reroute points rather than crossing unrelated groups.
-- Engine-native details remain inside their engine group and do not leak into downstream Maya/export groups.
-- Downstream groups consume standardized ConceptGhost contracts rather than direct DA3/MoGe internals whenever the contract is available.
-- Output and status groups live at the right edge so the graph reads naturally from input to result.
-- Development/debug fixtures may expose additional nodes, but the production-facing master workflow should preserve this spatial organization.
-
-## Main versus Advanced controls
-
-The production-facing master workflow separates normal-use controls from engine-specific tuning.
-
-### Main controls
-Keep visible and easy to understand:
+Normal user controls:
 - source image;
 - preset;
 - camera mode;
 - geometry engine;
 - Compare Both;
-- output switches.
+- optional-output controls where justified.
+
+There is **no Maya Ghost enable/disable control** in the production-facing Master. Maya Ghost is the mandatory primary product and is automatically attempted after the mandatory upstream gates pass.
+
+The initial production defaults are:
+
+```text
+Preset = Max Reference
+Camera = Auto
+Geometry = DA3
+Compare Both = OFF
+```
+
+### 02 — Atlas Camera
+
+Contains camera solving and emits the standardized CameraBundle.
+
+### 03 — Geometry Router
+
+Contains DA3 and MoGe. Normal mode runs one engine. Compare Both runs both independently.
+
+### 04 — ConceptGhost Normalizer
+
+Converts engine-native evidence into standardized CameraBundle, GeometryBundle, CanonicalGeometry, and SceneBundle-compatible data.
+
+### 05 — Reprojection / Quality Gate
+
+Validates canonical geometry against the selected Atlas camera before Maya acceptance.
+
+### 06 — Run Result
+
+Shows PASS / PARTIAL / FAIL and makes Maya Ghost readiness visually obvious.
+
+### 07 — Standard Outputs
+
+Shows run-bundle paths for source, camera, diagnostics, geometry, Maya, compare, logs, and manifest.
+
+### 08 — Optional Meshes
+
+Atlas relief, MoGe mesh, and DA3 mesh remain optional and outside the mandatory success path.
+
+## Readability rules
+
+- User-editable controls remain concentrated at the left edge.
+- Internal processing is grouped by responsibility.
+- Long connections use clear lanes/reroutes rather than crossing unrelated groups.
+- Engine-native details remain inside their engine groups.
+- Downstream consumers use ConceptGhost standardized contracts whenever available.
+- Output/status groups live at the right edge.
+- Critical warnings remain visible even when Advanced groups are collapsed.
+
+## Main versus Advanced controls
+
+### Main controls
+
+Keep visible:
+- source image;
+- preset — default `Max Reference`;
+- camera mode;
+- geometry engine;
+- Compare Both;
+- genuinely optional output controls.
+
+Do **not** expose Maya Ghost as an optional toggle.
 
 ### Advanced groups
-Keep engine-specific tuning in clearly marked groups:
-- `ADVANCED — ATLAS`;
-- `ADVANCED — DA3`;
-- `ADVANCED — MoGe`;
-- later optional export/mesh-specific advanced groups when required.
 
-Advanced parameters remain accessible, but should not dominate normal workflow use.
+- `ADVANCED — ATLAS`
+- `ADVANCED — DA3`
+- `ADVANCED — MoGe`
+- future export/mesh Advanced groups only when justified.
 
-### Advanced-collapse policy
+All Advanced groups open **collapsed by default**.
 
-All `ADVANCED` groups open **collapsed by default** whenever the production-facing Master Workflow is loaded.
-
-The normal first view should expose the main controls, major processing blocks, quality status, and final outputs without presenting engine-specific tuning fields.
-
-Rules:
-- `ADVANCED — ATLAS` starts collapsed.
-- `ADVANCED — DA3` starts collapsed.
-- `ADVANCED — MoGe` starts collapsed.
-- Future optional advanced groups for Maya/export/meshes also start collapsed unless a later validated UX need requires otherwise.
-- Expanding an Advanced group is an intentional user action for fine tuning or diagnosis.
-- A collapsed group must still make its identity and current high-level state understandable from its title/summary.
-- Warnings that can invalidate a run must never be hidden only inside a collapsed Advanced group; critical warnings/status remain visible in the normal canvas.
-- Collapsing a group is a visual/UX behavior only and must not silently disable the engine or alter its configured values.
+Collapsing a group:
+- does not disable the engine;
+- does not alter configured values;
+- never hides a critical run-invalidating warning.
 
 ## Mandatory field-help policy
 
-Every user-editable field must include concise guidance. No exposed setting may rely on the user already knowing Atlas, DA3, MoGe, camera intrinsics, depth filtering, reprojection, MayaUSD, or mesh terminology.
+Every user-editable field must explain:
 
-For every exposed field, the UI/documentation must answer three questions:
+1. **What does this control?**
+2. **What does changing it affect?**
+3. **What is ideal/recommended?**
 
-1. **What does this control?** — plain-language description of the parameter.
-2. **What does changing it affect?** — practical effect on camera, geometry, quality, runtime, memory, filtering, export, or reliability.
-3. **What is ideal for normal use?** — recommended/default value or preset, including when a different value is appropriate.
+When useful, it also states risks/trade-offs.
 
-Where useful, also include a short warning for risky values or known trade-offs.
+Normal presentation:
+- short one-line hint near the field where practical;
+- fuller tooltip/help text;
+- if native ComfyUI widgets cannot provide a tooltip, use an adjacent note/help element.
 
-### Example
+## Preset-aware guidance
 
-```text
-Confidence Threshold: 0.10
+The UI communicates:
 
-What it controls:
-Removes DA3 points whose confidence is below the selected value.
+- `Max Reference` — **default**; highest validated reference-quality configuration, accepting greater runtime/resource cost.
+- `Balanced` — reduced cost while maintaining useful reference quality.
+- `Fast Test` — rapid iteration and low resource use.
 
-Effect:
-Higher values produce cleaner geometry but can remove useful surfaces.
-Lower values preserve more points but may increase noise.
-
-Recommended:
-0.10 for Balanced. Increase only when low-confidence noise is visibly harmful.
-```
-
-### Presentation rule
-
-The normal canvas should remain compact. Field guidance should therefore use a two-level presentation:
-
-- a short always-visible one-line hint beside or below the field when practical;
-- a fuller tooltip/help description for the effect, recommended value, and trade-offs.
-
-If ComfyUI limitations prevent a true tooltip for a specific field, the same information must be provided through an adjacent note/help node or clearly linked field reference. Missing explanation is not acceptable simply because a native widget lacks tooltip support.
-
-### Preset-aware recommendations
-
-When a recommended value depends on the selected preset, the guidance should say so explicitly, for example:
-
-- `Fast Test`: prioritize speed and low resource use;
-- `Balanced`: default recommendation for normal work;
-- `Max Reference`: prioritize reference fidelity even when runtime and file size increase.
-
-The UI should distinguish **recommended/default** from merely **allowed** values.
+“Highest quality” means highest **validated stable reference quality**. The UI must not imply that numerically maximizing every parameter always improves results.
 
 ## Approved visual direction
 
@@ -147,11 +135,12 @@ LEFT                          CENTER                              RIGHT
 
 Master Input                  Geometry Router                    Run Result
 Atlas Camera       ->         Normalizer              ->         Standard Outputs
-                              Reprojection Gate                   Maya Ghost
+                              Reprojection Gate                   Maya Ghost (mandatory)
                                                                    Optional Meshes
 ```
 
 ## Related documents
 
 - `docs/superpowers/specs/2026-09-16-conceptghost-master-workflow-design.md`
+- `docs/superpowers/specs/2026-09-16-conceptghost-runtime-behavior-policy.md`
 - `docs/superpowers/plans/2026-09-16-conceptghost-master-workflow-addendum.md`
