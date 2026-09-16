@@ -39,11 +39,11 @@ if not exist "%CG_LOG_ROOT%" mkdir "%CG_LOG_ROOT%" >nul 2>nul
 call :find_python
 if errorlevel 1 (
   set "CG_EXIT=1"
-  echo ERROR: Python was not found. > "%CG_TEMP_LOG%"
+  echo ERROR: Python was not found by the protected ConceptGhost locator. > "%CG_TEMP_LOG%"
   type "%CG_TEMP_LOG%"
   goto :mirror_and_finish
 )
-
+echo Python           : %CG_PYTHON%
 "%CG_PYTHON%" "%~dp0scripts\cg_stage4s_finalize.py" --config "%~dp0config.yml" --legacy-root "C:\ConceptGhost" --evidence-dir "%CG_REPORT_DIR%" > "%CG_TEMP_LOG%" 2>&1
 set "CG_EXIT=%ERRORLEVEL%"
 type "%CG_TEMP_LOG%"
@@ -74,16 +74,10 @@ exit /b %CG_EXIT%
 
 :find_python
 set "CG_PYTHON="
-for %%P in (py.exe python.exe) do (
-  if not defined CG_PYTHON where %%P >nul 2>nul ^&^& set "CG_PYTHON=%%P"
-)
-if defined CG_PYTHON exit /b 0
-if exist "G:\My Drive\ConceptGhost\Manifests\preinstall_inventory.json" (
-  for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$j=Get-Content 'G:\My Drive\ConceptGhost\Manifests\preinstall_inventory.json' -Raw ^| ConvertFrom-Json; $j.comfyui.selected.python_executable"`) do set "CG_PYTHON=%%P"
+if not exist "%~dp0scripts\cg_find_python.ps1" exit /b 1
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\cg_find_python.ps1" -ProjectRoot "G:\My Drive\ConceptGhost" -LegacyRoot "C:\ConceptGhost"`) do (
+  if not defined CG_PYTHON set "CG_PYTHON=%%P"
 )
 if defined CG_PYTHON if exist "%CG_PYTHON%" exit /b 0
-if exist "C:\ConceptGhost\manifests\preinstall_inventory.json" (
-  for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$j=Get-Content 'C:\ConceptGhost\manifests\preinstall_inventory.json' -Raw ^| ConvertFrom-Json; $j.comfyui.selected.python_executable"`) do set "CG_PYTHON=%%P"
-)
-if defined CG_PYTHON if exist "%CG_PYTHON%" exit /b 0
+set "CG_PYTHON="
 exit /b 1
