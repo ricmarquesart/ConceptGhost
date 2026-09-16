@@ -1,8 +1,20 @@
 schema_version: 1
 
-project:
-  root: C:\ConceptGhost
-  output_root: C:\ConceptGhost\output
+paths:
+  project_root: "G:\\My Drive\\ConceptGhost"
+  runtime_root: "C:\\ConceptGhostRuntime"
+  workflows: "G:\\My Drive\\ConceptGhost\\Workflows"
+  references: "G:\\My Drive\\ConceptGhost\\References"
+  reports: "G:\\My Drive\\ConceptGhost\\Reports"
+  logs: "G:\\My Drive\\ConceptGhost\\Logs"
+  manifests: "G:\\My Drive\\ConceptGhost\\Manifests"
+  outputs: "G:\\My Drive\\ConceptGhost\\Outputs"
+  packages: "G:\\My Drive\\ConceptGhost\\Tests\\Packages"
+  storage: "G:\\My Drive\\ConceptGhost\\Storage"
+  cache: "C:\\ConceptGhostRuntime\\cache"
+  workers: "C:\\ConceptGhostRuntime\\workers"
+  temp: "C:\\ConceptGhostRuntime\\temp"
+  local_state: "C:\\ConceptGhostRuntime\\local_state"
 
 comfyui:
   root: auto
@@ -39,10 +51,10 @@ storage:
   verify_hashes: true
   preserve_preexisting: true
   preserve_modified_on_uninstall: true
-  cache_root: C:\ConceptGhost\cache\downloads
+  cache_root: C:\\ConceptGhostRuntime\\cache\\downloads
 
 safety:
   allow_external_downloads: false
   allow_external_writes: false
   stage_limit: 4
-  note: Stage 4 protected DA3 baseline gate. Existing shared packages/projects must not be replaced, upgraded, reset, or overwritten.
+  note: Stage 4S dual-root path contract. Durable project IO targets Google Drive; runtime/cache remains local. Existing shared packages/projects must not be replaced, upgraded, reset, or overwritten.
