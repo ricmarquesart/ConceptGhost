@@ -44,5 +44,5 @@ storage:
 safety:
   allow_external_downloads: false
   allow_external_writes: false
-  stage_limit: 1
-  note: Stage 0/1 bootstrap only. Atlas, DA3 and MoGe are intentionally not installed yet.
+  stage_limit: 3
+  note: Stage 3 protected Atlas camera-dependency gate. Existing shared packages/projects must not be replaced or upgraded.
