@@ -1,7 +1,7 @@
 # ConceptGhost — Runtime Behavior Policy
 
 Date: 2026-09-16
-Status: Active design policy — camera Auto and geometry selection behavior approved
+Status: Active design policy — camera Auto, geometry selection, and Compare Both failure behavior approved
 Project: ConceptGhost
 
 ## Purpose
@@ -167,9 +167,74 @@ primary_engine: da3
 secondary_engine: moge
 ```
 
-The exact behavior when the selected primary geometry fails but the comparison engine succeeds is a separate policy decision and must not be implemented implicitly.
+## 5. Compare Both — primary failure / secondary success policy
 
-## 5. No hidden success substitution
+Approved V1 behavior:
+
+If `Compare Both = ON`, the geometry engine selected by the user remains the authoritative primary branch for that run.
+
+Example:
+
+```text
+Geometry = DA3
+Compare Both = ON
+
+DA3  = FAIL
+MoGe = PASS
+```
+
+Result:
+
+```text
+overall run status = PARTIAL
+DA3 remains requested/primary engine
+MoGe successful outputs are preserved
+MoGe is clearly reported as PASS
+MoGe is NOT silently promoted to authoritative geometry
+no official Maya Ghost is published from MoGe for that run
+```
+
+The successful secondary branch remains available for diagnosis, comparison, previews, native/canonical outputs, and evidence.
+
+To make MoGe authoritative, the user starts a new explicit run with:
+
+```text
+Geometry = MoGe
+```
+
+The same rule applies in reverse when MoGe is primary and DA3 is the successful secondary branch.
+
+### 5.1 Why this rule exists
+
+V1 prioritizes:
+
+- reproducibility;
+- explicit user intent;
+- traceable comparisons;
+- no hidden `Geometry = Auto`;
+- no silent change to the meaning of a run.
+
+A successful secondary comparison result is useful evidence, but it does not rewrite the configuration that created the run.
+
+### 5.2 Required status/provenance
+
+When this case occurs, the manifest must record enough information to make the outcome unambiguous, including:
+
+```text
+geometry.requested_engine
+geometry.primary_engine
+geometry.primary_status
+geometry.secondary_engine
+geometry.secondary_status
+geometry.secondary_usable
+geometry.promoted_to_primary = false
+run.status = partial
+maya_ghost.authoritative = false
+```
+
+The user-facing summary should say, in plain language, that the primary engine failed, the comparison engine succeeded, and a new explicit run with the successful engine is required before publishing it as the authoritative Maya Ghost.
+
+## 6. No hidden success substitution
 
 A successful Atlas Learned execution is not automatically a valid camera if it fails ConceptGhost quality criteria.
 
