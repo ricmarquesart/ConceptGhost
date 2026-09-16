@@ -57,18 +57,25 @@ def _load_config(config_path: Path | None) -> dict[str, Any]:
     return load_config(config_path)
 
 
+def _path_from_value(value: object) -> Path:
+    text = str(value)
+    if len(text) >= 4 and text[1:2] == ":" and text[2:4] == "\\\\":
+        text = text[:2] + text[2:].replace("\\\\", "\\")
+    return Path(text)
+
+
 def load_path_contract(config_path: Path | None) -> PathContract:
     config = _load_config(config_path)
     paths = config.get("paths", {}) if isinstance(config, dict) else {}
     if not isinstance(paths, dict):
         paths = {}
 
-    project_root = Path(
+    project_root = _path_from_value(
         os.environ.get("CONCEPTGHOST_PROJECT_ROOT")
         or paths.get("project_root")
         or DEFAULT_PROJECT_ROOT
     )
-    runtime_root = Path(
+    runtime_root = _path_from_value(
         os.environ.get("CONCEPTGHOST_RUNTIME_ROOT")
         or paths.get("runtime_root")
         or DEFAULT_RUNTIME_ROOT
@@ -92,7 +99,7 @@ def load_path_contract(config_path: Path | None) -> PathContract:
     ):
         value = paths.get(field_name)
         if value:
-            overrides[field_name] = Path(value)
+            overrides[field_name] = _path_from_value(value)
     return replace(contract, **overrides) if overrides else contract
 
 

@@ -28,6 +28,20 @@ class PathContractTests(unittest.TestCase):
             self.assertEqual(c.project_root, Path(r"G:\My Drive\ConceptGhost"))
             self.assertEqual(c.runtime_root, Path(r"C:\ConceptGhostRuntime"))
 
+    def test_fallback_loader_escaped_windows_paths_are_normalized(self):
+        with patch(
+            "scripts.cg_bootstrap.load_config",
+            return_value={
+                "paths": {
+                    "project_root": r"G:\\My Drive\\ConceptGhost",
+                    "runtime_root": r"C:\\ConceptGhostRuntime",
+                }
+            },
+        ):
+            c = load_path_contract(Path("unused.yml"))
+        self.assertEqual(c.project_root, Path(r"G:\My Drive\ConceptGhost"))
+        self.assertEqual(c.runtime_root, Path(r"C:\ConceptGhostRuntime"))
+
     def test_environment_overrides_are_available_for_tests(self):
         with patch.dict(
             "os.environ",
