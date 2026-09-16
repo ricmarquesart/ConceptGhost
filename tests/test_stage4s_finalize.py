@@ -7,6 +7,9 @@ from scripts.cg_paths import PathContract
 from scripts.cg_storage_migration import REQUIRED_CANONICAL_WORKFLOWS, build_migration_inventory, copy_project_items
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class Stage4SFinalizeTests(unittest.TestCase):
     def test_finalizer_writes_two_read_only_reports_and_preserves_sources(self):
         from scripts.cg_stage4s_finalize import write_stage4s_final_evidence
@@ -52,6 +55,20 @@ class Stage4SFinalizeTests(unittest.TestCase):
             self.assertFalse(cleanup["deletion_performed"])
             self.assertEqual(cleanup["verified_duplicate_count"], len(REQUIRED_CANONICAL_WORKFLOWS))
             self.assertTrue(all(path.exists() for path in source_paths))
+
+    def test_finalizer_bat_is_read_only_reports_to_drive_and_has_crlf(self):
+        bat = ROOT / "STAGE4S_FINALIZE.bat"
+        self.assertTrue(bat.is_file())
+        data = bat.read_bytes()
+        self.assertIn(b"\r\n", data)
+        self.assertNotIn(b"\n", data.replace(b"\r\n", b""))
+        text = data.decode("utf-8")
+        self.assertIn("cg_stage4s_finalize.py", text)
+        self.assertIn("G:\\My Drive\\ConceptGhost\\Reports\\StorageMigration", text)
+        self.assertIn("--evidence-dir", text)
+        self.assertNotIn("--delete", text.lower())
+        self.assertNotIn("--remove", text.lower())
+        self.assertIn("pause >nul", text.lower())
 
 
 if __name__ == "__main__":
