@@ -3,6 +3,8 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 set "ROOT=G:\My Drive\ConceptGhost\References\Upstream_Code"
 set "LOG=G:\My Drive\ConceptGhost\References\download_reference_code.log"
+set "LOCK_LOCAL=%~dp0..\references\SOURCE_LOCK.json"
+set "LOCK_DRIVE=G:\My Drive\ConceptGhost\References\SOURCE_LOCK.json"
 
 if not exist "G:\My Drive" (
   echo ERROR: G:\My Drive is not mounted.
@@ -18,9 +20,11 @@ if errorlevel 1 (
 )
 
 if not exist "%ROOT%" mkdir "%ROOT%"
+if exist "%LOCK_LOCAL%" copy /Y "%LOCK_LOCAL%" "%LOCK_DRIVE%" >nul 2>nul
 > "%LOG%" echo ConceptGhost public reference-code collector
 >>"%LOG%" echo Started: %DATE% %TIME%
 >>"%LOG%" echo This script installs NOTHING. It only downloads public source snapshots.
+>>"%LOG%" echo Source lock: %LOCK_LOCAL%
 >>"%LOG%" echo.
 
 echo ============================================================
@@ -36,11 +40,9 @@ call :clone_exact "ComfyUI-DepthAnythingV3" "https://github.com/PozzettiAndrea/C
 call :clone_exact "Depth-Anything-3" "https://github.com/ByteDance-Seed/Depth-Anything-3.git" "3d835ec1a5802d64a8b8b15f817a1ab54809bfe4"
 call :clone_exact "DA3-blender" "https://github.com/xy-gao/DA3-blender.git" "9d3d0836ead30dd79c5f9320f5b56c4b85073478"
 call :clone_exact "MoGe" "https://github.com/microsoft/MoGe.git" "74fbce054ebed49800de42d0ad0e83495065719a"
+call :clone_exact "ComfyUI-workflow-templates" "https://github.com/Comfy-Org/workflow_templates.git" "90c71fb78b3726392d010ff62a8e79e92d7296ad"
 call :clone_exact "fSpy" "https://github.com/stuffmatic/fSpy.git" "702189ec5acbbd2c8ba492db0e52ecb5fc908f5c"
 call :clone_exact "fSpy-Blender" "https://github.com/stuffmatic/fSpy-Blender.git" "eec40b085d45cc623fd379998d85b88de679d4b8"
-
-rem Official ComfyUI templates: sparse clone to avoid unnecessary repository content.
-call :clone_sparse "ComfyUI-workflow-templates" "https://github.com/Comfy-Org/workflow_templates.git" "90c71fb78b3726392d010ff62a8e79e92d7296ad" "templates"
 
 rem Autodesk MayaUSD: keep documentation and MayaUSD tests as implementation references.
 call :clone_sparse "maya-usd-reference" "https://github.com/Autodesk/maya-usd.git" "1245b4b90e56fd7ed41feca4f08dcc11bf222cd4" "doc test/lib/mayaUsd"
@@ -81,6 +83,7 @@ if exist "%DST%" (
     echo [SKIP] %NAME% non-git destination already exists>>"%LOG%"
     exit /b 0
   )
+  set "EXISTING_URL="
   for /f "delims=" %%R in ('git -C "%DST%" remote get-url origin 2^>nul') do set "EXISTING_URL=%%R"
   if /I not "!EXISTING_URL!"=="%URL%" (
     echo [SKIP] %NAME% existing checkout has different origin. Nothing overwritten.
