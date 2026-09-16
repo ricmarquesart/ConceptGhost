@@ -112,5 +112,83 @@ class MigrationInventoryTests(unittest.TestCase):
             self.assertFalse(any(x["relative_path"].endswith("secret.bin") for x in inventory["items"]))
 
 
+class CopyVerificationTests(unittest.TestCase):
+    def test_existing_identical_destination_is_reused(self):
+        from scripts.cg_storage_migration import copy_one_verified
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            src = root / "src.bin"
+            dst = root / "dest" / "dst.bin"
+            src.write_bytes(b"same")
+            dst.parent.mkdir(parents=True)
+            dst.write_bytes(b"same")
+            result = copy_one_verified(src, dst)
+            self.assertEqual(result["action"], "reuse-identical")
+            self.assertTrue(src.exists())
+
+    def test_existing_different_destination_blocks(self):
+        from scripts.cg_storage_migration import MigrationBlocked, copy_one_verified
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            src = root / "src.bin"
+            dst = root / "dst.bin"
+            src.write_bytes(b"source")
+            dst.write_bytes(b"different")
+            with self.assertRaises(MigrationBlocked):
+                copy_one_verified(src, dst)
+            self.assertTrue(src.exists())
+            self.assertEqual(dst.read_bytes(), b"different")
+
+    def test_copy_never_deletes_source_and_hashes_match(self):
+        from scripts.cg_storage_migration import copy_one_verified, sha256_file
+        with TemporaryDirectory() as td:
+            root = Path(td)
+            src = root / "src.bin"
+            dst = root / "nested" / "dst.bin"
+            src.write_bytes(b"project-data")
+            result = copy_one_verified(src, dst)
+            self.assertEqual(result["action"], "copied")
+            self.assertTrue(src.exists())
+            self.assertEqual(sha256_file(src), sha256_file(dst))
+
+    def test_whole_inventory_report_verifies_all_project_sources_remain(self):
+        from scripts.cg_storage_migration import copy_project_items
+        with TemporaryDirectory() as legacy_td, TemporaryDirectory() as project_td:
+            legacy = Path(legacy_td)
+            contract = PathContract.from_roots(Path(project_td), Path(project_td).parent / "runtime")
+            for rel, payload in [
+                ("docs/a.md", b"doc"),
+                ("manifests/a.json", b"manifest"),
+            ]:
+                path = legacy / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(payload)
+            inventory = build_migration_inventory(legacy, contract)
+            result = copy_project_items(inventory)
+            self.assertEqual(result["copied"], 2)
+            self.assertEqual(result["reused_identical"], 0)
+            self.assertEqual(result["blocked"], [])
+            self.assertEqual(len(result["source_files_remaining"]), 2)
+            self.assertTrue(result["all_verified"])
+            self.assertTrue(all(Path(p).exists() for p in result["source_files_remaining"]))
+
+    def test_blocked_inventory_performs_no_copy(self):
+        from scripts.cg_storage_migration import copy_project_items
+        with TemporaryDirectory() as legacy_td, TemporaryDirectory() as project_td:
+            legacy = Path(legacy_td)
+            contract = PathContract.from_roots(Path(project_td), Path(project_td).parent / "runtime")
+            known = legacy / "docs" / "a.md"
+            unknown = legacy / "mystery" / "x.bin"
+            known.parent.mkdir(parents=True)
+            unknown.parent.mkdir(parents=True)
+            known.write_bytes(b"doc")
+            unknown.write_bytes(b"unknown")
+            inventory = build_migration_inventory(legacy, contract)
+            result = copy_project_items(inventory)
+            self.assertFalse(result["all_verified"])
+            self.assertTrue(result["blocked"])
+            self.assertFalse((contract.project_root / "Documentation" / "Legacy_C_ConceptGhost" / "a.md").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
