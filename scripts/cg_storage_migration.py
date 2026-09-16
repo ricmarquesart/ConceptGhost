@@ -533,6 +533,129 @@ def cutover_check(
     }
 
 
+def build_cleanup_plan(copy_report: dict, cutover_report: dict) -> dict:
+    """Build an informational duplicate-removal plan; never delete anything."""
+    blockers: list[str] = []
+    if copy_report.get("status") != "verified" or not copy_report.get("all_verified"):
+        blockers.append("Copy report is not fully verified.")
+    if cutover_report.get("status") != "ready" or not cutover_report.get("safe"):
+        blockers.extend(cutover_report.get("blockers") or ["Cutover report is not safe."])
+
+    cutover_verified = {
+        str(item.get("relative_path")): item
+        for item in cutover_report.get("verified", [])
+        if item.get("verified")
+    }
+    verified_duplicates: list[dict] = []
+    excluded = 0
+    if not blockers:
+        for item in copy_report.get("items", []):
+            rel = str(item.get("relative_path", ""))
+            source_hash = item.get("source_sha256")
+            destination_hash = item.get("destination_sha256")
+            cutover_item = cutover_verified.get(rel)
+            cutover_hash_ok = bool(
+                cutover_item
+                and cutover_item.get("source_sha256") == source_hash
+                and cutover_item.get("destination_sha256") == destination_hash
+            )
+            if item.get("verified") and source_hash and source_hash == destination_hash and cutover_hash_ok:
+                verified_duplicates.append(
+                    {
+                        "relative_path": rel,
+                        "source": item.get("source"),
+                        "destination": item.get("destination"),
+                        "source_sha256": source_hash,
+                        "destination_sha256": destination_hash,
+                        "verified": True,
+                    }
+                )
+            else:
+                excluded += 1
+    else:
+        excluded = len(copy_report.get("items", []))
+
+    return {
+        "schema_version": 1,
+        "status": "ready" if not blockers else "blocked",
+        "safe_to_review": not blockers,
+        "blockers": blockers,
+        "verified_duplicates": verified_duplicates,
+        "verified_duplicate_count": len(verified_duplicates),
+        "excluded_unverified_count": excluded,
+        "requires_explicit_user_approval": True,
+        "deletion_performed": False,
+        "delete_command_available": False,
+        "note": "Informational only. Stage 4S never deletes legacy files.",
+    }
+
+
+def build_stage4s_cutover_report(inventory: dict, cutover_report: dict) -> dict:
+    """Summarize the final Stage 4S safety contract without mutating storage."""
+    unknown_paths = [
+        item.get("source") or item.get("relative_path")
+        for item in inventory.get("items", [])
+        if item.get("classification") == "UNKNOWN"
+    ]
+    grandfathered_runtime = [
+        {
+            "relative_path": item.get("relative_path"),
+            "source": item.get("source"),
+            "classification": item.get("classification"),
+        }
+        for item in inventory.get("items", [])
+        if item.get("classification") == "RUNTIME_GRANDFATHERED"
+    ]
+    hash_mismatches = [
+        item
+        for item in cutover_report.get("verified", [])
+        if not item.get("verified")
+        or (
+            item.get("source_sha256")
+            and item.get("destination_sha256")
+            and item.get("source_sha256") != item.get("destination_sha256")
+        )
+    ]
+    destination_conflicts = [
+        blocker
+        for blocker in cutover_report.get("blockers", [])
+        if "destination conflict" in str(blocker).lower()
+    ]
+    provenance = cutover_report.get("reference_provenance") or {}
+    provenance_ok = True
+    if provenance:
+        provenance_ok = bool(provenance.get("source_lock_exists") and provenance.get("upstream_code_exists"))
+    safe = bool(
+        cutover_report.get("safe")
+        and cutover_report.get("status") == "ready"
+        and not unknown_paths
+        and not hash_mismatches
+        and not destination_conflicts
+        and cutover_report.get("canonical_workflows_verified", True)
+        and provenance_ok
+    )
+    return {
+        "schema_version": 1,
+        "stage": "4S",
+        "safe": safe,
+        "status": "ready" if safe else "blocked",
+        "g_project_root": inventory.get("project_root"),
+        "c_runtime_root": inventory.get("runtime_root"),
+        "legacy_root": inventory.get("legacy_root"),
+        "project_file_count": cutover_report.get("project_file_count", 0),
+        "canonical_workflows_verified": bool(cutover_report.get("canonical_workflows_verified", True)),
+        "canonical_workflows": list(cutover_report.get("canonical_workflows", [])),
+        "reference_provenance": provenance,
+        "unknown_paths": unknown_paths,
+        "hash_mismatches": hash_mismatches,
+        "destination_conflicts": destination_conflicts,
+        "grandfathered_runtime": grandfathered_runtime,
+        "blockers": list(cutover_report.get("blockers", [])),
+        "legacy_sources_deleted": False,
+        "read_only": True,
+    }
+
+
 def _atomic_write_json(path: Path, value: object) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
