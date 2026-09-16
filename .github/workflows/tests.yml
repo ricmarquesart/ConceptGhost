@@ -42,7 +42,7 @@ jobs:
         run: python -m unittest discover -s tests -v
 
   release-package:
-    name: Stage 4S v0.4.5 package
+    name: Stage 4S v0.4.6 package
     needs: unit-tests
     runs-on: windows-latest
     steps:
@@ -61,25 +61,25 @@ jobs:
           New-Item -ItemType Directory -Force -Path release | Out-Null
           python -m compileall -q scripts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m unittest discover -s tests -v 2>&1 | Tee-Object -FilePath release/stage04s_v0.4.5_tests.log
+          python -m unittest discover -s tests -v 2>&1 | Tee-Object -FilePath release/stage04s_v0.4.6_tests.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build package and SHA256
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          git archive --format=zip --output=release/ConceptGhost_Stage04S_v0.4.5.zip HEAD
+          git archive --format=zip --output=release/ConceptGhost_Stage04S_v0.4.6.zip HEAD
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $hash = (Get-FileHash release/ConceptGhost_Stage04S_v0.4.5.zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  ConceptGhost_Stage04S_v0.4.5.zip" | Set-Content -Encoding ascii release/ConceptGhost_Stage04S_v0.4.5_SHA256.txt
+          $hash = (Get-FileHash release/ConceptGhost_Stage04S_v0.4.6.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ConceptGhost_Stage04S_v0.4.6.zip" | Set-Content -Encoding ascii release/ConceptGhost_Stage04S_v0.4.6_SHA256.txt
 
       - name: Extracted ZIP smoke test and CRLF validation
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $release = (Resolve-Path release).Path
-          $zip = Join-Path $release 'ConceptGhost_Stage04S_v0.4.5.zip'
-          $smoke = Join-Path $env:RUNNER_TEMP 'conceptghost-stage04s-v0.4.5-smoke'
+          $zip = Join-Path $release 'ConceptGhost_Stage04S_v0.4.6.zip'
+          $smoke = Join-Path $env:RUNNER_TEMP 'conceptghost-stage04s-v0.4.6-smoke'
           if (Test-Path $smoke) { Remove-Item -Recurse -Force $smoke }
           New-Item -ItemType Directory -Force -Path $smoke | Out-Null
           Expand-Archive -Path $zip -DestinationPath $smoke -Force
@@ -93,6 +93,7 @@ jobs:
             'scripts/cg_storage_migration.py',
             'scripts/cg_stage4s_finalize.py',
             'scripts/cg_storage.py',
+            'scripts/cg_find_python.ps1',
             'tests/test_stage4s_finalize.py',
             'tests/test_stage4s_packaging.py'
           )
@@ -112,7 +113,7 @@ jobs:
             }
           }
 
-          $smokeLog = Join-Path $release 'stage04s_v0.4.5_smoke.log'
+          $smokeLog = Join-Path $release 'stage04s_v0.4.6_smoke.log'
           Push-Location $smoke
           try {
             python -m compileall -q scripts
@@ -126,28 +127,29 @@ jobs:
 
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           @(
-            'ConceptGhost Stage 4S v0.4.5 validation',
+            'ConceptGhost Stage 4S v0.4.6 validation',
             '========================================',
             "Commit: $env:GITHUB_SHA",
             "ZIP SHA-256: $hash",
             'Required package files: PASS',
+            'Protected Python locator included: PASS',
             'Top-level BAT CRLF validation: PASS',
             'Full repository tests: PASS',
             'Extracted ZIP smoke tests: PASS',
             'Delete-capable Stage 4S action: NONE',
             'Operational rule: extract the ZIP on Google Drive and run BATs from the extracted package.',
             'Validation status: PASS'
-          ) | Set-Content -Encoding utf8 (Join-Path $release 'ConceptGhost_Stage04S_v0.4.5_validation.txt')
+          ) | Set-Content -Encoding utf8 (Join-Path $release 'ConceptGhost_Stage04S_v0.4.6_validation.txt')
 
       - name: Upload Stage 4S release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ConceptGhost_Stage04S_v0.4.5_READY
+          name: ConceptGhost_Stage04S_v0.4.6_READY
           path: |
-            release/ConceptGhost_Stage04S_v0.4.5.zip
-            release/ConceptGhost_Stage04S_v0.4.5_SHA256.txt
-            release/ConceptGhost_Stage04S_v0.4.5_validation.txt
-            release/stage04s_v0.4.5_tests.log
-            release/stage04s_v0.4.5_smoke.log
+            release/ConceptGhost_Stage04S_v0.4.6.zip
+            release/ConceptGhost_Stage04S_v0.4.6_SHA256.txt
+            release/ConceptGhost_Stage04S_v0.4.6_validation.txt
+            release/stage04s_v0.4.6_tests.log
+            release/stage04s_v0.4.6_smoke.log
           if-no-files-found: error
           retention-days: 30
