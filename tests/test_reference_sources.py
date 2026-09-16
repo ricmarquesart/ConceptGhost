@@ -48,6 +48,16 @@ class ReferenceSourceTests(unittest.TestCase):
         self.assertIn('call :clone_exact "ComfyUI-workflow-templates"', collector)
         self.assertNotIn('call :clone_sparse "ComfyUI-workflow-templates"', collector)
 
+    def test_collector_repairs_only_safe_stale_git_locks(self):
+        collector = COLLECTOR_PATH.read_text(encoding="utf-8", errors="ignore").lower()
+        self.assertIn("index.lock", collector)
+        self.assertIn("tasklist", collector)
+        self.assertIn("lastwritetime", collector)
+        self.assertIn("120", collector)
+        self.assertIn("rev-parse head", collector)
+        self.assertIn("lock is recent", collector)
+        self.assertIn("git.exe is active", collector)
+
     def test_verifier_is_read_only_and_checks_locked_commits(self):
         self.assertTrue(VERIFIER_BAT.is_file(), "tools/VERIFY_REFERENCE_CODE.bat must exist")
         self.assertTrue(VERIFIER_PY.is_file(), "scripts/cg_verify_references.py must exist")
