@@ -44,5 +44,5 @@ storage:
 safety:
   allow_external_downloads: false
   allow_external_writes: false
-  stage_limit: 3
-  note: Stage 3 protected Atlas camera-dependency gate. Existing shared packages/projects must not be replaced or upgraded.
+  stage_limit: 4
+  note: Stage 4 protected DA3 baseline gate. Existing shared packages/projects must not be replaced, upgraded, reset, or overwritten.

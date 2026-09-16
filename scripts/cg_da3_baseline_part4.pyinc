@@ -1,0 +1,195 @@
+def apply_da3_baseline(*, project_root: Path) -> dict[str, Any]:
+    project_root = Path(project_root)
+    plan_doc = plan_da3_baseline(project_root=project_root)
+    blockers = plan_doc["install_plan"]["blockers"]
+    if blockers:
+        raise RuntimeError("Stage 4 blocked:\n- " + "\n- ".join(blockers))
+
+    comfy = Path(plan_doc["comfyui_root"])
+    python_exe = Path(plan_doc["python_executable"])
+    target = Path(plan_doc["target"])
+    manifests = project_root / "manifests"
+    logs = project_root / "logs"
+    manifests.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
+
+    freeze_before_text, freeze_before = _pip_freeze(python_exe)
+    custom_before = snapshot_protected_custom_nodes(comfy / "custom_nodes")
+    workspace_root = Path(plan_doc["comfy_env_workspace"])
+    pixi_home = Path(plan_doc["comfy_env_pixi_home"])
+    project_workspace = Path(plan_doc["project_comfy_env_workspace"])
+    project_env = Path(plan_doc["project_isolated_env"])
+    runtime_link = Path(plan_doc["runtime_env_link"])
+    workspace_before = _snapshot_workspace_envs(workspace_root)
+    workspace_bytes_before = path_size(workspace_root)
+    project_workspace_bytes_before = path_size(project_workspace)
+    pixi_home_bytes_before = path_size(pixi_home)
+    model_dir = Path(plan_doc["model_dir"])
+    model_bytes_before = path_size(model_dir)
+    target_bytes_before = path_size(target)
+
+    atomic_write_text(manifests / "stage4_pip_freeze_before.txt", freeze_before_text)
+    atomic_write_json(manifests / "stage4_custom_nodes_before.json", custom_before)
+    atomic_write_json(manifests / "stage4_comfy_env_before.json", workspace_before)
+    atomic_write_json(manifests / "stage4_plan.json", plan_doc)
+
+    repo_action = plan_doc["install_plan"]["repo"]["action"]
+    if repo_action == "clone":
+        _clone_pinned(target)
+    elif repo_action != "reuse_existing_untouched":
+        raise RuntimeError(f"Unsupported/unsafe DA3 repo action: {repo_action}")
+
+    resolver_assessment = plan_doc.get("resolver_assessment") or {"safe": True, "allowed_additions": {}}
+    additions = resolver_assessment.get("allowed_additions") or {}
+    install_output = _install_additions(python_exe, additions)
+    bridge_probe = _bridge_import_probe(python_exe)
+    if not bridge_probe.get("ok"):
+        raise RuntimeError(f"Host bridge import probe failed: {bridge_probe}")
+
+    project_pixi_cache = project_root / "cache" / "pixi"
+    project_pixi_cache.mkdir(parents=True, exist_ok=True)
+    shadow = _prepare_shadow_comfyui(comfy_root=comfy, da3_root=target, project_root=project_root)
+    env = os.environ.copy()
+    env["COMFY_ENV_ROOT"] = str(project_workspace)
+    env["PIXI_CACHE_DIR"] = str(project_pixi_cache)
+    if not project_env.is_dir():
+        comfy_cmd = build_isolated_workspace_command(python_exe, shadow)
+        cp = _run(comfy_cmd, cwd=shadow, env=env, timeout=7200)
+        comfy_env_output = (cp.stdout or "") + ("\n" + cp.stderr if cp.stderr else "")
+        if cp.returncode != 0:
+            raise RuntimeError(f"Project-isolated comfy-env DA3 build failed:\n{comfy_env_output[-9000:]}")
+    else:
+        comfy_env_output = "Reused existing ConceptGhost-owned DA3 isolated environment."
+
+    worker_python = project_env / ("python.exe" if os.name == "nt" else "bin/python")
+    if not worker_python.is_file():
+        raise RuntimeError(f"DA3 isolated worker Python missing after build: {worker_python}")
+    runtime_link_action = _create_runtime_link(runtime_link, project_env)
+
+    reference_workflows = _copy_reference_workflows(target, project_root)
+
+    freeze_after_text, freeze_after = _pip_freeze(python_exe)
+    allowed_additions = set(additions)
+    freeze_delta = compare_freeze_maps(freeze_before, freeze_after, allowed_additions=allowed_additions)
+    custom_after = snapshot_protected_custom_nodes(comfy / "custom_nodes")
+    custom_delta = compare_protected_custom_node_snapshots(custom_before, custom_after)
+    workspace_after = _snapshot_workspace_envs(workspace_root)
+    workspace_delta = _compare_workspace_existing(workspace_before, workspace_after)
+    unexpected_workspace_additions = sorted(set(workspace_delta.get("added", {})) - {DA3_ENV_NAME})
+    workspace_delta["unexpected_added"] = unexpected_workspace_additions
+    workspace_delta["safe_existing"] = workspace_delta["safe_existing"] and not unexpected_workspace_additions
+
+    atomic_write_text(manifests / "stage4_pip_freeze_after.txt", freeze_after_text)
+    atomic_write_json(manifests / "stage4_environment_delta.json", freeze_delta)
+    atomic_write_json(manifests / "stage4_custom_nodes_after.json", custom_after)
+    atomic_write_json(manifests / "stage4_custom_nodes_delta.json", custom_delta)
+    atomic_write_json(manifests / "stage4_comfy_env_after.json", workspace_after)
+    atomic_write_json(manifests / "stage4_comfy_env_delta.json", workspace_delta)
+
+    safe = freeze_delta["safe"] and custom_delta["safe"] and workspace_delta["safe_existing"]
+    workspace_after_bytes = path_size(workspace_root)
+    project_workspace_after_bytes = path_size(project_workspace)
+    pixi_home_after_bytes = path_size(pixi_home)
+    pixi_home_added = max(0, pixi_home_after_bytes - pixi_home_bytes_before)
+    manifest = {
+        "schema_version": 1,
+        "stage": 4,
+        "timestamp": utc_now(),
+        "component": "DA3 Baseline",
+        "safe": safe,
+        "comfyui_root": str(comfy),
+        "python_executable": str(python_exe),
+        "target": str(target),
+        "repo_action": repo_action,
+        "repo_remote": _git_output(["config", "--get", "remote.origin.url"], target),
+        "repo_commit": _git_output(["rev-parse", "HEAD"], target),
+        "preexisting_repo": bool(plan_doc["repo_state"].get("exists")),
+        "bridge_additions": additions,
+        "bridge_import_probe": bridge_probe,
+        "freeze_delta": freeze_delta,
+        "protected_custom_nodes_delta": custom_delta,
+        "comfy_env_workspace_delta": workspace_delta,
+        "reference_workflows": reference_workflows,
+        "bytes_added_repo": max(0, path_size(target) - target_bytes_before),
+        "bytes_added_host_packages": max(0, _package_bytes(python_exe, list(additions)) if additions else 0),
+        "comfy_env_workspace": str(workspace_root),
+        "comfy_env_workspace_before_bytes": workspace_bytes_before,
+        "comfy_env_workspace_after_bytes": workspace_after_bytes,
+        "bytes_added_workspace": 0,
+        "project_comfy_env_workspace": str(project_workspace),
+        "project_comfy_env_workspace_before_bytes": project_workspace_bytes_before,
+        "project_comfy_env_workspace_after_bytes": project_workspace_after_bytes,
+        "project_comfy_env_workspace_added_bytes": max(0, project_workspace_after_bytes - project_workspace_bytes_before),
+        "project_isolated_env": str(project_env),
+        "runtime_env_link": str(runtime_link),
+        "runtime_env_link_action": runtime_link_action,
+        "comfy_env_pixi_home": str(pixi_home),
+        "comfy_env_pixi_home_before_bytes": pixi_home_bytes_before,
+        "comfy_env_pixi_home_after_bytes": pixi_home_after_bytes,
+        "bytes_added_pixi_home": pixi_home_added,
+        "project_pixi_cache": str(project_pixi_cache),
+        "project_pixi_cache_bytes": path_size(project_pixi_cache),
+        "model_dir": str(model_dir),
+        "model_dir_before_bytes": model_bytes_before,
+        "model_dir_after_bytes": path_size(model_dir),
+        "install_output_tail": install_output[-5000:],
+        "comfy_env_output_tail": comfy_env_output[-9000:],
+        "next_gate": (
+            "Restart ComfyUI, open C:\\ConceptGhost\\workflows\\reference\\da3\\advanced_3d.json, "
+            "load the same source image, run the unmodified upstream workflow, and confirm a colored PLY point cloud."
+        ),
+    }
+    atomic_write_json(manifests / "da3_baseline_install.json", manifest)
+    atomic_write_json(logs / "da3_baseline_report.json", manifest)
+    if not safe:
+        raise RuntimeError("Stage 4 compatibility guard detected unexpected drift. Do not continue; review manifest deltas.")
+    return manifest
+
+
+def _package_bytes(python_exe: Path, names: list[str]) -> int:
+    if not names:
+        return 0
+    code = r'''
+import importlib.metadata as md, json
+names=%r
+total=0
+for name in names:
+ try:
+  d=md.distribution(name)
+ except md.PackageNotFoundError:
+  continue
+ for f in (d.files or []):
+  p=d.locate_file(f)
+  try:
+   if p.is_file(): total += p.stat().st_size
+  except OSError: pass
+print(total)
+''' % names
+    cp = _run([str(python_exe), "-c", code], timeout=180)
+    if cp.returncode != 0 or not cp.stdout.strip():
+        return 0
+    try:
+        return int(cp.stdout.strip().splitlines()[-1])
+    except ValueError:
+        return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description="ConceptGhost Stage 4 DA3 baseline installer")
+    ap.add_argument("--project-root", default=str(DEFAULT_PROJECT_ROOT))
+    ap.add_argument("--apply", action="store_true")
+    args = ap.parse_args(argv)
+    try:
+        project_root = Path(args.project_root)
+        result = apply_da3_baseline(project_root=project_root) if args.apply else plan_da3_baseline(project_root=project_root)
+        if not args.apply:
+            persist_stage4_plan(result, project_root)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if result.get("status") != "error" else 2
+    except Exception as exc:
+        print(json.dumps({"status": "error", "stage": 4, "component": "DA3 Baseline", "error": str(exc)}, indent=2, ensure_ascii=False))
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

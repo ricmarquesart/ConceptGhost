@@ -185,6 +185,79 @@ def build_storage_snapshot(
             }
             attributable_c += added_cache
 
+    stage4_manifest = load_json(project_root / "manifests" / "da3_baseline_install.json", {})
+    if stage4_manifest:
+        repo_bytes = int(stage4_manifest.get("bytes_added_repo") or 0)
+        host_bytes = int(stage4_manifest.get("bytes_added_host_packages") or 0)
+        workspace_bytes = int(stage4_manifest.get("bytes_added_workspace") or 0)
+        pixi_home_bytes = int(stage4_manifest.get("bytes_added_pixi_home") or 0)
+
+        parts["da3_repo_added"] = {
+            "path": str(stage4_manifest.get("target") or "DA3 custom-node checkout"),
+            "exists": True,
+            "size_bytes": repo_bytes,
+            "classification": "related-external-attributable",
+            "note": "DA3 checkout bytes created by ConceptGhost; pre-existing upstream checkouts are preserved and not charged.",
+        }
+        parts["da3_host_packages_added"] = {
+            "path": str(stage4_manifest.get("python_executable") or "ComfyUI Python site-packages"),
+            "exists": True,
+            "size_bytes": host_bytes,
+            "classification": "related-external-attributable",
+            "note": "Additive host bridge packages approved by the Stage 4 resolver gate; existing package versions are preserved.",
+        }
+        parts["da3_comfy_env_workspace_added"] = {
+            "path": str(stage4_manifest.get("comfy_env_workspace") or "comfy-env workspace"),
+            "exists": True,
+            "size_bytes": workspace_bytes,
+            "classification": "related-external-attributable",
+            "note": "External default comfy-env workspace growth. Stage 4 normally keeps this at 0 bytes and adds only a runtime junction.",
+        }
+        parts["da3_comfy_env_pixi_home_added"] = {
+            "path": str(stage4_manifest.get("comfy_env_pixi_home") or "comfy-env pixi home"),
+            "exists": True,
+            "size_bytes": pixi_home_bytes,
+            "classification": "related-external-attributable",
+            "note": "Growth in comfy-env's pixi/bootstrap home attributable to Stage 4.",
+        }
+        isolated_workspace_text = stage4_manifest.get("project_comfy_env_workspace")
+        if isolated_workspace_text:
+            isolated_workspace = Path(isolated_workspace_text)
+            parts["da3_project_isolated_workspace"] = {
+                "path": str(isolated_workspace),
+                "exists": isolated_workspace.exists(),
+                "size_bytes": path_size(isolated_workspace),
+                "classification": "breakdown",
+                "note": "Project-owned DA3-only comfy-env workspace; already included in project_root and never double-counted.",
+            }
+        attributable_c += repo_bytes + host_bytes + workspace_bytes + pixi_home_bytes
+
+        model_text = stage4_manifest.get("model_dir")
+        if model_text:
+            model_path = Path(model_text)
+            before_models = int(stage4_manifest.get("model_dir_before_bytes") or 0)
+            current_models = path_size(model_path)
+            added_models = max(0, current_models - before_models)
+            parts["da3_models_added"] = {
+                "path": str(model_path),
+                "exists": model_path.exists(),
+                "size_bytes": added_models,
+                "classification": "related-external-attributable",
+                "note": "Only DA3 model-folder growth above the Stage 4 pre-run baseline is attributed to ConceptGhost.",
+            }
+            attributable_c += added_models
+
+        pixi_cache_text = stage4_manifest.get("project_pixi_cache")
+        if pixi_cache_text:
+            pixi_cache_path = Path(pixi_cache_text)
+            parts["da3_project_pixi_cache"] = {
+                "path": str(pixi_cache_path),
+                "exists": pixi_cache_path.exists(),
+                "size_bytes": path_size(pixi_cache_path),
+                "classification": "breakdown",
+                "note": "Project-owned pixi cache; already included in project_root and therefore not double-counted.",
+            }
+
     atlas_manifest = load_json(project_root / "manifests" / "atlas_core_install.json", {})
     if atlas_manifest and not atlas_manifest.get("preexisting", True):
         target_text = atlas_manifest.get("target")
@@ -243,7 +316,13 @@ def format_txt(snapshot: dict[str, Any], history: list[dict[str, Any]]) -> str:
         "C: COMPONENTS",
         "-" * 78,
     ]
-    for key in ["project_root", "project_output", "project_cache", "project_logs", "project_manifests", "atlas_camera", "atlas_camera_deps_added", "geocalib_model_cache_added", "da3_models", "moge_models"]:
+    for key in [
+        "project_root", "project_output", "project_cache", "project_logs", "project_manifests",
+        "atlas_camera", "atlas_camera_deps_added", "geocalib_model_cache_added",
+        "da3_repo_added", "da3_host_packages_added", "da3_comfy_env_workspace_added",
+        "da3_comfy_env_pixi_home_added", "da3_project_isolated_workspace", "da3_project_pixi_cache", "da3_models_added",
+        "da3_models", "moge_models"
+    ]:
         rec = p.get(key)
         if rec:
             lines.append(f"{key:24} {human_bytes(rec['size_bytes']):>12}  {rec['path']}")

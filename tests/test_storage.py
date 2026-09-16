@@ -60,6 +60,7 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(snap["components"]["drive_logs"]["size_bytes"], 13)
             self.assertEqual(snap["components"]["drive_tests"]["size_bytes"], 17)
 
+
     def test_stage3_manifest_counts_only_added_packages_and_new_geocalib_cache(self):
         with tempfile.TemporaryDirectory() as td:
             base = Path(td)
@@ -86,6 +87,50 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(snap["components"]["geocalib_model_cache_added"]["size_bytes"], 40)
             base_project = snap["components"]["project_root"]["size_bytes"]
             self.assertEqual(snap["project_attributable_c_bytes"], base_project + 70)
+
+    def test_stage4_manifest_counts_only_managed_da3_bytes_and_model_growth(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            project = base / "ConceptGhost"
+            drive = base / "Drive" / "ConceptGhost"
+            comfy = base / "ComfyUI"
+            (project / "manifests").mkdir(parents=True)
+            drive.mkdir(parents=True)
+            (comfy / "main.py").parent.mkdir(parents=True)
+            (comfy / "main.py").write_text("# marker", encoding="utf-8")
+            inventory = {"comfyui": {"selected": {"root": str(comfy)}}}
+            (project / "manifests" / "preinstall_inventory.json").write_text(json.dumps(inventory), encoding="utf-8")
+
+            model_dir = comfy / "models" / "depthanything3"
+            model_dir.mkdir(parents=True)
+            (model_dir / "da3_large.safetensors").write_bytes(b"m" * 80)
+
+            isolated_workspace = project / "cache" / "da3-comfy-env"
+            isolated_workspace.mkdir(parents=True)
+            (isolated_workspace / "payload.bin").write_bytes(b"w" * 40)
+
+            manifest = {
+                "preexisting_repo": False,
+                "target": str(comfy / "custom_nodes" / "ComfyUI-DepthAnythingV3"),
+                "bytes_added_repo": 20,
+                "bytes_added_host_packages": 30,
+                "bytes_added_workspace": 0,
+                "project_comfy_env_workspace": str(isolated_workspace),
+                "bytes_added_pixi_home": 10,
+                "model_dir": str(model_dir),
+                "model_dir_before_bytes": 5,
+                "project_pixi_cache": str(project / "cache" / "pixi"),
+            }
+            (project / "manifests" / "da3_baseline_install.json").write_text(json.dumps(manifest), encoding="utf-8")
+            snap = build_storage_snapshot(project_root=project, drive_root=drive, reason="stage4")
+            self.assertEqual(snap["components"]["da3_repo_added"]["size_bytes"], 20)
+            self.assertEqual(snap["components"]["da3_host_packages_added"]["size_bytes"], 30)
+            self.assertEqual(snap["components"]["da3_comfy_env_workspace_added"]["size_bytes"], 0)
+            self.assertEqual(snap["components"]["da3_project_isolated_workspace"]["size_bytes"], 40)
+            self.assertEqual(snap["components"]["da3_comfy_env_pixi_home_added"]["size_bytes"], 10)
+            self.assertEqual(snap["components"]["da3_models_added"]["size_bytes"], 75)
+            base_project = snap["components"]["project_root"]["size_bytes"]
+            self.assertEqual(snap["project_attributable_c_bytes"], base_project + 20 + 30 + 10 + 75)
 
 
 if __name__ == "__main__":

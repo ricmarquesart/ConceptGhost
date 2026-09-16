@@ -25,8 +25,9 @@ class BatReportingTests(unittest.TestCase):
         self.assertIn("command_output.log", bat)
         self.assertIn("%temp%", bat)
 
+
     def test_all_operational_bats_refresh_storage_tracker(self):
-        for name in ["INVENTORY.bat", "SETUP.bat", "UNINSTALL.bat", "ATLAS_CORE.bat", "ATLAS_CAMERA_DEPS.bat", "TEST.bat"]:
+        for name in ["INVENTORY.bat", "SETUP.bat", "UNINSTALL.bat", "ATLAS_CORE.bat", "ATLAS_CAMERA_DEPS.bat", "DA3_BASELINE.bat", "TEST.bat"]:
             bat = self._text(name)
             self.assertIn("cg_storage.py\"", bat, name)
             self.assertIn(r"g:\my drive\conceptghost", bat, name)
@@ -45,6 +46,9 @@ class BatReportingTests(unittest.TestCase):
         self.assertIn(r"reports\uninstall", bat)
         self.assertIn("command_output.log", bat)
 
+
+if __name__ == "__main__":
+    unittest.main()
 
 class Stage2BatTests(unittest.TestCase):
     @classmethod
@@ -83,5 +87,18 @@ class Stage3BatTests(unittest.TestCase):
         self.assertIn("--apply", bat)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class Stage4BatTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.root = Path(__file__).resolve().parents[1]
+
+    def test_da3_baseline_bat_is_dry_run_by_default_and_reports_to_drive(self):
+        bat = (self.root / "DA3_BASELINE.bat").read_text(encoding="utf-8", errors="ignore").lower()
+        self.assertIn("cg_da3_baseline.py", bat)
+        self.assertIn(r"reports\da3baseline", bat)
+        self.assertIn(r"tests\compatibility", bat)
+        self.assertIn("does not replace", bat)
+        self.assertIn("--apply", bat)
+        self.assertIn("press any key to close", bat)
+        self.assertIn("pause >nul", bat)
+        self.assertIn("cg_storage.py", bat)

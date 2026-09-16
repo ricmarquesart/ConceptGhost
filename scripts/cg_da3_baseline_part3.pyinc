@@ -1,0 +1,72 @@
+def plan_da3_baseline(*, project_root: Path) -> dict[str, Any]:
+    project_root = Path(project_root)
+    comfy, python_exe = _resolve_environment(project_root)
+    target = comfy / "custom_nodes" / DA3_DIRNAME
+    probe = _probe_packages(python_exe)
+    repo_state = inspect_repo(target)
+    plan = build_install_plan_from_probe(probe, repo_state)
+    resolver = None
+    resolver_output = None
+    if not plan["blockers"] and plan["bridge_requirements"]:
+        with tempfile.TemporaryDirectory(prefix="cg_da3_resolver_") as td:
+            report, resolver_output, rc = _resolver_preflight(python_exe, plan["bridge_requirements"], Path(td))
+        installed = _installed_versions(python_exe)
+        resolver = assess_resolver_report(installed, report)
+        resolver["returncode"] = rc
+        if rc != 0:
+            plan["blockers"].append("pip resolver dry-run failed; no installation will be attempted.")
+        elif not resolver["safe"]:
+            plan["blockers"].append("pip resolver proposes changing an existing/protected package; Stage 4 is blocked.")
+    workspace_root, pixi_home = _workspace_paths()
+    project_env, runtime_link = isolated_env_paths(project_root, workspace_root)
+    link_state = _runtime_link_state(runtime_link, project_env)
+    if link_state.get("action") == "blocked_existing_path":
+        plan["blockers"].append(
+            "The expected DA3 runtime environment path already exists and is not ConceptGhost-owned; Stage 4 will not overwrite it."
+        )
+    return {
+        "schema_version": 1,
+        "status": "error" if plan["blockers"] else "dry-run",
+        "stage": 4,
+        "component": "DA3 Baseline",
+        "comfyui_root": str(comfy),
+        "python_executable": str(python_exe),
+        "target": str(target),
+        "probe": probe,
+        "repo_state": repo_state,
+        "install_plan": plan,
+        "resolver_assessment": resolver,
+        "resolver_output_tail": resolver_output[-5000:] if resolver_output else None,
+        "comfy_env_workspace": str(workspace_root),
+        "comfy_env_pixi_home": str(pixi_home),
+        "project_comfy_env_workspace": str(project_root / "cache" / "da3-comfy-env"),
+        "project_isolated_env": str(project_env),
+        "runtime_env_link": str(runtime_link),
+        "runtime_env_link_state": link_state,
+        "shadow_comfyui": str(project_root / "cache" / "da3-shadow-comfyui"),
+        "project_pixi_cache": str(project_root / "cache" / "pixi"),
+        "model_dir": str(comfy / "models" / "depthanything3"),
+        "note": (
+            "Stage 4 preserves all existing package versions and all other custom nodes. "
+            "Because comfy-env 0.3.89 installs workspaces globally, ConceptGhost builds a DA3-only shadow workspace under C:\\ConceptGhost and adds only a runtime junction; no existing comfy-env environment is rebuilt. Model weights download only when the upstream workflow runs."
+        ),
+    }
+
+
+
+def compute_storage_deltas(*, workspace_before: int, workspace_after: int, pixi_home_before: int, pixi_home_after: int) -> dict[str, int]:
+    """Return non-negative Stage 4 external storage growth for ledger attribution."""
+    return {
+        "bytes_added_workspace": max(0, int(workspace_after) - int(workspace_before)),
+        "bytes_added_pixi_home": max(0, int(pixi_home_after) - int(pixi_home_before)),
+    }
+
+
+def persist_stage4_plan(plan_doc: dict[str, Any], project_root: Path) -> dict[str, str]:
+    """Persist a dry-run/apply plan so BAT/Drive reporting has durable evidence."""
+    project_root = Path(project_root)
+    manifest_path = project_root / "manifests" / "stage4_plan.json"
+    log_path = project_root / "logs" / "da3_baseline_plan.json"
+    atomic_write_json(manifest_path, plan_doc)
+    atomic_write_json(log_path, plan_doc)
+    return {"manifest": str(manifest_path), "log": str(log_path)}
