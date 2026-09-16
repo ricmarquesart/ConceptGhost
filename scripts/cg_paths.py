@@ -174,14 +174,21 @@ def _load_json_if_file(path: Path) -> dict[str, Any]:
         return {}
 
 
-def resolve_da3_runtime_layout(contract: PathContract) -> dict[str, Any]:
+def resolve_da3_runtime_layout(
+    contract: PathContract,
+    legacy_project_root: Path | None = None,
+) -> dict[str, Any]:
     """Reuse a materialized legacy DA3 worker; otherwise use C: runtime root.
 
-    The migrated Stage 4 install manifest is the authority. A legacy worker is
-    grandfathered only when both its workspace and isolated environment still
-    exist. No rebuild is triggered merely to make paths look cleaner.
+    The migrated Stage 4 install manifest is preferred. Before the Stage 4S
+    copy gate has run, the legacy C: install manifest is also accepted as the
+    authority. A worker is grandfathered only when both its workspace and
+    isolated environment still exist, so storage cleanup never triggers a
+    needless environment rebuild.
     """
-    manifest_path = contract.manifests / "da3_baseline_install.json"
+    canonical_manifest = contract.manifests / "da3_baseline_install.json"
+    legacy_manifest = Path(legacy_project_root or LEGACY_PROJECT_ROOT) / "manifests" / "da3_baseline_install.json"
+    manifest_path = canonical_manifest if canonical_manifest.is_file() else legacy_manifest
     manifest = _load_json_if_file(manifest_path)
     workspace_text = manifest.get("project_comfy_env_workspace")
     env_text = manifest.get("project_isolated_env")
