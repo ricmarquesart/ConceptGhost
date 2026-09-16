@@ -1,7 +1,7 @@
 # ConceptGhost — Runtime Behavior Policy
 
 Date: 2026-09-16
-Status: Active design policy — camera Auto, geometry selection, and Compare Both failure behavior approved
+Status: Active design policy — camera Auto, geometry selection, Compare Both failure behavior, and preset scope approved
 Project: ConceptGhost
 
 ## Purpose
@@ -234,7 +234,89 @@ maya_ghost.authoritative = false
 
 The user-facing summary should say, in plain language, that the primary engine failed, the comparison engine succeeded, and a new explicit run with the successful engine is required before publishing it as the authoritative Maya Ghost.
 
-## 6. No hidden success substitution
+## 6. Preset scope — approved V1 behavior
+
+V1 presets control **quality, speed, resource use, and output density**. They do not choose the camera solver, geometry engine, or comparison mode on the user's behalf.
+
+User-facing presets are:
+
+- `Fast Test`
+- `Balanced` — default for normal work
+- `Max Reference`
+
+Presets may adjust engine-specific and shared parameters such as:
+
+- input/processing resolution where supported;
+- point-cloud sampling or density;
+- confidence/validity thresholds;
+- edge and noise filtering;
+- diagnostic/output density;
+- memory/runtime trade-offs;
+- other validated quality-versus-speed parameters.
+
+Presets must **not** silently change:
+
+```text
+camera.requested_mode
+geometry.requested_engine
+geometry.compare_both
+```
+
+Examples:
+
+```text
+Preset = Fast Test
+Geometry = DA3
+Camera = Auto
+
+-> may use lower-cost DA3/resolution/filter settings
+-> still uses DA3
+-> Camera remains Auto
+```
+
+```text
+Preset = Max Reference
+Geometry = MoGe
+Compare Both = OFF
+
+-> may increase quality/density/cost settings
+-> still uses MoGe only
+-> does not enable DA3 or Compare Both
+```
+
+### 6.1 Reproducibility
+
+The manifest must record both the preset name and the resolved parameter values used by that preset. A preset label alone is not sufficient for audit or reproduction because preset internals may evolve between ConceptGhost versions.
+
+At minimum:
+
+```text
+preset.name
+preset.version
+preset.resolved_parameters
+```
+
+Any advanced user override must also be recorded so a run can distinguish:
+
+```text
+Balanced default
+```
+
+from:
+
+```text
+Balanced + manual override
+```
+
+### 6.2 Design principle
+
+Preset answers: **How much quality/cost do I want?**
+
+Camera/Geometry/Compare Both answer: **What processing path do I want?**
+
+These responsibilities remain separate in V1.
+
+## 7. No hidden success substitution
 
 A successful Atlas Learned execution is not automatically a valid camera if it fails ConceptGhost quality criteria.
 
