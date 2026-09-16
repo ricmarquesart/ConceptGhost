@@ -1,7 +1,7 @@
 # ConceptGhost Master Workflow — UI Layout Policy
 
 Date: 2026-09-16
-Status: Approved visual direction, field guidance, Advanced collapse, mandatory Maya Ghost, and Max Reference default
+Status: Approved visual direction, field guidance, Advanced collapse, mandatory Maya Ghost, Max Reference default, and mandatory canonical evidence
 Project: ConceptGhost
 
 > Runtime behavior is governed by `2026-09-16-conceptghost-runtime-behavior-policy.md`.
@@ -26,7 +26,9 @@ Normal user controls:
 - Compare Both;
 - optional-output controls where justified.
 
-There is **no Maya Ghost enable/disable control** in the production-facing Master. Maya Ghost is the mandatory primary product and is automatically attempted after the mandatory upstream gates pass.
+There is **no Maya Ghost enable/disable control** in the production-facing Master.
+
+There is also **no toggle to disable the Canonical Point Cloud, manifest, reprojection report, or reprojection overlay**. These are core evidence/output artifacts generated automatically by a valid run.
 
 The initial production defaults are:
 
@@ -49,9 +51,15 @@ Contains DA3 and MoGe. Normal mode runs one engine. Compare Both runs both indep
 
 Converts engine-native evidence into standardized CameraBundle, GeometryBundle, CanonicalGeometry, and SceneBundle-compatible data.
 
+The authoritative normalized geometry is referred to in the user-facing documentation as the **Canonical Point Cloud**.
+
 ### 05 — Reprojection / Quality Gate
 
 Validates canonical geometry against the selected Atlas camera before Maya acceptance.
+
+Core evidence is saved automatically:
+- reprojection report;
+- reprojection overlay.
 
 ### 06 — Run Result
 
@@ -59,11 +67,21 @@ Shows PASS / PARTIAL / FAIL and makes Maya Ghost readiness visually obvious.
 
 ### 07 — Standard Outputs
 
-Shows run-bundle paths for source, camera, diagnostics, geometry, Maya, compare, logs, and manifest.
+Shows run-bundle paths for:
+- source;
+- camera;
+- canonical geometry;
+- essential diagnostics;
+- Maya;
+- compare outputs when used;
+- logs;
+- manifest.
 
-### 08 — Optional Meshes
+### 08 — Optional Meshes / Extra Diagnostics
 
 Atlas relief, MoGe mesh, and DA3 mesh remain optional and outside the mandatory success path.
+
+Heavy/non-essential diagnostic exports may also be optional. An `Extra Diagnostics` control, if implemented, affects only those additional artifacts and never disables required evidence.
 
 ## Readability rules
 
@@ -85,9 +103,14 @@ Keep visible:
 - camera mode;
 - geometry engine;
 - Compare Both;
-- genuinely optional output controls.
+- genuinely optional controls such as optional meshes or extra diagnostics.
 
-Do **not** expose Maya Ghost as an optional toggle.
+Do **not** expose toggles for:
+- Maya Ghost;
+- Canonical Point Cloud;
+- manifest;
+- reprojection report;
+- reprojection overlay.
 
 ### Advanced groups
 
@@ -128,6 +151,12 @@ The UI communicates:
 
 “Highest quality” means highest **validated stable reference quality**. The UI must not imply that numerically maximizing every parameter always improves results.
 
+## Local-processing clarity
+
+Normal production use must not imply any cloud dependency. The source image, camera solve, geometry, canonicalization, reprojection, and Maya Ghost path are intended to execute locally.
+
+Google Drive synchronization used for project documentation/tools is separate from runtime image processing.
+
 ## Approved visual direction
 
 ```text
@@ -137,6 +166,7 @@ Master Input                  Geometry Router                    Run Result
 Atlas Camera       ->         Normalizer              ->         Standard Outputs
                               Reprojection Gate                   Maya Ghost (mandatory)
                                                                    Optional Meshes
+                                                                   Extra Diagnostics
 ```
 
 ## Related documents
