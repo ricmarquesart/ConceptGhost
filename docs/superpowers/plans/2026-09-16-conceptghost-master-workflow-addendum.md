@@ -1,7 +1,7 @@
 # ConceptGhost Roadmap Addendum — Master Workflow Integration
 
 Date: 2026-09-16
-Status: Approved integration policy; updated with Stage 7 refinement research and post-V1 Stage 15 technology watch
+Status: Approved integration policy; updated through Stage 10 design plus post-V1 Stage 15 technology watch
 
 This addendum clarifies how Stages 3-15 converge into one final user-facing workflow plus a post-V1 research stage.
 
@@ -16,8 +16,6 @@ docs/superpowers/specs/2026-09-16-conceptghost-master-workflow-ui-layout.md
 docs/superpowers/research/2026-09-16-conceptghost-consolidated-research-and-implementation-guidance.md
 ```
 
-The consolidated research/guidance document is a required handoff to the programming chat. It contains current Stage 7 refinements, parameter-study guidance, alternative approaches, failure fallbacks, and future engine research.
-
 Before Stage 8 Maya/export work, also read:
 
 ```text
@@ -31,13 +29,15 @@ Before Stage 9 benchmark/preset work, also read:
 docs/superpowers/specs/2026-09-16-conceptghost-stage9-benchmark-preset-design.md
 ```
 
-Stage 8 implementation must follow the approved Maya handoff architecture: `.ma` is the artist entry point; the dense Canonical Point Cloud lives in the companion `.usda` as `UsdGeomPoints` and is displayed in Maya through a MayaUSD proxy/stage; `.ply` preserves a portable canonical copy; `.fbx` carries the matched camera and validated optional meshes through a separate Maya Worker.
+Before Stage 10 Atlas relief-mesh work, also read:
+
+```text
+docs/superpowers/specs/2026-09-16-conceptghost-stage10-atlas-relief-mesh-design.md
+```
 
 If older documentation conflicts with these files, stop and reconcile the conflict before implementation.
 
-## Stage convergence
-
-### Stages 3-5 — public baselines first
+## Stages 3-5 — public baselines first
 
 - Stage 3: Atlas camera baseline.
 - Stage 4: DA3 upstream/public baseline unchanged.
@@ -45,9 +45,9 @@ If older documentation conflicts with these files, stop and reconcile the confli
 
 Do not hide an upstream failure behind ConceptGhost adapters.
 
-### Stage 6 — Master Alpha
+## Stage 6 — Master Alpha
 
-Create one `ConceptGhost_Master.json` with:
+One `ConceptGhost_Master.json` with:
 - one source image;
 - Camera = Auto / Atlas Learned / Atlas VP;
 - Geometry = DA3 / MoGe;
@@ -65,54 +65,36 @@ Compare Both = OFF
 
 No Geometry Auto.
 
-### Stage 7 — canonical integration and camera-conditioned refinement study
+## Stage 7 — canonical integration and refinement
 
-Create:
-- CameraBundle;
-- GeometryEvidence / GeometryBundle;
-- CanonicalGeometry;
-- SceneBundle;
-- explicit coordinate/scale conventions;
-- Integration Consistency Gate;
-- Geometry Health Gate.
+Create CameraBundle, GeometryEvidence/GeometryBundle, CanonicalGeometry, SceneBundle, explicit coordinate/scale conventions, Integration Consistency Gate, and Geometry Health Gate.
+
+Authority:
+
+```text
+Camera/projection = Atlas
+Depth/shape evidence = DA3 or MoGe
+Color = original image
+Final 3D space = ConceptGhost Canonical Scene
+```
 
 Canonical convention:
 
 ```text
-Right-handed
+right-handed
 Y-Up
-+X = right
-+Y = up
--Z = camera forward
+camera local optical axis = -Z
 ```
 
-Authority:
-- Atlas = camera/projection;
-- DA3 or MoGe = depth/shape evidence;
-- original image = color;
-- ConceptGhost Canonical Scene = final 3D space.
+Evaluate, without hiding baselines:
+- DA3 current/public baseline vs Atlas-conditioned DA3 official API where safe;
+- MoGe Auto FOV vs Atlas-FOV.
 
-Stage 7 must preserve unchanged public/native baselines first, then evaluate refinements independently:
+Reprojection validates integration consistency, not true depth accuracy.
 
-```text
-DA3:
-A. public/current baseline
-B. Atlas-conditioned official DA3 API using supplied intrinsics/extrinsics where safe
+## Stage 8 — first complete Maya artist handoff
 
-MoGe:
-A. auto-FOV baseline
-B. Atlas-FOV conditioned inference
-```
-
-Important:
-- reprojection validates integration consistency, not true depth accuracy;
-- Geometry Health is a separate gate;
-- native evidence remains preserved separately from canonical/cleaned output;
-- do not freeze parameter values from documentation or YouTube alone.
-
-### Stage 8 — first complete artist handoff
-
-Generate the Maya Ghost and all standard companion formats together:
+Generate together:
 
 ```text
 ConceptGhost_<scene>_Ghost.ma
@@ -121,39 +103,24 @@ ConceptGhost_<scene>_Ghost.fbx
 pointcloud.ply
 ```
 
-These are complementary outputs, not mutually exclusive choices.
-
-- `.ma` = normal Maya artist entry point;
-- `.usda` = primary technical dense-Ghost representation;
-- `.fbx` = camera/mesh portability companion;
-- `.ply` = portable Canonical Point Cloud.
-
-Respect FBX point-cloud limitations.
-
-Approved Stage 8 implementation structure:
+Roles:
 
 ```text
-.ma
-├── native matchedCamera_LOCKED
-├── artistCamera
-├── sourcePlate using run-local source image
-└── MayaUSD proxy/stage
-        ↓
-      .usda
-        ↓
-   UsdGeomPoints / Canonical Point Cloud
-
-.fbx = matched camera + validated optional meshes
-.ply = portable Canonical Point Cloud
+.ma   = artist entry point
+.usda = dense Ghost carrier via UsdGeomPoints
+.fbx  = camera + validated optional meshes
+.ply  = portable Canonical Point Cloud
 ```
 
-Maya/FBX generation must run through a separate Maya Worker rather than importing Maya runtime dependencies into the protected ComfyUI Python process. Prefer relative asset paths and require a move-the-whole-run-folder portability test.
+The `.ma` contains native matched camera, artist camera, source plate, and MayaUSD proxy/stage. Dense points live in the companion `.usda`.
 
-### Stage 9 — controlled A/B benchmark and parameter freeze
+Maya/FBX generation uses a separate Maya Worker. Prefer relative paths and test moving the entire run folder.
 
-Benchmark images are chosen by the user for each benchmark session. ConceptGhost does not define a permanent fixed corpus, does not automatically add public images, and does not require a fixed image count.
+## Stage 9 — benchmark and preset freeze
 
-Within one benchmark session, every candidate must use the exact same user-selected source images.
+Benchmark images are chosen by the user for each benchmark session. No permanent fixed corpus and no automatic public-image selection.
+
+Within a session, every candidate uses the same selected images.
 
 Compare:
 
@@ -164,26 +131,21 @@ MoGe Auto FOV
 MoGe Atlas FOV
 ```
 
-All candidates pass through the same Stage 7 canonical/gate logic and Stage 8 Maya Ghost export before artist review.
+Candidates must pass Stage 7/8 technical gates before artist comparison.
 
-A technically invalid candidate is marked `TECHNICALLY_INVALID`; it is not merely ranked lower.
+Automatic metrics are evidence only. Final practical usefulness is decided by the user in Maya, including:
+- matched-camera agreement;
+- foreground/background separation;
+- ground continuity;
+- architecture/large planes;
+- thin structures;
+- streamers;
+- noise;
+- occlusion boundaries;
+- off-camera usefulness;
+- blockout usefulness.
 
-Automatic metrics are evidence only. The final practical-quality decision belongs to the user after Maya review, especially:
-
-```text
-matched-camera agreement
-foreground/background separation
-ground continuity
-architecture / large planes
-thin structures
-streamers
-noise
-occlusion boundaries
-off-camera usefulness
-blockout usefulness
-```
-
-Presets are frozen per engine and versioned:
+Freeze versioned per-engine presets:
 
 ```text
 DA3 Fast Test v1
@@ -195,20 +157,9 @@ MoGe Balanced v1
 MoGe Max Reference v1
 ```
 
-A user-facing preset name may resolve to different engine-specific numeric parameters.
+Parameter study is progressive, not brute-force.
 
-Parameter study is progressive, not brute force:
-
-```text
-processing resolution / model mode
--> camera conditioning
--> confidence policy
--> edge/discontinuity filtering
--> point density
--> only then secondary cleanup parameters
-```
-
-Stage 9 must produce evidence-based decisions for:
+Stage 9 decides:
 
 ```text
 DA3 Atlas conditioning -> adopt | experimental | reject
@@ -219,25 +170,77 @@ point density
 processing resolution
 ```
 
-Also retain Depth Anything V2 Metric Outdoor as a low-cost/reference exterior baseline because Atlas itself reverted to it after a four-scene exterior A/B. Do not add it to the main V1 selector without evidence.
+Depth Anything V2 Metric Outdoor may remain a low-cost exterior reference baseline, not a hidden V1 engine switch.
 
-Future Stage 15 engines reuse the Stage 9 benchmark framework, again with user-selected images.
+## Stage 10 — Atlas relief mesh
 
-### Stages 10-12 — optional meshes
+Stage 10 is an OPTIONAL E1 branch. It does not replace the Canonical Point Cloud.
 
-- Stage 10: Atlas relief mesh.
-- Stage 11: MoGe mesh.
-- Stage 12: DA3 mesh.
+Reuse the pinned Atlas relief implementation first:
 
-Classify each mesh:
+```text
+mikejamesvfx/atlas-camera
+commit 9f9ff4511154769aa2f8c0bd40387278a69b0078
+```
+
+Preserve:
+
+```text
+Atlas Native Relief
+```
+
+before creating derived variants:
+
+```text
+repair
+retopo
+decimation
+```
+
+Atlas deliberately tears triangles at depth discontinuities to avoid false foreground/background sheets. Do not automatically repair intentional occlusion tears.
+
+Preserve projective UVs. If topology changes, regenerate projective UVs from the solved camera using the Atlas export-only pattern.
+
+Optional cleanup dependencies must obey ConceptGhost's protected-environment policy.
+
+Classify each result:
 
 ```text
 useful | limited | reject
 ```
 
-Optional mesh failure does not invalidate a valid canonical Ghost.
+- `useful`: genuinely helps blockout;
+- `limited`: useful mainly near the solved camera / known 2.5D limits;
+- `reject`: misleading geometry, preserved only as evidence.
 
-### Stage 13 — final packaging
+Maya integration:
+
+```text
+CG_OPTIONAL_MESH
+└── Atlas_Relief
+```
+
+A rejected/failed Atlas relief must never invalidate:
+
+```text
+maya_ghost_ready
+Canonical Point Cloud
+matched camera
+.usda Ghost
+.ply point cloud
+```
+
+Read the Stage 10 spec for canonical-space adaptation, repair/retopo separation, UV validation, Maya evaluation, performance metrics, and FBX inclusion rules.
+
+## Stage 11 — MoGe mesh
+
+MoGe mesh remains an independent optional branch. Failure never invalidates the core Ghost.
+
+## Stage 12 — DA3 mesh
+
+DA3 mesh remains an independent optional branch. Failure never invalidates the core Ghost.
+
+## Stage 13 — final packaging
 
 Freeze:
 - one production Master workflow;
@@ -247,21 +250,15 @@ Freeze:
 - acceptance tests;
 - storage/non-overwrite policy.
 
-### Stage 14 — future camera extension
+## Stage 14 — future camera extension
 
-PCS/fSpy/manual advanced camera path after the core V1 is stable.
+PCS/fSpy/manual advanced camera path after core V1 is stable.
 
-### Stage 15 — post-V1 alternative engine evaluation / technology watch
+## Stage 15 — post-V1 alternative engine evaluation / technology watch
 
-Stage 15 starts only after Stages 3-14 are complete. It does not alter the current V1 path.
+Starts only after Stages 3-14 are complete and does not alter V1.
 
-Mandatory research reference:
-
-```text
-docs/superpowers/research/2026-09-16-conceptghost-consolidated-research-and-implementation-guidance.md
-```
-
-Initial candidate queue:
+Initial candidates:
 
 ```text
 MoGe-3
@@ -271,42 +268,17 @@ Depth Pro
 Metric3D V2
 GeoWizard
 Depth Anything V2 Metric Outdoor reference baseline
-newly released relevant monocular geometry systems
+newly released relevant systems
 ```
 
-Research priority is not a quality ranking.
-
-Each candidate must first run in isolation. If later adopted, it enters through:
-
-```text
-New Engine
-→ GeometryAdapter / CameraAdapter
-→ existing ConceptGhost contracts
-```
-
-Do not rewrite the V1 Normalizer or Maya/export architecture for a new model.
-
-Evaluation includes:
-- single-image suitability;
-- stylized concept-art behavior;
-- intrinsics/camera compatibility;
-- geometry quality;
-- thin structures;
-- edge discontinuities;
-- off-camera usefulness;
-- Maya usefulness;
-- VRAM/RAM/runtime;
-- Windows/ComfyUI compatibility;
-- license;
-- dependency conflicts;
-- measurable value over DA3/MoGe.
+Any adopted candidate enters through a clean GeometryAdapter/CameraAdapter boundary and reuses Stages 7-9.
 
 ## Runtime rules that development must preserve
 
 - Camera Auto = Atlas Learned first, Atlas VP only after camera-quality failure.
 - DA3 default, MoGe selectable, no silent geometry fallback.
 - Compare Both = independent comparison, never implicit fusion.
-- Primary-fails/secondary-passes = PARTIAL; secondary is preserved but not promoted.
+- Primary-fails/secondary-passes = PARTIAL; secondary is not promoted.
 - Max Reference = default preset.
 - Maya Ghost, Canonical Point Cloud, manifest, reprojection report, and reprojection overlay are mandatory.
 - Extra diagnostics and optional meshes may remain optional.
@@ -324,7 +296,7 @@ deliverable_package_complete
 run.status
 ```
 
-A complete production result targets:
+Core success targets:
 
 ```text
 valid Atlas Camera
@@ -336,3 +308,5 @@ valid Atlas Camera
 + required .ply companion
 = complete ConceptGhost production result
 ```
+
+Optional mesh failure does not invalidate the core Ghost.
