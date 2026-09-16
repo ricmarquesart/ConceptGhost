@@ -49,3 +49,12 @@ A significant reprojection mismatch blocks Stage 8 acceptance.
 ## Primary output
 
 The primary V1 output is the ConceptGhost Maya Ghost Scene, not a raw depth map, PLY, or optional mesh.
+
+## Run/output contract clarified
+
+- Each Master execution creates one self-contained run bundle with source, camera, diagnostics, geometry, Maya, optional meshes, compare artifacts, logs, and a central `manifest.json`.
+- Native engine geometry and ConceptGhost canonical geometry remain separate. Maya consumes canonical geometry.
+- Reprojection produces both numeric metrics and a visual diagnostic, and a significant mismatch blocks a valid Stage 8 Maya Ghost.
+- `Compare Both` preserves independent DA3 and MoGe branches; it never implies fusion.
+- Overall run status is `PASS | PARTIAL | FAIL`.
+- `PASS` requires camera + canonical geometry + reprojection pass + generated usable Maya Ghost. Intermediate PLY/GLB/camera outputs alone are never sufficient.
