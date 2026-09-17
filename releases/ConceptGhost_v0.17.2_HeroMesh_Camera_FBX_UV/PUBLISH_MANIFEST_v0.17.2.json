@@ -1,0 +1,32 @@
+{
+  "package": "ConceptGhost_v0.17.2_HeroMesh_Camera_FBX_UV",
+  "snapshot_date": "2026-09-17",
+  "portable_zip": {
+    "sha256": "85afee8525bd23bb42acbb424ffbbbd626a11e8f4edc1a226671040fc9fc7f0f",
+    "size": 249194,
+    "google_drive_file_id": "1FliN9UPIqLD7GpRPAzpzMTL-QmYMaZcr",
+    "google_drive_folder_id": "18qC_iNIRDBgWNXQWQ9mqpt39rqNs3i4C"
+  },
+  "snapshot_manifest": {
+    "sha256": "7967879bd89daf60c82cc63e4956df08f1c0e4b0d7adfe90a0161712289e5b90",
+    "entries": 92
+  },
+  "verification": {
+    "pytest": "94 passed",
+    "compileall": "passed",
+    "snapshot_manifest_errors": 0
+  },
+  "github": {
+    "repository": "ricmarquesart/ConceptGhost",
+    "branch": "main",
+    "release_path": "releases/ConceptGhost_v0.17.2_HeroMesh_Camera_FBX_UV",
+    "archive_format": "tar.xz encoded as ordered Base64 parts",
+    "archive_sha256": "41c468d86bbf736ea73b634c03a31990512350f8398b0ef0f17890784c0c29c3",
+    "archive_size": 90832,
+    "base64_size": 121112,
+    "parts": 16,
+    "part_size": 8000,
+    "last_part_size": 1112,
+    "restore_script": "RESTORE_BUNDLE.bat"
+  }
+}
