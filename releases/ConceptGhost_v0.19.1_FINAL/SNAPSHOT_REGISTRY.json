@@ -1,0 +1,29 @@
+{
+  "schema": "ConceptGhost.GitHubSnapshotRegistry.v0.19.1",
+  "build": "v0.19.1-final-stage14",
+  "archive_name": "ConceptGhost_v0.19.1_FINAL.zip",
+  "archive_sha256": "b0109410512835c0b621eb142a0b3912df29868a6190b43551a709574ee5f02b",
+  "archive_size_bytes": 365065,
+  "google_drive_folder_id": "1Li0k6LGra4cFKDMJr4gpIXIDT-NnFMdC",
+  "google_drive_archive_id": "1qHyx0pQDh7B6POFXFDfprTYaDdE9Ywd7",
+  "parent_snapshot": "v0.19-final",
+  "runtime_evidence": {
+    "engine": "moge",
+    "point_count": 1429278,
+    "mesh_vertex_count": 1429278,
+    "sampled_alignment_points": 50000,
+    "max_abs_alignment_error": 9.5367431640625e-7,
+    "ghost_fbx_camera_roundtrip": "PASS",
+    "camera_only_fbx_roundtrip": "PASS",
+    "hero_mesh_v019_runtime": "FAIL",
+    "hero_mesh_root_cause": "MFnMesh.create fourth positional argument was parsed as uValues; parent must be passed by keyword"
+  },
+  "hotfix": "MFnMesh.create(points, polygon_counts, polygon_connects, parent=parent_obj)",
+  "verification": {
+    "snapshot_files": 118,
+    "snapshot_divergences": 0,
+    "pytest": "134 passed",
+    "semantic_worker_self_test": "PASS",
+    "compileall": "PASS"
+  }
+}
