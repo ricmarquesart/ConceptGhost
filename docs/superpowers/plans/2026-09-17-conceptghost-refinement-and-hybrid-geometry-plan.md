@@ -3,13 +3,15 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-09-17  
-**Status:** Approved planning baseline before refinement implementation. No production-code change is authorized by this document alone; it defines the order, contracts, evidence, and acceptance criteria for the refinement cycle after the Stage 14 full skeleton.  
+**Status:** Approved planning baseline before refinement implementation, amended on 2026-09-17 with the auto-first camera policy and the non-blocking `R-MASK-01` structural-segmentation research track. No production-code change is authorized by this document alone; it defines the order, contracts, evidence, and acceptance criteria for the refinement cycle after the Stage 14 full skeleton.  
 **Baseline:** ConceptGhost v0.16 — Stage 14 Full Skeleton.  
 **Reference Run:** `20260917T031354_668101Z_a6b09ba1`.  
 
 **Goal:** Refine the existing end-to-end ConceptGhost skeleton into a useful artist-facing Ghost while preserving all current stages, fixing camera/texture/scale/export defects, recovering lost geometry evidence, and adding a third geometry mode — **MoGe + DA3 Hybrid** — that produces one official geometry rather than two competing final results.
 
 **Architecture:** Atlas remains the camera/projection authority. DA3 and MoGe remain independently selectable for baseline/debug use. A new `MoGe + DA3 Hybrid` mode uses MoGe as the initial dense geometry support and DA3 as registered structural/depth evidence that can refine the same geometry along Atlas camera rays. Native DA3/MoGe outputs remain available only as intermediate diagnostics; the Hybrid mode must emit one canonical point/depth representation, one Hero Mesh, one matched camera, and one official export set.
+
+**Parallel research:** `R-MASK-01` tests SceneConductor-style 2D masks, PartCrafter part-attention heatmaps, and a hybrid PartCrafter-guided SAM cleanup path in a standalone ComfyUI workflow. Its first objective is masks/segregation on the source image and later mask-to-canonical-geometry splitting; it does not make PartCrafter 3D generation part of the current production path.
 
 **Tech Stack:** Windows, ComfyUI, Atlas Camera / GeoCalib, DA3, MoGe-2, DA3-Blender filtering concepts, Python, NumPy, OpenUSD, MayaUSD, Autodesk Maya, FBX, GLB, PLY, JSON.
 
@@ -28,8 +30,13 @@
 - Quality warnings do not block pipeline continuation; runtime/contract failures do.
 - Keep the three geometry modes explicit: `DA3`, `MoGe`, `MoGe + DA3 Hybrid`.
 - `Compare Both` remains diagnostic only and must not silently change the official output.
-- No silent fallback or hidden promotion of a secondary engine.
+- No silent geometry fallback or hidden promotion of a secondary geometry engine.
+- Camera `auto` may arbitrate Atlas Learned / GeoCalib -> Atlas VP only under explicit quality gates; every solver choice/fallback must be recorded in the manifest and diagnostics.
 - Atlas remains the camera authority. DA3/MoGe may cross-check camera evidence but may not silently replace Atlas pose/FOV/intrinsics.
+- Do not expose or depend on importing native `.fspy` project files. fSpy may be used only as a mathematical/reference benchmark for camera-solving concepts.
+- Do not make manual/assisted VP-line drawing part of the normal artist workflow. Reconsider it only if controlled benchmarks show a large, repeatable improvement on cases where automatic solvers fail.
+- `R-MASK-01` is an isolated research probe, not a production dependency. SceneConductor/PartCrafter experiments must not block R1-R6 or alter `ConceptGhost_Master.json` until their promotion gate passes.
+- The mask research goal is 2D structural/instance segregation of the original image and geometry-boundary support, not PartCrafter 3D generation.
 - Hybrid output must be **one geometry**, not two overlaid meshes or two final point clouds.
 - Do not average DA3 and MoGe depths blindly.
 - Perform hybrid collaboration in a common Atlas camera/ray space before final triangulation.
@@ -324,6 +331,60 @@ For images looking strongly downward with little/no visible horizon:
 - use VP only where real line evidence supports it;
 - use MoGe/DA3 ground/plane/FOV evidence as validation rather than a hidden replacement.
 
+## 4.4 Auto-first camera solver arbitration
+
+The user-facing camera path should be automatic by default. The artist should not have to reconstruct a camera manually when multiple solvers can already provide measurable camera evidence.
+
+Preferred policy:
+
+```text
+Camera = auto
+      |
+      v
+Atlas Learned / GeoCalib
+      |
+      +-- quality gate PASS --> selected camera
+      |
+      `-- quality gate FAIL / weak architectural solve
+              |
+              v
+          Atlas VP
+              |
+              +-- quality gate PASS --> selected camera
+              |
+              `-- insufficient --> preserve best candidate + explicit low-confidence diagnostic
+```
+
+Rules:
+
+- do not average two camera solutions blindly;
+- choose one camera candidate through explicit, auditable quality metrics;
+- geometry engines may contribute cross-check evidence, but not become an unannounced camera authority;
+- preserve candidate scores, rejection reasons, and selected solver in `camera_report.json` / manifest;
+- future PCS/other automatic camera refiners may enter this arbitration only after a benchmark demonstrates measurable improvement;
+- the normal UI should remain one-click/auto-first rather than expose a manual line-solving workflow.
+
+## 4.5 fSpy and assisted/manual camera policy
+
+ConceptGhost must **not** expose an `Import fSpy` feature and must not require the original fSpy application/file format.
+
+Allowed use of fSpy concepts:
+
+- vanishing-point geometry;
+- horizon/focal relationships;
+- camera-orientation mathematics;
+- offline benchmark/reference comparisons.
+
+Explicit exclusions from the normal product path:
+
+```text
+.fspy project import
+manual X/Y/Z line reconstruction
+manual camera creation as a required fallback
+```
+
+A manual/assisted solver may only be reconsidered later if controlled benchmark evidence shows a **material and repeatable** quality gain on difficult images that the automatic stack cannot solve. If ever restored, it should begin as an advanced/internal diagnostic path, not the default artist workflow.
+
 ---
 
 # 5. Texture and projection refinement
@@ -495,6 +556,19 @@ The report must also include counts/percentages for:
 - metric-scale status.
 
 This is the user-facing proof that the additional layers are actually contributing.
+
+If `R-MASK-01` later passes its promotion gate, a separate optional segmentation evidence group may be added without changing the mandatory R1-R6 report contract:
+
+```text
+mask_source_overlay.png
+mask_sceneconductor_overlay.png
+mask_partcrafter_attention_overlay.png
+mask_hybrid_overlay.png
+mask_id_map.png
+mask_manifest.json
+```
+
+Until promotion, these artifacts belong only to the isolated probe run and must not be required for a normal ConceptGhost `PASS`.
 
 ---
 
@@ -668,6 +742,24 @@ FBX must contain matched camera + Hero Mesh. Maya must also contain source plate
 
 **Deliverable:** `ConceptGhost_Master_R6_v0.22.json` and a final refinement acceptance report.
 
+## Parallel research track — R-MASK-01: Part-aware 2D Segmentation Probe
+
+`R-MASK-01` runs in parallel with R1-R6 and is **non-blocking**. It must use a standalone ComfyUI workflow and must not modify the production Master workflow until the promotion criteria in Section 17 are satisfied.
+
+Initial standalone workflow target:
+
+`ConceptGhost_MaskSegmentation_Probe.json`
+
+The probe evaluates three branches on the same source image:
+
+```text
+A — SceneConductor-style 2D segmentation
+B — PartCrafter attention probe
+C — Hybrid PartCrafter-guided segmentation
+```
+
+The test output is masks/overlays on the original 2D image. PartCrafter mesh generation is explicitly disabled/out of scope for this probe.
+
 ---
 
 # 12. Test strategy
@@ -696,7 +788,7 @@ For every milestone:
 - MoGe mode loads and runs;
 - Hybrid mode loads when introduced;
 - Compare Both remains diagnostic;
-- no hidden fallback;
+- no hidden geometry fallback; camera `auto` arbitration is explicit and logged;
 - Stage 10–14 outputs still execute;
 - package manifest lists all generated official/intermediate assets correctly.
 
@@ -749,7 +841,9 @@ The refinement cycle is successful when, for the reference concept image:
 8. USD/Maya retain richer points/diagnostics;
 9. E1/E2/E3 remain accessible as intermediate comparisons but are clearly not the official result;
 10. Maya batch execution either exits cleanly or clearly isolates/reports external plugin interference;
-11. a Synergy Evidence Report shows exactly how MoGe, DA3, Atlas, masks, normals, boundaries, and scale registration changed the official output.
+11. a Synergy Evidence Report shows exactly how MoGe, DA3, Atlas, masks, normals, boundaries, and scale registration changed the official output;
+12. the normal camera path is auto-first, does not require `.fspy` import, and does not require manual VP-line input;
+13. `R-MASK-01` remains optional/non-blocking unless its promotion gate passes; failure of the probe cannot invalidate the R1-R6 refinement cycle.
 
 ---
 
@@ -762,7 +856,8 @@ Stop and review before adding more complexity if any of these occur:
 - correction maps become dominated by arbitrary scale/shift rather than structural evidence;
 - camera changes are required to hide geometry errors;
 - texture fixes require destructive changes to source RGB or native geometry;
-- a new dependency threatens the protected ComfyUI environment.
+- a new dependency threatens the protected ComfyUI environment;
+- SceneConductor/PartCrafter integration would require unresolved licensing, incompatible redistribution terms, or invasive dependency changes before the isolated mask probe has demonstrated measurable value.
 
 In those cases, preserve the last good milestone and evaluate Stage 15 alternatives rather than layering more heuristics blindly.
 
@@ -791,3 +886,284 @@ artist-useful
 ```
 
 This document is the refinement baseline to use before changing the v0.16 Stage 14 skeleton.
+
+---
+
+# 17. R-MASK-01 — Structural Segmentation / Mask Research Track
+
+## 17.1 Purpose
+
+The objective is to determine whether ConceptGhost can obtain useful **part/object masks from the original RGB image** and use them later as geometry-boundary evidence or to separate the existing MoGe/canonical 2.5D geometry into independent patches.
+
+This track does **not** begin by generating replacement 3D objects. The first question is simpler and more valuable:
+
+> Can SceneConductor logic, PartCrafter's learned part structure, or a hybrid of both produce useful masks that improve segmentation of the original image?
+
+The probe must be isolated from `ConceptGhost_Master.json` until validated.
+
+## 17.2 Why SceneConductor and PartCrafter have different roles
+
+### SceneConductor role — precise 2D mask pipeline
+
+The inspected SceneConductor code already contains an explicit 2D mask path conceptually equivalent to:
+
+```text
+RGB
+ -> object discovery / grounding
+ -> GroundedSAM-style segmentation
+ -> per-object masks
+ -> mask evaluation / merge / remask / cleanup
+ -> combined ID map + overlays
+```
+
+This is directly aligned with the ConceptGhost need for image-space segmentation.
+
+### PartCrafter role — learned structural-part evidence
+
+PartCrafter is not natively a 2D segmentation model. Its normal path is image-to-3D part generation. Its VLM helper may suggest `num_parts`, but that count alone does not provide reliable semantic labels or masks.
+
+However, the inspected PartCrafter attention path contains part-conditioned interactions between image tokens and part queries. `R-MASK-01` will experimentally test whether those internal cross-attention relationships can be captured and spatialized into useful 2D heatmaps.
+
+This is an **experimental interpretation**, not an upstream PartCrafter feature guarantee.
+
+## 17.3 Branch A — SceneConductor-style baseline
+
+Target:
+
+```text
+SOURCE RGB
+   ↓
+Grounding / object proposals
+   ↓
+SAM / GroundedSAM segmentation
+   ↓
+SceneConductor-style mask cleanup
+   ↓
+A_MASK_001 ... A_MASK_N
+A_ID_MAP
+A_OVERLAY
+```
+
+Measure:
+
+- object/part coverage;
+- boundary precision;
+- duplicate masks;
+- over-segmentation;
+- under-segmentation;
+- foreground/background leakage;
+- usefulness on stylized/exterior concept art, not only indoor photographs.
+
+Branch A is the deterministic 2D baseline that Branches B/C must beat or complement.
+
+## 17.4 Branch B — PartCrafter attention probe
+
+The PartCrafter branch stops **before 3D decoding**.
+
+Target:
+
+```text
+SOURCE RGB
+   ↓
+DINOv2 image encoding
+   ↓
+PartCrafter part-conditioned diffusion/attention
+   ↓
+CAPTURE PART <-> IMAGE CROSS-ATTENTION
+   ↓
+spatialize attention to image grid
+   ↓
+B_HEATMAP_001 ... B_HEATMAP_N
+   ↓
+experimental threshold/refinement
+   ↓
+B_MASK_CANDIDATES + B_OVERLAY
+```
+
+Explicitly excluded from this probe:
+
+```text
+VAE geometry decoding
+octree/mesh extraction
+GLB generation
+PartCrafter-generated replacement geometry
+```
+
+The research question is whether a learned `part_i` consistently attends to a spatially coherent physical region. Failure is acceptable and informative.
+
+## 17.5 Branch C — Hybrid structural guidance + precise segmentation
+
+This is the preferred research hypothesis:
+
+```text
+PartCrafter structural heatmaps
+        ↓
+coarse part regions / seeds / boxes / positive prompts
+        ↓
+SAM / GroundedSAM precise segmentation
+        ↓
+SceneConductor-style merge/remask/cleanup
+        ↓
+C_MASK_001 ... C_MASK_N
+C_ID_MAP
+C_OVERLAY
+```
+
+Interpretation:
+
+```text
+PartCrafter = learned structural grouping / coarse guidance
+SAM         = precise 2D boundary extraction
+SceneConductor-style logic = cleanup, merge, remask, duplicate/fragment control
+```
+
+Branch C must not be promoted merely because it produces more masks. It must produce **more useful structural segregation** than Branch A on the same test set.
+
+## 17.6 ComfyUI probe viewing contract
+
+The workflow must make the experiment visually inspectable without requiring the user to hunt through files.
+
+Recommended layout:
+
+```text
+SOURCE IMAGE
+
+A — SCENECONDUCTOR-STYLE
+[combined overlay]
+[individual masks]
+
+B — PARTCRAFTER ATTENTION
+[attention overlay]
+[per-part heatmaps]
+[candidate masks]
+
+C — HYBRID
+[combined overlay]
+[individual masks]
+```
+
+Every mask/part uses a distinct preview color while the original RGB remains visible underneath.
+
+Suggested run bundle:
+
+```text
+ConceptGhost_MaskProbe/<scene>/<run_id>/
+├── source/
+│   └── source.png
+├── sceneconductor/
+│   ├── mask_001.png
+│   ├── mask_002.png
+│   ├── id_map.png
+│   └── overlay.png
+├── partcrafter/
+│   ├── attention_001.png
+│   ├── attention_002.png
+│   ├── candidate_mask_001.png
+│   └── overlay.png
+├── hybrid/
+│   ├── mask_001.png
+│   ├── mask_002.png
+│   ├── id_map.png
+│   └── overlay.png
+└── mask_probe_manifest.json
+```
+
+No GLB/OBJ/PLY is required from `R-MASK-01` itself.
+
+## 17.7 Mask-to-MoGe / canonical geometry projection
+
+If a mask branch passes validation, the first production use should be **segregating existing ConceptGhost geometry**, not generating replacement 3D.
+
+Because canonical samples retain source-pixel correspondence, a validated mask ID can be transferred to geometry:
+
+```text
+SOURCE MASK ID MAP
+       +
+CanonicalGeometry(source_pixel_xy)
+       ↓
+assign object/part ID per point/vertex
+       ↓
+identify triangles crossing mask boundaries
+       ↓
+cut/reject cross-object faces
+       ↓
+independent 2.5D patches
+```
+
+Conceptually:
+
+```text
+Tree_MoGe_Patch
+Car_MoGe_Patch
+Building_MoGe_Patch
+Ground_MoGe_Patch
+```
+
+The patches preserve the camera-derived location/depth/scale of the existing ConceptGhost geometry while reducing false bridges such as foreground objects being connected to background buildings.
+
+This is categorically different from sending the MoGe mesh into PartCrafter: PartCrafter does not natively cut the existing MoGe mesh.
+
+## 17.8 Relationship to future finite-3D object generation
+
+Only after mask-to-geometry segregation is proven useful may a later Stage 16+ experiment test replacing selected 2.5D patches with finite 3D objects.
+
+Possible future pattern:
+
+```text
+validated mask + RGB crop
+        ↓
+optional object-3D generator
+        ↓
+finite 3D candidate
+        ↓
+register to canonical MoGe/Atlas patch
+        ↓
+position / scale / orientation / ground-contact validation
+```
+
+That future step is not required for `R-MASK-01`, R1-R6, or the current Hybrid Geometry refinement cycle.
+
+## 17.9 Promotion gate
+
+Do not integrate the probe into the official workflow until all of the following are true:
+
+1. Branch A works reliably enough to establish a useful 2D baseline.
+2. Branch B demonstrates spatially meaningful part attention on more than isolated cherry-picked examples, **or** is explicitly rejected as non-useful.
+3. Branch C is compared against Branch A on the same images.
+4. Hybrid guidance shows measurable improvement in structural segregation, not merely extra fragmentation.
+5. Exterior/stylized concepts are included because the target product is not limited to indoor 3D-Front-like scenes.
+6. Runtime/VRAM cost is measured and does not destabilize the protected ComfyUI stack.
+7. Dependency and license/redistribution terms are reviewed before any third-party code is copied into the production package.
+8. The mask IDs can be projected back to canonical geometry without breaking source-pixel/reprojection invariants.
+
+Possible decisions after the probe:
+
+```text
+PROMOTE_A_ONLY
+PROMOTE_HYBRID_C
+KEEP_RESEARCH_ONLY
+REJECT_PARTCRAFTER_ATTENTION
+REJECT_ALL
+```
+
+No result is promoted by default.
+
+## 17.10 Non-blocking execution order
+
+The main refinement roadmap remains:
+
+```text
+R1 -> R2 -> R3 -> R4 -> R5 -> R6
+```
+
+In parallel:
+
+```text
+R-MASK-01
+  A: SceneConductor-style baseline
+  B: PartCrafter attention probe
+  C: Hybrid probe
+  -> promotion review
+```
+
+`R-MASK-01` may inform later boundary/segmentation improvements, but it must not delay completion of the current 15-stage/Stage-14-derived production roadmap.
