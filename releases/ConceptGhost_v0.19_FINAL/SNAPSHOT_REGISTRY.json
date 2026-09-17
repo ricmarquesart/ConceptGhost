@@ -1,0 +1,30 @@
+{
+  "schema": "ConceptGhost.GitHubSnapshotRegistry.v0.19",
+  "build": "v0.19-final-stage14",
+  "archive_name": "ConceptGhost_v0.19_FINAL.zip",
+  "archive_sha256": "1b7d0ea00e5a889a3a8e9021a49961233c695de58ec915e398939918c94f1637",
+  "archive_size_bytes": 356087,
+  "google_drive_folder_id": "1b6gmG0D8A4WAEy1wxieg_Rz4zsivvSEt",
+  "google_drive_archive_id": "1yR1ph4suKccRlSjD6thTUZGCSZRTtGR5",
+  "google_drive_status_id": "1967RlaOijLQhdt_hi1V6-iEjyP19r7xa",
+  "google_drive_readme_id": "14IpnQaG1W9xwpKSjmkSDOjlhKO8mtAl6",
+  "source_branch_parent": "semantic-assist-v0.18",
+  "main_frozen_commit": "5e8d714c343e99b5f63538e8321d689a1d83402f",
+  "verification": {
+    "snapshot_files": 111,
+    "snapshot_divergences": 0,
+    "pytest": "133 passed",
+    "semantic_worker_self_test": "PASS",
+    "compileall": "PASS",
+    "master_build": "v0.19-final-stage14",
+    "master_nodes": 34,
+    "master_links": 89
+  },
+  "contracts": {
+    "solver_paired_geometry": "EXACT_SAME_CANONICAL_XYZ",
+    "official_maya_mesh_source": "selected primary canonical solver",
+    "semantic_assist_default": false,
+    "fbx_policy": "full-scene export + independent CameraOnly FBX + mayapy round-trip validation"
+  },
+  "runtime_caveat": "Autodesk Maya/FBX artist-runtime verification must be performed on Windows; this build environment cannot run Maya."
+}
