@@ -3,7 +3,7 @@
   "build": "v0.19.1-final-stage14",
   "archive_name": "ConceptGhost_v0.19.1_FINAL.zip",
   "archive_sha256": "b0109410512835c0b621eb142a0b3912df29868a6190b43551a709574ee5f02b",
-  "archive_size_bytes": 365065,
+  "archive_size_bytes": 364955,
   "google_drive_folder_id": "1Li0k6LGra4cFKDMJr4gpIXIDT-NnFMdC",
   "google_drive_archive_id": "1qHyx0pQDh7B6POFXFDfprTYaDdE9Ywd7",
   "parent_snapshot": "v0.19-final",
