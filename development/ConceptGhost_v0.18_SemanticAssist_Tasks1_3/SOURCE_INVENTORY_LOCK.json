@@ -1,0 +1,41 @@
+{
+  "schema": "ConceptGhost.SemanticAssistSourceInventory.v1",
+  "date": "2026-09-17",
+  "integration_baseline": {
+    "name": "ConceptGhost v0.17.2 HeroMesh Camera FBX UV frozen snapshot",
+    "github_commit": "5e8d714c343e99b5f63538e8321d689a1d83402f",
+    "baseline_tests": 94,
+    "note": "Supersedes the v0.17 numbering in the planning documents per user instruction; architecture and source precedence remain unchanged."
+  },
+  "sources": [
+    {
+      "role": "current_semantic_implementation",
+      "drive_id": "1FTUsPNmWDi0QIvwVAeDtza5DtCBKT9Ht",
+      "name": "MaskProbe_AOnly_Compare_v2.2.2.zip",
+      "sha256": "83dc220ce5587fef79158641c567f8a194c56da90b980bcc546ad795ca96d05a"
+    },
+    {
+      "role": "preferred_v1_balanced_behavior_reference",
+      "drive_id": "1ZWBqGZ8SLMfht0-muQJqO4x6hPz04q7r",
+      "name": "MaskProbe_ARefine_v2.1.0/probe_core.py",
+      "sha256": "5233e0e034efd151a26ca5bdd6f1a03fc741fef1210bbf9de10745c1610c7c76"
+    },
+    {
+      "role": "isolation_reference",
+      "drive_id": "10eZMxDB1sns7reVg5mrcXsv11GOGpq6o",
+      "name": "INSTALL_MASK_PROBE_ABC_v2.0.1_ISOLATED.bat",
+      "sha256": "192f7ca7cea982641a0e7dc59c9680fcf556a4200e4076dc0fb9bb1c78e0d43c"
+    },
+    {
+      "role": "compatibility_reference_only",
+      "drive_id": "1HP9aVNpf_Jsyl1Ipy3qb6s5zvemSsYZe",
+      "name": "REPAIR_MASK_PROBE_COMFY_CORE_v2.0.6.bat",
+      "sha256": "e67a4593e6e9c40f363d8436ee2bf0a583479f6b8e4bf9254781c0ac9926b462"
+    }
+  ],
+  "bundled_runtime_core": {
+    "path": "Tools/SemanticAssist/semantic_runtime_core.py",
+    "derived_from": "MaskProbe A-only v2.2.2 probe_core.py",
+    "source_sha256": "71f97caa842a809763eda5d782dbaa203e6ff3358bf2f344342b7731299f1d69"
+  }
+}
