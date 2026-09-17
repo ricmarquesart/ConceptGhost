@@ -1,0 +1,19 @@
+{
+  "schema": "ConceptGhost.SnapshotRegistry.v0.18.1",
+  "snapshot": "ConceptGhost_v0.18.1_SemanticAssist_Tasks1_8_VerifyHotfix",
+  "parent_snapshot": "ConceptGhost_v0.18_SemanticAssist_Tasks1_8",
+  "hotfix_scope": "verification isolation only",
+  "parent_zip_sha256": "c0b115a6b2b7bfce5ac87de71a66b9c7b7421c5ac21be38b2df7f1acf0cd6e1e",
+  "zip_sha256": "b106f6fbc3acb352529a3a71b2691e8b4253d614b1bda141e5ddca46c5e4f275",
+  "zip_bytes": 330001,
+  "drive_folder_id": "19KNrNhZzx_AFigWO7FwG7eiLKo8IW6wi",
+  "drive_zip_id": "1q5ysxTWN0O29FJljuaVHJhH2BuNA-gT3",
+  "tests": {
+    "passed": 125,
+    "compileall": "PASS",
+    "semantic_worker_dev_self_test": "PASS",
+    "manifest_errors": 0
+  },
+  "semantic_default_enabled": false,
+  "geometry_camera_uv_fbx_hero_mesh_changed": false
+}
