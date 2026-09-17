@@ -1,0 +1,32 @@
+{
+  "schema": "ConceptGhost.GitHubSnapshotRegistry.v0.18",
+  "snapshot": "ConceptGhost_v0.18_SemanticAssist_Tasks1_8",
+  "parent_baseline": "ConceptGhost_v0.17.2_HeroMesh_Camera_FBX_UV",
+  "parent_github_commit": "5e8d714c343e99b5f63538e8321d689a1d83402f",
+  "development_branch": "semantic-assist-v0.18",
+  "tasks_complete": [1,2,3,4,5,6,7,8],
+  "task9": "PENDING_REAL_RUNTIME_PROMOTION_BENCHMARK",
+  "semantic_default_enabled": false,
+  "verification": {
+    "tests_passed": 123,
+    "compileall": "PASS",
+    "semantic_worker_self_test": "PASS",
+    "snapshot_manifest_entries": 114,
+    "snapshot_manifest_sha256": "2097523ec70ee49811cfddd80bc4e170313356bf9a34914abeb90f454458784c",
+    "zip_sha256": "c0b115a6b2b7bfce5ac87de71a66b9c7b7421c5ac21be38b2df7f1acf0cd6e1e",
+    "zip_bytes": 320534
+  },
+  "google_drive": {
+    "folder_id": "1MAwYa9H1MRIHn3vFZXGstv4cmxlM6H_p",
+    "zip_file_id": "1OlhKJDr_vXll8Quff1ORKYvIFTHEXh_l",
+    "status_file_id": "1oxzFgasd4mDg1FQkxU6ksDB79rqxyYH7",
+    "readme_file_id": "14bKAoN3jqdKcf_4E_SGiTKnMEJThtwVN"
+  },
+  "master": {
+    "nodes": 34,
+    "links": 90,
+    "semantic_assist_nodes": 1,
+    "semantic_hero_mesh_nodes": 1,
+    "build": "v0.18-semantic-assist-integration-stage14"
+  }
+}
