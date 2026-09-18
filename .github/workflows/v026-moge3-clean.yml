@@ -1,0 +1,75 @@
+name: ConceptGhost v0.26 Clean Package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'releases/ConceptGhost_v0.26_MoGe3_PhaseA_Clean/**'
+      - '.github/workflows/v026-moge3-clean.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-v026:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install lightweight test dependencies
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check pytest numpy pillow
+
+      - name: Verify SOURCE ZIP checksum
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $base = 'releases/ConceptGhost_v0.26_MoGe3_PhaseA_Clean'
+          $zip = Join-Path $base 'ConceptGhost_v0.26_MoGe3_PhaseA_Clean_SOURCE.zip'
+          $expected = ((Get-Content (Join-Path $base 'SHA256.txt') -Raw).Trim().Split()[0]).ToLowerInvariant()
+          $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "Source ZIP checksum mismatch: $actual != $expected" }
+
+      - name: Extract and test source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = 'releases/ConceptGhost_v0.26_MoGe3_PhaseA_Clean/ConceptGhost_v0.26_MoGe3_PhaseA_Clean_SOURCE.zip'
+          $out = Join-Path $env:RUNNER_TEMP 'cg-v026-clean'
+          if (Test-Path $out) { Remove-Item -Recurse -Force $out }
+          Expand-Archive -Path $zip -DestinationPath $out -Force
+          $pkg = Join-Path $out 'ConceptGhost_v0.26_MoGe3_PhaseA_Clean'
+          Push-Location $pkg
+          try {
+            python -m py_compile custom_nodes/ConceptGhost_Stage68/*.py
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            python -m pytest -q -k 'not moge3_pinned_source_is_complete_and_hash_locked'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (-not (Test-Path 'Tools/MoGeRuntime/SOURCE_LOCK.json')) { throw 'MoGe SOURCE_LOCK missing' }
+          } finally { Pop-Location }
+
+      - name: Parse PowerShell and run package verifier
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pkg = Join-Path $env:RUNNER_TEMP 'cg-v026-clean/ConceptGhost_v0.26_MoGe3_PhaseA_Clean'
+          $parseFailed = $false
+          Get-ChildItem (Join-Path $pkg 'Scripts') -Filter '*.ps1' -File | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $parseFailed = $true
+              Write-Host "PowerShell parse failure: $($_.FullName)"
+              $errors | ForEach-Object { Write-Host $_.Message }
+            }
+          }
+          if ($parseFailed) { throw 'PowerShell parser validation failed' }
+          & (Join-Path $pkg 'Scripts/verify_v026_no_semantic.ps1')
