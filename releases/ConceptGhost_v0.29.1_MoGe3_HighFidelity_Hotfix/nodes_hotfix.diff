@@ -1,0 +1,11 @@
+--- a/custom_nodes/ConceptGhost_Stage68/nodes.py
++++ b/custom_nodes/ConceptGhost_Stage68/nodes.py
+@@ -267,8 +267,6 @@
+             "candidate_confidence_threshold": float(params["da3_confidence_threshold"]),
+             "da3_edge_threshold": 12.0 / 255.0,
+             "candidate_unfrozen": True,
+-            "geometry_profile": geometry_profile,
+-            "profile_config": resolved_profile,
+             "native": {
+                 "workflow": "public advanced_3d baseline",
+                 "model": "da3_large.safetensors",
