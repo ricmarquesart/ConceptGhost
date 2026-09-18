@@ -1,0 +1,30 @@
+{
+  "schema": "ConceptGhost.GitHubSnapshotRegistry.v0.21",
+  "build": "v0.21-semantic-impact-stage14",
+  "archive_name": "ConceptGhost_v0.21_FINAL.zip",
+  "archive_sha256": "43bddb53f2cf8db28054de72a21c7454538305cf365734e0b33818e1417b257d",
+  "archive_size_bytes": 499905,
+  "google_drive_folder_id": "1bxGfx9qEamuOpSemEOmcAknLU_HfalaW",
+  "google_drive_archive_id": "17K1YksAkVO1WRY9qoWWhM_jaERxvpYSv",
+  "parent_snapshot": "v0.20-final",
+  "verification": {
+    "snapshot_files": 143,
+    "snapshot_divergences": 0,
+    "pytest": "175 passed",
+    "compileall": "PASS",
+    "semantic_worker_self_test": "PASS",
+    "master_nodes": 37,
+    "master_links": 98
+  },
+  "fixes": {
+    "semantic_runtime": "close/copy NPZ arrays before temp cleanup (Windows WinError 32)",
+    "confidence": "winner-owned",
+    "uncertainty": "competitive margin + overlap + boundary + fragmentation",
+    "hero_mesh": "authoritative solver-paired path only; real normal/geometric boundary evidence",
+    "preservation": "conservative ARCHITECTURE/LANDMARK_VERTICAL",
+    "previews": 4,
+    "semantic_ab_report": true,
+    "cmd_wrappers": "explicit SUCCESS/ERROR + log + pause"
+  },
+  "runtime_gate": "Windows/GPU ON run must return PASS rather than DEGRADED_BYPASS and produce semantic impact metrics."
+}
