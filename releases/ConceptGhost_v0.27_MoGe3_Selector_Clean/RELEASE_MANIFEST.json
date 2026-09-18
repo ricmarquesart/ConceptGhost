@@ -1,0 +1,21 @@
+{
+  "release": "ConceptGhost_v0.27_MoGe3_Selector_Clean",
+  "base_release": "ConceptGhost_v0.26_MoGe3_PhaseA_Clean",
+  "complete_sha256": "86cae028cf14bb386a93e708de4af9c1fe3a0bd6d7005fb8b6f65dd57d677c99",
+  "source_sha256": "05682b1e3229e4a56f085923343929aeea3148d607b58f82b65061ca0c86aaeb",
+  "drive_folder_id": "1ek5BKYhtlQIZPror6deZbzEh9NgI7t4I",
+  "drive_complete_file_id": "16lcFjST1n6SRN7a9rAv9kHlOhU3LpNui",
+  "workflow": {
+    "nodes": 33,
+    "links": 85,
+    "moge_versions": ["MoGe-2", "MoGe-3"],
+    "semantic_active_tokens": 0
+  },
+  "validation": {
+    "complete_pytest": "13 passed",
+    "source_pytest": "12 passed, 1 vendor test deselected",
+    "compileall": "PASS",
+    "workflow_link_consistency": "PASS",
+    "v025_normals_regression": "PASS"
+  }
+}
