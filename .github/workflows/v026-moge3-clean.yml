@@ -48,7 +48,7 @@ jobs:
           $pkg = Join-Path $out 'ConceptGhost_v0.26_MoGe3_PhaseA_Clean'
           Push-Location $pkg
           try {
-            python -m py_compile custom_nodes/ConceptGhost_Stage68/*.py
+            python -m compileall -q custom_nodes/ConceptGhost_Stage68
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             python -m pytest -q -k 'not moge3_pinned_source_is_complete_and_hash_locked'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
