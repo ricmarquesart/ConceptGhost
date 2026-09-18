@@ -1,0 +1,41 @@
+{
+  "schema": "ConceptGhost.GitHubSnapshotRegistry.v0.20",
+  "build": "v0.20-semantic-v2-stage14",
+  "archive_name": "ConceptGhost_v0.20_FINAL.zip",
+  "archive_sha256": "7924d9499d8385639f8f4c613d6394e35ed8777fd93a062dd7d0a4d08fd2edcd",
+  "archive_size_bytes": 453572,
+  "google_drive_folder_id": "13dq6K1fTkPu6CxAXHH4ERP-xc8Fh8zFP",
+  "google_drive_archive_id": "1Doubnsh-OxCfHVOMhFzUzLyW4u447rwM",
+  "google_drive_status_id": "12YX7EUdjMdbl-Jv7YAL4poUxCOYwLGSz",
+  "google_drive_change_map_id": "1ELNVTsS0gQWWfD10pASQWCQAXWZwCi35",
+  "design_v2_drive_id": "1enluVkkS2R-anExQquXPY7pPA_Gn1_Xh",
+  "implementation_plan_v2_drive_id": "1wSnclu74ENkeRordI0yP1rvAP25nLyvn",
+  "parent_snapshot": "ConceptGhost_v0.19.1_FINAL",
+  "parent_archive_sha256": "b0109410512835c0b621eb142a0b3912df29868a6190b43551a709574ee5f02b",
+  "parent_github_branch": "v0.19.1-final",
+  "parent_github_commit": "f198b74b4186249e5db18c8a39781473acf8e24b",
+  "defaults": {
+    "geometry_engine": "MoGe",
+    "semantic_assist_enabled": false,
+    "semantic_backend": "SAM ViT-B",
+    "semantic_refine_mode": "Hierarchical Refine v1",
+    "semantic_profile": "Balanced"
+  },
+  "workflow": {
+    "node_count": 34,
+    "link_count": 97,
+    "semantic_assist_nodes": 1,
+    "complete_run_download_nodes": 1,
+    "moge_preview_retained": true,
+    "deprecated_maya_ready_download_removed": true
+  },
+  "verification": {
+    "snapshot_manifest_files": 135,
+    "snapshot_divergences": 0,
+    "pytest": "161 passed",
+    "compileall": "PASS",
+    "semantic_worker_self_test": "PASS",
+    "fresh_zip_extraction_verified": true
+  },
+  "artist_machine_gate": "Real SAM/HQ-SAM segmentation quality, GPU behavior and Maya usability remain runtime validation gates; Semantic Assist stays OFF by default."
+}
