@@ -94,5 +94,119 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 - [ ] Camera/FOV/transforms/UV/normals/material linkage remain unchanged
 - [ ] Compare final v0.31.2 against frozen v0.31.1 before promotion
 
+
+## Gate 11 — Safe DA3 computer cleanup
+- [ ] Measure total DA3 disk usage before deleting anything
+- [ ] Inventory every DA3-attributable folder/file and record size, location, owner/project role and whether it is exclusive or shared
+- [ ] Separate DA3-exclusive assets from shared runtimes, libraries, caches, models and workflows
+- [ ] Build an explicit KEEP / SAFE_TO_DELETE / UNCERTAIN classification before deletion
+- [ ] Delete only items proven exclusive to retired DA3 functionality
+- [ ] Do not modify/remove shared Python installations or Python environments used by other projects
+- [ ] Do not modify/remove shared Torch/PyTorch packages
+- [ ] Do not modify/remove shared CUDA drivers, CUDA toolkit/runtime or GPU libraries
+- [ ] Do not modify/remove shared NumPy or other common Python dependencies
+- [ ] Do not modify/remove Single View workflows or runtimes
+- [ ] Do not modify/remove Multi View / Trellis workflows or runtimes
+- [ ] Do not modify/remove unrelated ComfyUI custom nodes, models, caches or workflows
+- [ ] Preserve anything whose ownership cannot be proven; uncertain items default to KEEP
+- [ ] Measure disk usage after cleanup and report reclaimed space
+- [ ] Re-run ConceptGhost baseline checks and smoke-test unrelated protected workflows after cleanup
+- [ ] Record a permanent cleanup report with before/after paths, bytes and hashes where appropriate
+
+### Gate 11 non-interference objective
+Delete only what is safely attributable to DA3. This gate must not break Python, Torch, CUDA, NumPy, Single View, Multi View/Trellis, other workflows, or other projects.
+
+## Long-term roadmap imported from 2026-09-18 decisions document
+Planning source: `Docs/2026-09-18-conceptghost-future-improvements-decisions-and-priority.md`.
+
+These items are tracked here, but they are **not v0.31.2 promotion blockers** unless a later decision explicitly moves them into the active release scope.
+
+### Architectural decisions
+- [x] MoGe-3 designated official future geometry engine
+- [x] Atlas retained as camera authority
+- [x] DA3 Structural Witness (A8) removed from future architecture
+- [x] MoGe native metric output designated first-class future evidence
+- [x] Initial metric system constrained to REPORT ONLY / no automatic mesh movement
+- [x] New external models must justify maintenance/runtime cost
+
+### Phase 1 — A1 · MoGe Metric Evidence & Measurement Layer — APPROVED / Priority 1
+- [ ] Preserve immutable `points_metric_native`
+- [ ] Preserve immutable `depth_metric_native`
+- [ ] Add MoGe measurement utilities: selected-point distance, camera-to-point, structure distance, approximate width/vertical extent, regional depth median/spread
+- [ ] Preserve/use MoGe native normals as evidence while final mesh normals remain derived from final topology
+- [ ] Compare MoGe intrinsics/FOV against Atlas with CONSISTENT / MODERATE_DISAGREEMENT / STRONG_CONFLICT states
+- [ ] Add valid-mask/support diagnostics
+- [ ] Preserve optional refinement-step diagnostics where available
+
+### Phase 2 — A2/A3/A4 · Deterministic Atlas Metrology — APPROVED
+- [ ] A2: pixel → Atlas ray → ground-plane intersection → world XYZ → camera/ground distance
+- [ ] A3: architectural base distance and height estimation with closest-approach residual/confidence
+- [ ] A3.1: physical-size consistency diagnostics
+- [ ] A4: global ground-plane quality metrics
+- [ ] A4: local-ground fallback when global ground quality fails
+- [ ] Return INSUFFICIENT_GROUND_MODEL rather than fabricate measurements
+
+### Phase 3 — A5 · MoGe × Atlas Metric Agreement — APPROVED
+- [ ] Compare Atlas/geometric metrology with MoGe native metric geometry
+- [ ] Add global scale agreement
+- [ ] Add regional depth agreement
+- [ ] Add camera-height agreement
+- [ ] Add conflict reports for representative near/far/foreground regions
+
+### Phase 4 — A6 · Maya Metric Diagnostics & Region Layer — APPROVED
+- [ ] Add `CG_METRIC_DIAGNOSTICS`
+- [ ] Add camera-height marker and ground-plane grid
+- [ ] Add target base/top locators
+- [ ] Add distance/height lines and metric labels
+- [ ] Add agreement/conflict metadata
+- [ ] Add Maya selection sets / region layer such as CG_GROUND, CG_FACADE_01, CG_ROOF_01, CG_TOWER_01
+- [ ] Preserve rule: region = metadata/selection; region != geometry deletion
+
+### Phase 5 — B1 · Depth Pro independent metric witness — APPROVED CANDIDATE
+- [ ] Run isolated installation/runtime spike
+- [ ] Validate GPU/runtime compatibility
+- [ ] Validate known focal input where applicable
+- [ ] Validate reproducible metric depth on the same source image
+- [ ] Keep Depth Pro report/comparison-only initially; it must not become geometry authority
+
+### Phase 6 — B3 · Metric Consensus Engine — APPROVED
+- [ ] Combine MoGe native metric + Atlas deterministic metrology + Depth Pro
+- [ ] Use weighted median / MAD / robust spread / agreement groups / outlier rejection
+- [ ] Classify each observation VALID / WEAK / OUTLIER / UNAVAILABLE
+- [ ] Keep initial consensus mode REPORT ONLY
+- [ ] Explicitly forbid simple arithmetic-mean consensus
+
+### Phase 7 — B4 · Simplified Geometric Regions / Graph Superpoints — DEFERRED
+- [ ] Segment existing official geometry using normals, depth discontinuity, connectivity, planarity, curvature, spatial proximity and connected components
+- [ ] Use validated region boundaries to prevent cross-region smoothing/bridging
+- [ ] Do not create a competing geometry solver or competing official mesh
+
+### Phase 8 — A7 · Local Geometry Cleanup / Region Operations — APPROVED CONCEPTUALLY, DEFERRED
+- [ ] Isolated floating-component detection
+- [ ] Spike/outlier detection
+- [ ] Local plane fitting
+- [ ] Local smoothing
+- [ ] Small-hole diagnostics
+- [ ] Local remeshing / adaptive local mesh density
+- [ ] Boundary-protected triangulation
+- [ ] Initial mode remains DIAGNOSTIC / ARTIST-APPROVED, not automatic destructive editing
+
+### Phase 9 — Re-evaluate frozen tools only if a proven gap remains
+- [ ] B2 Metric3D v2 — FROZEN
+- [ ] C1 Point-SAM — FROZEN
+- [ ] C2 EZ-SP / Superpoint Transformer full stack — FROZEN
+- [ ] C3 UniDepth V2 — FROZEN
+- [ ] C4 Mask3D — FROZEN
+- [ ] C5 Mosaic3D — FROZEN
+- [x] C6 Full SIHE software stack — DO NOT INTEGRATE AS FULL DEPENDENCY; reuse metrology principles only
+- [ ] C7 SAM3D / OpenMask3D / Open3DIS-style 2D-first systems — FROZEN for current Single View path; reconsider only for a true Multi View branch
+
+### Long-term ordering rule
+- [ ] Complete MoGe evidence extraction before adding another external solver
+- [ ] Complete deterministic Atlas metrology before metric consensus
+- [ ] Add one independent learned metric witness (Depth Pro) before considering additional metric models
+- [ ] Establish robust metric consensus before heavier 3D segmentation systems
+- [ ] Keep automatic mesh movement disabled until multi-scene evidence justifies it
+
 ## Promotion rule
 v0.31.2 may become the new baseline only after all required regression gates pass against the same reference input. Until then, v0.31.1 frozen branch + Drive baseline remain the rollback authority.
