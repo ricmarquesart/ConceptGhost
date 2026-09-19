@@ -2,7 +2,7 @@
 
 Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baseline.
 
-**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 RUNTIME-READY RC5 (fresh Windows/ComfyUI/Maya v0.31.2 OFF + ON runs required) · Gate 11 TOOLING COMPLETE LOCAL / target-machine audit still pending.
+**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 RUNTIME-READY RC6 (RC5 installer vendor-archive regression fixed; fresh Windows/ComfyUI/Maya v0.31.2 OFF + ON runs required) · Gate 11 TOOLING COMPLETE LOCAL / target-machine audit still pending.
 
 ## Status legend
 - [x] complete and verified
@@ -86,7 +86,7 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 
 ## Gate 10 — Size and regression acceptance
 
-**Next active gate:** fresh v0.31.2 Windows/ComfyUI/Maya execution using `ConceptGhost_Master_v0.31.2_DEDUP_REMESH.json`. Local suite currently: **57 PASS**. RC3 WIP source SHA-256: `e64a1d08557869cb9ae433891f6620a9b32e129978aa1876ef8d16205fe96776`. Latest RC4 WIP after safe-DA3 tooling: SHA-256 `e15644ac63048e64ae4d4c6f0320ae38094f35e99a924f2635989e1dac4aea60`. Runtime-ready RC5: SHA-256 `9d7dc41e4a8bcc58b664943dac7edf9c5d9ccdbcfe546d56639a7934c7e2b670`; local suite **64 PASS**.
+**Next active gate:** fresh v0.31.2 Windows/ComfyUI/Maya execution using `ConceptGhost_Master_v0.31.2_DEDUP_REMESH.json`. Local suite currently: **57 PASS**. RC3 WIP source SHA-256: `e64a1d08557869cb9ae433891f6620a9b32e129978aa1876ef8d16205fe96776`. Latest RC4 WIP after safe-DA3 tooling: SHA-256 `e15644ac63048e64ae4d4c6f0320ae38094f35e99a924f2635989e1dac4aea60`. Runtime-ready RC5: SHA-256 `9d7dc41e4a8bcc58b664943dac7edf9c5d9ccdbcfe546d56639a7934c7e2b670` (superseded due to vendor-archive installer regression). Runtime-ready RC6: SHA-256 `946d520fd4ca804494d707372e1ef5e0fa2a7a4bdbbf5f76cc87c6425468d511`; local suite **65 PASS**.
 - [ ] Measure same reference run before vs after deduplication
 - [ ] Target: remove COMPLETE.zip overhead entirely
 - [ ] Target: eliminate verified physical duplicates without loss of functionality
@@ -98,6 +98,17 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 - [ ] Camera/FOV/transforms/UV/normals/material linkage remain unchanged
 - [ ] Compare final v0.31.2 against frozen v0.31.1 before promotion
 
+
+### Gate 10 RC5 installer regression / RC6 fix
+- [x] RC5 target-machine install exposed a real packaging regression: `Tools\\MoGeRuntime\\vendor\\MoGe-main.zip` was absent while the runtime installer required it unconditionally
+- [x] Confirm failure occurred before workflow/runtime acceptance; no Gate 10 result was falsely accepted
+- [x] Confirm RC5 did not delete the isolated runtime contents; it only removed stale `READY.json` before failing
+- [x] RC6 no longer deletes `READY.json` before deciding between full repair and runtime reuse
+- [x] RC6 reuses the existing ConceptGhost-owned `%LOCALAPPDATA%\\ConceptGhost-MoGeRuntime-v1` when the vendor ZIP is absent
+- [x] RC6 refreshes only ConceptGhost-owned worker scripts, validates cached ViT-L + ViT-G evidence, runs an actual CUDA smoke inference, and recreates `READY.json`
+- [x] Clean-machine installs still fail closed if neither the pinned vendor ZIP nor a reusable private runtime exists
+- [x] Local suite after fix: **65 PASS**
+- [ ] Execute RC6 installer on target machine and confirm reuse path PASS
 
 ### Gate 10 RC5 runtime procedure
 - [x] Add dedicated `PREPARE_V0312_RUNTIME_VALIDATION.bat`
