@@ -2,7 +2,7 @@
 
 Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baseline.
 
-**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE (local regression) · Gates 3/4/5/6 IMPLEMENTED PARTIALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 next functional branch · Gates 8–11 pending.
+**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 NEXT (fresh Windows/ComfyUI/Maya v0.31.2 run) · Gate 11 pending.
 
 ## Status legend
 - [x] complete and verified
@@ -63,28 +63,30 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 
 ## Gate 7 — Restore floating-point visualization branch
 - [x] Keep `CG_FUSED_POINTS` in the .ma exactly as validated in v0.31.1 baseline
-- [ ] Restore a user-facing point-cloud output/preview node
-- [ ] Do not create another huge duplicate point-cloud payload solely for the node
-- [ ] Use/reference the authoritative canonical point data where possible
+- [x] Restore a user-facing point-cloud output/preview node (`ConceptGhostPointCloudPreview`)
+- [x] Do not create another huge duplicate point-cloud payload solely for the node; consume existing `preview_ply` transport
+- [x] Use/reference the authoritative canonical point data via the ExportBundle canonical PLY/preview transport
 
 ## Gate 8 — Optional remesh branch controls
-- [ ] Add master switch: `Generate Remesh Variants = OFF/ON`
-- [ ] OFF must skip all remesh computation and file generation
-- [ ] ON creates three automatic derived profiles: Light / Medium / Strong
-- [ ] Each derived output preserves UVs, texture, world coordinates and `CG_ARTIST_CAMERA`
-- [ ] Derived remeshes never replace PrimaryMesh or CG_HERO_MESH
-- [ ] Primary .ma remains authored from the selected authoritative PrimaryMesh only
-- [ ] Use ConceptGhost Remesh naming unless a real external ZBrush ZRemesher integration is implemented
-- [ ] Validate Light/Medium/Strong settings empirically on the frozen reference input before locking defaults
+- [x] Add master switch: `Generate Remesh Variants = OFF/ON` (default OFF)
+- [x] OFF skips all Light/Medium/Strong remesh computation and file generation
+- [x] ON creates three automatic derived profiles: Light / Medium / Strong
+- [x] Each derived output preserves UVs, embedded source texture, world coordinates and `CG_ARTIST_CAMERA`
+- [x] Derived remeshes never replace PrimaryMesh or CG_HERO_MESH
+- [x] Primary .ma remains authored from the selected authoritative PrimaryMesh only
+- [x] Use ConceptGhost Remesh naming; implementation remains deterministic ConceptGhost screen-space remesh, not Pixologic ZRemesher
+- [x] Validate presets on frozen run `20260919T032045_435115Z_63417285`: Light 354,777v/684,730f; Medium 157,415v/300,267f; Strong 88,294v/166,803f
 
 ## Gate 9 — Output UX
-- [ ] Expose Master + optional Light/Medium/Strong as separate downloadable/previewable outputs
-- [ ] Clearly label which output is the exact Maya PrimaryMesh
-- [ ] Clearly label derived/remeshed outputs
-- [ ] Show vertex/face counts for each branch
-- [ ] Show whether remesh generation was skipped or executed
+- [x] Expose Master + optional Light/Medium/Strong as four separate downloadable/previewable output nodes
+- [x] Clearly label Master as exact Maya PrimaryMesh authority
+- [x] Clearly label Light / Medium / Strong as optional derived outputs
+- [x] Show vertex/face counts for Master and each generated remesh branch in exporter UI/report
+- [x] Show whether remesh generation was skipped (OFF) or executed (ON)
 
 ## Gate 10 — Size and regression acceptance
+
+**Next active gate:** fresh v0.31.2 Windows/ComfyUI/Maya execution using `ConceptGhost_Master_v0.31.2_DEDUP_REMESH.json`. Local suite currently: **57 PASS**. RC3 WIP source SHA-256: `e64a1d08557869cb9ae433891f6620a9b32e129978aa1876ef8d16205fe96776`.
 - [ ] Measure same reference run before vs after deduplication
 - [ ] Target: remove COMPLETE.zip overhead entirely
 - [ ] Target: eliminate verified physical duplicates without loss of functionality
