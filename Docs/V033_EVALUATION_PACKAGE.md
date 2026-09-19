@@ -10,10 +10,12 @@ File:
 `ConceptGhost_v0.33_EVALUATION.zip`
 
 SHA-256:
-`12108b251f3a942261d3ab82172e3e70951636b6c4a3b7735782bcff6db0d2ea`
+`0a4438391eaf18fe1b3b706df55a0859fb9e2d63adbce622ca4b4fd44068dc16`
 
 ## Package validation
-- 39 payload files
+- v0.32 × v0.33 benchmark comparator included and synthetic self-test PASS
+- comparator checks source-image hash, Atlas camera/FOV, PrimaryMesh arrays, vertex/face counts, storage dedup invariants, and P8 safety constraints
+- 43 total files; bundle manifest inventories 41 payload files
 - workflow: 40 nodes / 87 links
 - pinned MoGe vendor included: 11,590,402 bytes
 - packaged Python/import validation: PASS
