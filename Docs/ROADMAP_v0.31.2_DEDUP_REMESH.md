@@ -2,7 +2,7 @@
 
 Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baseline.
 
-**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 RUNTIME-READY RC6 (RC5 installer vendor-archive regression fixed; fresh Windows/ComfyUI/Maya v0.31.2 OFF + ON runs required) · Gate 11 TOOLING COMPLETE LOCAL / target-machine audit still pending.
+**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 RUNTIME-READY RC6 (fresh Windows/ComfyUI/Maya OFF + ON runs still required) · Gate 11 AUDIT COMPLETE / reviewed v0.32 remover ready / deletion not yet executed.
 
 ## Status legend
 - [x] complete and verified
@@ -139,6 +139,24 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 - [~] Cleanup result report records reclaimed bytes; target-machine cleanup not executed yet
 - [~] Cleanup invokes ConceptGhost verifier and verifies protected workflow hashes; actual target-machine smoke execution remains pending
 - [x] Tooling writes `ConceptGhost.DA3SafeCleanupResult.v0.31.2` with audit source, removed paths, reclaimed bytes and protected hash verification
+
+### Gate 11 reviewed audit 20260918_235621
+- [x] Target-machine audit completed with schema `ConceptGhost.DA3SafeCleanupAudit.v0.32`
+- [x] Audit mode confirmed `MEASURE_AND_CLASSIFY_ONLY_NO_DELETION`
+- [x] Total measured candidates: 10.06 GB
+- [x] SAFE_TO_DELETE: 4.09 GB
+- [x] KEEP: 5.98 GB
+- [x] UNCERTAIN: 0 B
+- [x] Reviewed delete set restricted to exactly `C:\\ConceptGhost\\cache\\da3-comfy-env` + `C:\\ConceptGhost\\config\\da3_host_paths.json`
+- [x] `C:\\ConceptGhost\\cache\\pixi` remains KEEP
+- [x] ComfyUI-DepthAnythingV3 plugin remains KEEP
+- [x] DepthAnythingV3 model folder remains KEEP
+- [x] 231 protected Single/Multi/Trellis references are hash-protected by the reviewed audit
+- [x] Reviewed audit SHA-256 pinned in remover: `c68c19255eb982887762a3c8248c6dd1c0fe59caab09faeb2403679f676b7b82`
+- [x] v0.32 remover rejects any changed audit, changed SAFE path size/file count, changed protected hash, or unexpected SAFE_TO_DELETE path
+- [ ] Execute reviewed v0.32 cleanup after explicit confirmation
+- [ ] Capture `ConceptGhost.DA3SafeCleanupResult.v0.32`
+- [ ] Run ConceptGhost + Single View + Multi View/Trellis smoke checks after cleanup
 
 ### Gate 11 non-interference objective
 Delete only what is safely attributable to DA3. This gate must not break Python, Torch, CUDA, NumPy, Single View, Multi View/Trellis, other workflows, or other projects.
