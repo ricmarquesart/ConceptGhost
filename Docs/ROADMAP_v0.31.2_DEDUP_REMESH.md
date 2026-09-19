@@ -2,6 +2,8 @@
 
 Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baseline.
 
+**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE (local regression) · Gates 3/4/5/6 IMPLEMENTED PARTIALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 next functional branch · Gates 8–11 pending.
+
 ## Status legend
 - [x] complete and verified
 - [~] in progress / evidence being collected
@@ -21,46 +23,46 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 ## Gate 1 — Storage inventory and duplicate classification
 - [x] Confirm COMPLETE.zip duplicates the authoritative saved run and costs ~822.6 MB on the validated run
 - [x] Confirm the saved run folder remains authoritative; ZIP is only a snapshot/download transport
-- [~] Compare `geometry/canonical/pointcloud.usda` vs `maya/ConceptGhost_<scene>_Ghost.usda` by content hash before removing either
-- [~] Audit repeated texture copies: source image, PrimaryTexture, Ghost.fbm, GhostFullScene.fbm
-- [~] Audit provider/ComfyUI transport copies of HF Master / Split Clean / Simplified outputs
-- [ ] Compare Ghost.fbx vs GhostFullScene.fbx by scene content/signature, not size alone
-- [ ] Classify every large file as AUTHORITY / REQUIRED INTERCHANGE / PREVIEW / DIAGNOSTIC / DUPLICATE / REGENERABLE
+- [x] Compare `geometry/canonical/pointcloud.usda` vs `maya/ConceptGhost_<scene>_Ghost.usda`: identical SHA-256 confirmed on reference run
+- [x] Audit repeated texture copies: source/PrimaryTexture are byte-identical; .fbm extraction/manual copies classified as duplicate sidecars when embedded textures are present
+- [x] Audit ComfyUI transport copies: PLY and HF GLB preview transports identified as duplicate payload candidates; hard-link-first policy implemented locally
+- [x] Compare Ghost.fbx vs GhostFullScene.fbx by role/signature: v0.31.1 exports the same curated scene twice; binary bytes differ only as separate FBX exports/metadata
+- [x] Classify large artifacts and record evidence in `DEDUP_AUDIT_v0.31.2_WIP.md` (Drive WIP)
 
 ## Gate 2 — Remove unnecessary run ZIP
-- [ ] Stop automatic creation of `*_COMPLETE.zip`
-- [ ] Remove ZIP from mandatory Stage 13 / download contract
-- [ ] Keep small manifests/audit evidence without copying payload files
-- [ ] Update output_index/manifest schemas so absence of ZIP is expected
-- [ ] Add regression test proving normal run creates no full duplicate archive
+- [x] Stop automatic creation of `*_COMPLETE.zip` in v0.31.2 workflow
+- [x] Remove final ZIP node from v0.31.2 graph; Stage 13 remains small manifest/acceptance evidence only
+- [x] Keep small manifests/audit evidence without copying payload files
+- [x] Update WIP release/output behavior so absence of ZIP is expected; legacy package call becomes `ARCHIVE_DISABLED` compatibility shim
+- [x] Add regression test proving normal v0.31.2 workflow creates no full duplicate archive
 
 ## Gate 3 — Deduplicate canonical/USD data
-- [ ] If hashes prove the two USDA files identical, retain one authoritative file only
-- [ ] Replace duplicate path with reference/manifest pointer instead of physical copy
+- [x] Identical USDA SHA-256 proven; v0.31.2 local patch retains only canonical `geometry/canonical/pointcloud.usda`
+- [x] Maya worker input now points directly to the run-local canonical USDA; no second physical USDA is written
 - [ ] Verify Maya USD proxy still resolves after deduplication
 - [ ] Verify .ma reopen remains PASS
 
 ## Gate 4 — Deduplicate textures and FBM folders
-- [ ] Determine which external texture copy is actually required by Maya/FBX
-- [ ] Prefer one run-level authoritative source texture
-- [ ] Avoid duplicate FBM texture folders when embedded textures make them unnecessary
+- [x] Reference run proves source PNG and PrimaryTexture PNG identical; v0.31.2 local patch reuses `source/source.png` as hero material texture
+- [x] Prefer one run-level authoritative source texture; helper retains compatibility fallback only for direct callers
+- [x] Local patch removes transient `.fbm` extraction after embedded-texture FBX round-trip validation
 - [ ] Preserve compatibility when an external-texture FBX consumer requires a sidecar
 - [ ] Regression-test texture linkage in .ma and FBX round-trip
 
 ## Gate 5 — Deduplicate ComfyUI transport/preview outputs
-- [ ] Keep user-visible downloadable/previewable nodes
-- [ ] Avoid copying the same GLB twice solely to expose it in ComfyUI when a reference/transport path can be used safely
+- [x] Preserve user-visible preview outputs while changing transport storage policy
+- [x] PLY/HF GLB ComfyUI transport now prefers same-volume hard links; verified copy fallback remains for cross-volume filesystems
 - [ ] Verify preview nodes still open the exact generated asset
 - [ ] Record output location clearly in UI/report
 
 ## Gate 6 — Evaluate duplicate FBX roles
-- [ ] Compare legacy Ghost.fbx and GhostFullScene.fbx contents/signatures
-- [ ] If functionally redundant after parity validation, designate one official full-scene FBX
+- [x] Compare legacy Ghost.fbx and GhostFullScene.fbx roles/signatures
+- [x] Local v0.31.2 design designates `Ghost.fbx` as the single exported full-scene FBX; `GhostFullScene.fbx` is compatibility alias
 - [ ] Retire duplicate only after Maya 2026 round-trip regression passes
-- [ ] Preserve CameraOnly.fbx
+- [x] Preserve CameraOnly.fbx as distinct diagnostic/interchange artifact
 
 ## Gate 7 — Restore floating-point visualization branch
-- [ ] Keep `CG_FUSED_POINTS` in the .ma exactly as v0.31.1
+- [x] Keep `CG_FUSED_POINTS` in the .ma exactly as validated in v0.31.1 baseline
 - [ ] Restore a user-facing point-cloud output/preview node
 - [ ] Do not create another huge duplicate point-cloud payload solely for the node
 - [ ] Use/reference the authoritative canonical point data where possible
