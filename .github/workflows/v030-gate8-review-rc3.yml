@@ -1,0 +1,138 @@
+name: ConceptGhost v0.30 Gate8 Review RC3
+
+on:
+  push:
+    paths:
+      - 'releases/ConceptGhost_v0.30_GATE8_REVIEW_RC3/**'
+      - '.github/workflows/v030-gate8-review-rc3.yml'
+  workflow_dispatch:
+
+jobs:
+  linux-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Reconstruct RC3 source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE="releases/ConceptGhost_v0.30_GATE8_REVIEW_RC3"
+          cat "$RELEASE"/SOURCE_ZIP.part*.b64 | base64 -d > "$RUNNER_TEMP/rc3.zip"
+          unzip -q "$RUNNER_TEMP/rc3.zip" -d "$RUNNER_TEMP/rc3"
+          test -d "$RUNNER_TEMP/rc3/ConceptGhost_v0.30_GATE8_REVIEW_RC3"
+
+      - name: Install lightweight test dependencies
+        run: python -m pip install --upgrade pip pytest numpy pillow
+
+      - name: Compile and run RC3 regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="$RUNNER_TEMP/rc3/ConceptGhost_v0.30_GATE8_REVIEW_RC3"
+          python -m compileall -q "$PKG/custom_nodes/ConceptGhost_Stage68" "$PKG/Tools/MoGeRuntime/worker" "$PKG/Tests"
+          python -m pytest -q "$PKG/Tests/test_v030_canonical.py"
+
+      - name: Validate graph, retired dependencies and runtime-helper repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="$RUNNER_TEMP/rc3/ConceptGhost_v0.30_GATE8_REVIEW_RC3"
+          PKG="$PKG" python - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ["PKG"])
+          wf = json.loads((root/"Workflows/Project/ConceptGhost_Master_v0.30_CANONICAL.json").read_text(encoding="utf-8"))
+          nodes = {n["id"]: n for n in wf["nodes"]}
+          links = wf["links"]
+          assert len(nodes) == 26, len(nodes)
+          assert len(links) == 66, len(links)
+          link_ids = {l[0] for l in links}
+          for l in links:
+              assert l[1] in nodes and l[3] in nodes, l
+          for n in nodes.values():
+              for inp in n.get("inputs", []) or []:
+                  lid = inp.get("link")
+                  if lid is not None:
+                      assert lid in link_ids
+              for out in n.get("outputs", []) or []:
+                  for lid in out.get("links") or []:
+                      assert lid in link_ids
+
+          workflow_text = json.dumps(wf).lower()
+          for retired in [
+              "da3", "depthanythingv3", "compare_both",
+              "semantic_assist", "conceptghostsemanticassist"
+          ]:
+              assert retired not in workflow_text, retired
+
+          nodes_py = (root/"custom_nodes/ConceptGhost_Stage68/nodes.py").read_text(encoding="utf-8")
+          assert "def _conceptghost_moge3_runtime_root()" in nodes_py
+          assert "def _as_worker_tensor" in nodes_py
+          assert "moge_full_resolution_depth_edge_preserving" in nodes_py
+          assert "triangles_crossing_forbidden_depth_edges" in nodes_py
+
+          worker = (root/"Tools/MoGeRuntime/worker/moge_worker.py").read_text(encoding="utf-8")
+          assert "Missing fail-closed MoGe-3 request fields" in worker
+          for forbidden in [
+              'req.get("model") or "Ruicheng/moge-3-vitl"',
+              'req.get("refine_steps", 3)',
+              'req.get("force_projection", True)',
+              'req.get("apply_mask", True)',
+          ]:
+              assert forbidden not in worker, forbidden
+
+          manifest = json.loads((root/"RELEASE_MANIFEST.json").read_text(encoding="utf-8"))
+          assert manifest["schema"] == "ConceptGhost.ReleaseManifest.v0.30"
+          assert manifest["review_rc3"]["runtime_regression_test"] == "PASS"
+          assert manifest["geometry"]["high_fidelity"]["transport_stride"] == 1
+          assert manifest["geometry"]["high_fidelity"]["depth_edge_rtol"] == 0.04
+          print("v0.30 Gate8 Review RC3 contract PASS")
+          PY
+
+  windows-powershell-51:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Reconstruct RC3 source snapshot
+        shell: powershell
+        run: |
+          $release = 'releases\ConceptGhost_v0.30_GATE8_REVIEW_RC3'
+          $parts = Get-ChildItem (Join-Path $release 'SOURCE_ZIP.part*.b64') | Sort-Object Name
+          $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ''
+          $bytes = [Convert]::FromBase64String($b64.Trim())
+          $zip = Join-Path $env:RUNNER_TEMP 'rc3.zip'
+          [IO.File]::WriteAllBytes($zip, $bytes)
+          $out = Join-Path $env:RUNNER_TEMP 'rc3'
+          Expand-Archive -Path $zip -DestinationPath $out -Force
+          if (-not (Test-Path (Join-Path $out 'ConceptGhost_v0.30_GATE8_REVIEW_RC3'))) { throw 'RC3 source root missing' }
+
+      - name: Parse all PowerShell scripts with Windows PowerShell parser
+        shell: powershell
+        run: |
+          $pkg = Join-Path $env:RUNNER_TEMP 'rc3\ConceptGhost_v0.30_GATE8_REVIEW_RC3'
+          $scripts = Get-ChildItem (Join-Path $pkg 'Scripts') -Filter '*.ps1' -File
+          if ($scripts.Count -eq 0) { throw 'No PowerShell scripts found' }
+          foreach ($script in $scripts) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -ne 0) {
+              $errors | Format-List | Out-String | Write-Host
+              throw "PowerShell parser errors in $($script.Name)"
+            }
+          }
+
+      - name: Run RC3 Python regressions on Windows
+        shell: powershell
+        run: |
+          python -m pip install --upgrade pip pytest numpy pillow
+          $pkg = Join-Path $env:RUNNER_TEMP 'rc3\ConceptGhost_v0.30_GATE8_REVIEW_RC3'
+          python -m compileall -q (Join-Path $pkg 'custom_nodes\ConceptGhost_Stage68') (Join-Path $pkg 'Tools\MoGeRuntime\worker') (Join-Path $pkg 'Tests')
+          python -m pytest -q (Join-Path $pkg 'Tests\test_v030_canonical.py')
