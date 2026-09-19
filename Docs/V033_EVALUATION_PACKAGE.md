@@ -10,7 +10,7 @@ File:
 `ConceptGhost_v0.33_EVALUATION.zip`
 
 SHA-256:
-`0a4438391eaf18fe1b3b706df55a0859fb9e2d63adbce622ca4b4fd44068dc16`
+`db32301e68a11b9af0b4749dd3c72f26c7938c0a3827f80c1800ef8bea3cec39`
 
 ## Package validation
 - v0.32 × v0.33 benchmark comparator included and synthetic self-test PASS
@@ -20,7 +20,7 @@ SHA-256:
 - pinned MoGe vendor included: 11,590,402 bytes
 - packaged Python/import validation: PASS
 - bundle hash inventory: PASS
-- local source regression suite: 123 PASS
+- local source regression suite: 125 PASS
 
 ## Safety defaults
 - Remesh variants OFF
@@ -51,3 +51,11 @@ P8 derived candidate:
 
 ## P9
 No new frozen external model is promoted. Point-SAM, EZ-SP, UniDepth, Metric3D, Mask3D, Mosaic3D and similar heavier systems remain frozen until a benchmark proves a specific unresolved gap.
+
+
+## P8 final safety decision
+- Small-hole real proof on frozen 2,823,599-face PrimaryMesh: 30,965 boundary edges, 218 closed loops, 202 loops with <=64 edges, only 3 artist-review candidates after region/depth-boundary protection.
+- Automatic hole filling remains disabled.
+- Adaptive local remesh status: `DEFERRED_BY_BENCHMARK`; do not ship an unproven local triangulator before boundary-constrained crack-free stitching is demonstrated.
+- P7 + P8 real evaluation: ~14 s total, ~993 MB peak RSS on frozen reference.
+- Local regression suite: **125 PASS**.
