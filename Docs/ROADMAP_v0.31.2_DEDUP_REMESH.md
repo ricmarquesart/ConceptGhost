@@ -2,7 +2,7 @@
 
 Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baseline.
 
-**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 NEXT (fresh Windows/ComfyUI/Maya v0.31.2 run) · Gate 11 pending.
+**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 NEXT (fresh Windows/ComfyUI/Maya v0.31.2 run) · Gate 11 TOOLING COMPLETE LOCAL / target-machine audit still pending.
 
 ## Status legend
 - [x] complete and verified
@@ -86,7 +86,7 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 
 ## Gate 10 — Size and regression acceptance
 
-**Next active gate:** fresh v0.31.2 Windows/ComfyUI/Maya execution using `ConceptGhost_Master_v0.31.2_DEDUP_REMESH.json`. Local suite currently: **57 PASS**. RC3 WIP source SHA-256: `e64a1d08557869cb9ae433891f6620a9b32e129978aa1876ef8d16205fe96776`.
+**Next active gate:** fresh v0.31.2 Windows/ComfyUI/Maya execution using `ConceptGhost_Master_v0.31.2_DEDUP_REMESH.json`. Local suite currently: **57 PASS**. RC3 WIP source SHA-256: `e64a1d08557869cb9ae433891f6620a9b32e129978aa1876ef8d16205fe96776`. Latest RC4 WIP after safe-DA3 tooling: SHA-256 `e15644ac63048e64ae4d4c6f0320ae38094f35e99a924f2635989e1dac4aea60`; local suite **60 PASS**.
 - [ ] Measure same reference run before vs after deduplication
 - [ ] Target: remove COMPLETE.zip overhead entirely
 - [ ] Target: eliminate verified physical duplicates without loss of functionality
@@ -100,22 +100,22 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 
 
 ## Gate 11 — Safe DA3 computer cleanup
-- [ ] Measure total DA3 disk usage before deleting anything
-- [ ] Inventory every DA3-attributable folder/file and record size, location, owner/project role and whether it is exclusive or shared
-- [ ] Separate DA3-exclusive assets from shared runtimes, libraries, caches, models and workflows
-- [ ] Build an explicit KEEP / SAFE_TO_DELETE / UNCERTAIN classification before deletion
-- [ ] Delete only items proven exclusive to retired DA3 functionality
-- [ ] Do not modify/remove shared Python installations or Python environments used by other projects
-- [ ] Do not modify/remove shared Torch/PyTorch packages
-- [ ] Do not modify/remove shared CUDA drivers, CUDA toolkit/runtime or GPU libraries
-- [ ] Do not modify/remove shared NumPy or other common Python dependencies
-- [ ] Do not modify/remove Single View workflows or runtimes
-- [ ] Do not modify/remove Multi View / Trellis workflows or runtimes
-- [ ] Do not modify/remove unrelated ComfyUI custom nodes, models, caches or workflows
-- [ ] Preserve anything whose ownership cannot be proven; uncertain items default to KEEP
-- [ ] Measure disk usage after cleanup and report reclaimed space
-- [ ] Re-run ConceptGhost baseline checks and smoke-test unrelated protected workflows after cleanup
-- [ ] Record a permanent cleanup report with before/after paths, bytes and hashes where appropriate
+- [~] Measure total DA3 disk usage before deleting anything — v0.31.2 measure-only auditor ready; target-machine execution pending
+- [x] Auditor inventories known DA3-attributable paths with bytes, file counts, owner role and classification
+- [x] Separate DA3-exclusive assets from shared/uncertain runtimes, caches, models and workflows
+- [x] Build explicit KEEP / SAFE_TO_DELETE / UNCERTAIN classification before deletion; UNCERTAIN defaults to KEEP
+- [~] Remover is hard-fenced to exact proven DA3-exclusive paths; actual deletion not executed yet
+- [x] Removal safety policy explicitly blocks shared Python/environments
+- [x] Removal safety policy explicitly blocks Torch/PyTorch
+- [x] Removal safety policy explicitly blocks CUDA/GPU libraries
+- [x] Removal safety policy explicitly blocks NumPy/common dependencies
+- [x] Single View references are protected; audit records hashes and cleanup verifies they do not change
+- [x] Multi View/Trellis references are protected; audit records hashes and cleanup verifies they do not change
+- [x] Broad Pixi cache, DA3 plugin/models and unrelated ComfyUI assets are not auto-approved for deletion
+- [x] Preserve anything whose ownership cannot be proven; UNCERTAIN defaults to KEEP
+- [~] Cleanup result report records reclaimed bytes; target-machine cleanup not executed yet
+- [~] Cleanup invokes ConceptGhost verifier and verifies protected workflow hashes; actual target-machine smoke execution remains pending
+- [x] Tooling writes `ConceptGhost.DA3SafeCleanupResult.v0.31.2` with audit source, removed paths, reclaimed bytes and protected hash verification
 
 ### Gate 11 non-interference objective
 Delete only what is safely attributable to DA3. This gate must not break Python, Torch, CUDA, NumPy, Single View, Multi View/Trellis, other workflows, or other projects.
