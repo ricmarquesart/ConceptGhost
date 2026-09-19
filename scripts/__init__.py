@@ -1,1 +1,0 @@
-"""ConceptGhost bootstrap package."""
