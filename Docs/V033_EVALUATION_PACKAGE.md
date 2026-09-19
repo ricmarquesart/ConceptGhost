@@ -59,3 +59,9 @@ No new frozen external model is promoted. Point-SAM, EZ-SP, UniDepth, Metric3D, 
 - Adaptive local remesh status: `DEFERRED_BY_BENCHMARK`; do not ship an unproven local triangulator before boundary-constrained crack-free stitching is demonstrated.
 - P7 + P8 real evaluation: ~14 s total, ~993 MB peak RSS on frozen reference.
 - Local regression suite: **125 PASS**.
+
+
+## Source checkpoint
+- Drive source snapshot: `ConceptGhost_v0.33_SOURCE_SNAPSHOT.zip`
+- SHA-256: `a3131ea45f5929b00009337e9140be90ac47ad046a72528b0a5b2db18aa7e3dd`
+- 77 source/test/doc files; the 11.59 MB pinned MoGe vendor archive is intentionally excluded from this source-only snapshot and remains in the complete EVALUATION bundle.
