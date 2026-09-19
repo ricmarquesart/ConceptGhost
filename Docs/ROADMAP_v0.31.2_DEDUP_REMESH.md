@@ -154,7 +154,11 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 - [x] 231 protected Single/Multi/Trellis references are hash-protected by the reviewed audit
 - [x] Reviewed audit SHA-256 pinned in remover: `c68c19255eb982887762a3c8248c6dd1c0fe59caab09faeb2403679f676b7b82`
 - [x] v0.32 remover rejects any changed audit, changed SAFE path size/file count, changed protected hash, or unexpected SAFE_TO_DELETE path
-- [ ] Execute reviewed v0.32 cleanup after explicit confirmation
+- [x] v0.32.1 precheck exposed a Windows PowerShell 5.1 array/list compatibility bug before any deletion
+- [x] v0.32.2 replaces generic-list/PSCustomObject return handling with PowerShell 5.1-compatible plain arrays
+- [x] v0.32.2 captures stable workflow/source hashes immediately before deletion and compares them immediately after, avoiding false blocks from older audit hashes
+- [x] Dynamic Manager caches/logs/bytecode remain untouched but no longer act as hash blockers
+- [ ] Execute reviewed v0.32.2 cleanup after explicit confirmation
 - [ ] Capture `ConceptGhost.DA3SafeCleanupResult.v0.32`
 - [ ] Run ConceptGhost + Single View + Multi View/Trellis smoke checks after cleanup
 
