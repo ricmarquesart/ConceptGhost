@@ -13,7 +13,26 @@ echo.
 echo  It will NOT remove Pixi, DA3 plugin/models, Python, Torch,
 echo  CUDA, NumPy, Single View, Multi View/Trellis, or other workflows.
 echo.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Scripts\remove_da3_reviewed_audit_20260918_235621.ps1"
+
+set "PS1=%~dp0remove_da3_reviewed_audit_20260918_235621.ps1"
+if not exist "%PS1%" set "PS1=%~dp0Scripts\remove_da3_reviewed_audit_20260918_235621.ps1"
+
+if not exist "%PS1%" (
+  echo [FAIL] PowerShell cleanup script was not found.
+  echo Expected either:
+  echo   %~dp0remove_da3_reviewed_audit_20260918_235621.ps1
+  echo or:
+  echo   %~dp0Scripts\remove_da3_reviewed_audit_20260918_235621.ps1
+  echo.
+  echo No files were changed.
+  pause
+  exit /b 1
+)
+
+echo [INFO] Using script:
+echo   %PS1%
+echo.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
 if errorlevel 1 (
   echo.
   echo [FAIL] Cleanup was blocked or failed. Review the message above.
