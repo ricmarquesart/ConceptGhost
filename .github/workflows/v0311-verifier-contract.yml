@@ -1,0 +1,35 @@
+name: ConceptGhost v0.31.1 verifier contract
+
+on:
+  push:
+    paths:
+      - 'releases/ConceptGhost_v0.31.1_PrimaryMeshAuthority_MayaFBX_RC1/**'
+      - '.github/workflows/v0311-verifier-contract.yml'
+  workflow_dispatch:
+
+jobs:
+  windows-verifier-contract:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reproduce Comfy combo serialization and validate v0.31.1 logic
+        shell: powershell
+        run: |
+          $workflow = @{
+            nodes = @(
+              @{ type = 'ConceptGhostMasterConfig'; widgets_values = @('concept_scene','Max Reference','Auto','MoGe-3','High Fidelity',$false,'%USERPROFILE%\ConceptGhost_Output') },
+              @{ type = 'ConceptGhostGeometryProfile'; widgets_values = @() },
+              @{ type = 'ConceptGhostHFVariantExporter'; widgets_values = @() }
+            )
+            links = @()
+          }
+          $json = $workflow | ConvertTo-Json -Depth 8
+          if ($json -match '"Low Resolution"') { throw 'Fixture unexpectedly serialized inactive combo options' }
+          $WfJson = $json | ConvertFrom-Json
+          $MasterNode=@($WfJson.nodes | Where-Object { $_.type -eq 'ConceptGhostMasterConfig' })
+          $ProfileNode=@($WfJson.nodes | Where-Object { $_.type -eq 'ConceptGhostGeometryProfile' })
+          $VariantNode=@($WfJson.nodes | Where-Object { $_.type -eq 'ConceptGhostHFVariantExporter' })
+          if($MasterNode.Count -ne 1 -or $ProfileNode.Count -ne 1 -or $VariantNode.Count -ne 1){throw 'authority nodes missing or duplicated'}
+          if([string]$MasterNode[0].widgets_values[3] -ne 'MoGe-3'){throw 'default MoGe version is not MoGe-3'}
+          if([string]$MasterNode[0].widgets_values[4] -ne 'High Fidelity'){throw 'default profile is not High Fidelity'}
+          Write-Host 'v0.31.1 verifier regression PASS'
