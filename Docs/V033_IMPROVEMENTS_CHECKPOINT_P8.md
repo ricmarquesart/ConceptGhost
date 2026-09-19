@@ -7,7 +7,7 @@ Drive checkpoint:
 - SHA-256: `e38747acea8e9af350367a95da75214f7e0d9fc9fde7d88525fec383945f115a`
 - Drive folder: https://drive.google.com/drive/folders/1-EMTHvsW6c9BWEpSqphrgMh-p72W5lk3
 
-Local regression suite: **123 PASS**.
+Local regression suite: **125 PASS**.
 
 ## Progress
 - [x] P0 — v0.32 frozen baseline
@@ -56,3 +56,19 @@ Artist-approved derived planar candidate:
 - automatic metric-based PrimaryMesh movement
 
 Those remain gated until fixed-suite benchmarking demonstrates a measurable benefit without regression.
+
+
+## Small-hole diagnostics real proof
+- boundary edges: 30,965
+- closed loops: 218
+- small closed loops (<=64 edges): 202
+- artist-review candidates after image/depth/region protection: 3
+- automatic fill: false
+- P8 diagnostic runtime: ~4.0 s
+- combined P7+P8 wall time: ~14 s
+- peak RSS: ~993 MB
+
+## Adaptive local remesh decision
+Status: `DEFERRED_BY_BENCHMARK`.
+
+Reason: safe promotion requires boundary-constrained triangulation or equivalent crack-free stitching, exact boundary preservation, no cross-depth/cross-region bridges, UV/material continuity, fixed-suite improvement evidence, and Maya/FBX round-trip. v0.33 does not ship an unproven local remesher.
