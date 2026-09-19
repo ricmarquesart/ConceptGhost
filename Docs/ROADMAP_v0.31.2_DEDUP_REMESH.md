@@ -2,7 +2,7 @@
 
 Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baseline.
 
-**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 NEXT (fresh Windows/ComfyUI/Maya v0.31.2 run) · Gate 11 TOOLING COMPLETE LOCAL / target-machine audit still pending.
+**Current execution status (2026-09-18 PT):** Gate 0 COMPLETE · Gate 1 COMPLETE · Gate 2 COMPLETE · Gates 3/4/5/6 IMPLEMENTED LOCALLY and awaiting Windows/Maya runtime validation where noted · Gate 7 COMPLETE LOCAL · Gate 8 COMPLETE LOCAL on the frozen real PrimaryMesh · Gate 9 COMPLETE LOCAL · Gate 10 RUNTIME-READY RC5 (fresh Windows/ComfyUI/Maya v0.31.2 OFF + ON runs required) · Gate 11 TOOLING COMPLETE LOCAL / target-machine audit still pending.
 
 ## Status legend
 - [x] complete and verified
@@ -86,7 +86,7 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 
 ## Gate 10 — Size and regression acceptance
 
-**Next active gate:** fresh v0.31.2 Windows/ComfyUI/Maya execution using `ConceptGhost_Master_v0.31.2_DEDUP_REMESH.json`. Local suite currently: **57 PASS**. RC3 WIP source SHA-256: `e64a1d08557869cb9ae433891f6620a9b32e129978aa1876ef8d16205fe96776`. Latest RC4 WIP after safe-DA3 tooling: SHA-256 `e15644ac63048e64ae4d4c6f0320ae38094f35e99a924f2635989e1dac4aea60`; local suite **60 PASS**.
+**Next active gate:** fresh v0.31.2 Windows/ComfyUI/Maya execution using `ConceptGhost_Master_v0.31.2_DEDUP_REMESH.json`. Local suite currently: **57 PASS**. RC3 WIP source SHA-256: `e64a1d08557869cb9ae433891f6620a9b32e129978aa1876ef8d16205fe96776`. Latest RC4 WIP after safe-DA3 tooling: SHA-256 `e15644ac63048e64ae4d4c6f0320ae38094f35e99a924f2635989e1dac4aea60`. Runtime-ready RC5: SHA-256 `9d7dc41e4a8bcc58b664943dac7edf9c5d9ccdbcfe546d56639a7934c7e2b670`; local suite **64 PASS**.
 - [ ] Measure same reference run before vs after deduplication
 - [ ] Target: remove COMPLETE.zip overhead entirely
 - [ ] Target: eliminate verified physical duplicates without loss of functionality
@@ -98,6 +98,18 @@ Baseline rule: no v0.31.2 change may alter or rewrite the frozen v0.31.1 baselin
 - [ ] Camera/FOV/transforms/UV/normals/material linkage remain unchanged
 - [ ] Compare final v0.31.2 against frozen v0.31.1 before promotion
 
+
+### Gate 10 RC5 runtime procedure
+- [x] Add dedicated `PREPARE_V0312_RUNTIME_VALIDATION.bat`
+- [x] Add dedicated `VERIFY_V0312_RUNTIME_OUTPUT.bat`
+- [x] Legacy `PREPARE_GATE8_VALIDATION.bat` redirects to v0.31.2 procedure
+- [x] Legacy `VERIFY_HIGH_FIDELITY_OUTPUT.bat` redirects to full v0.31.2 runtime acceptance
+- [x] Runtime verifier rejects COMPLETE.zip, duplicate Maya USDA, duplicate PrimaryTexture PNG and persistent .fbm folders
+- [x] Runtime verifier requires exact FBX alias payload and the requested Remesh OFF/ON state
+- [x] Maya worker records and requires `CG_FUSED_POINTS` after reopening the saved .ma
+- [ ] Execute Run A on target machine: Remesh OFF
+- [ ] Execute Run B on target machine: Remesh ON
+- [ ] Both target-machine runtime verifiers PASS
 
 ## Gate 11 — Safe DA3 computer cleanup
 - [~] Measure total DA3 disk usage before deleting anything — v0.31.2 measure-only auditor ready; target-machine execution pending
