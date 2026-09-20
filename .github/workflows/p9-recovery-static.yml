@@ -1,0 +1,15 @@
+name: P9 Recovery Static Gate
+on:
+  push:
+    branches: [work/p9-recovery-v0381]
+  workflow_dispatch:
+jobs:
+  recovery-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install --upgrade pip numpy
+      - run: python recovery/v0381/tests/test_recovery.py
