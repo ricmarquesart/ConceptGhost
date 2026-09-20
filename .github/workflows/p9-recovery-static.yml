@@ -1,7 +1,7 @@
-name: P9 v0.41.2 Branch Export Layout Gate
+name: P9 v0.41.3 Maya Camera Signature Gate
 on:
   push:
-    branches: [work/p9-branch-export-layout-v0412]
+    branches: [work/p9-maya-camera-signature-v0413]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -20,3 +20,4 @@ jobs:
       - run: python recovery/v0410/test_fov_authority.py
       - run: python recovery/v0411/test_dense_depth_tensor_coalesce.py
       - run: python recovery/v0412/test_branch_export_layout.py
+      - run: python recovery/v0413/test_maya_camera_signature.py
