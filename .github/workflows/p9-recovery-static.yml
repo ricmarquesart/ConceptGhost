@@ -1,7 +1,7 @@
-name: P9 v0.41.0 FOV Authority Static Gate
+name: P9 v0.41.1 Dense Depth Tensor Runtime Gate
 on:
   push:
-    branches: [work/p9-fov-authority-v0410]
+    branches: [work/p9-dense-depth-tensor-v0411]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -18,3 +18,4 @@ jobs:
       - run: python recovery/v0400/test_p9_static_complete.py
       - run: python recovery/v0401/test_runtime_wiring.py
       - run: python recovery/v0410/test_fov_authority.py
+      - run: python recovery/v0411/test_dense_depth_tensor_coalesce.py
