@@ -13,3 +13,4 @@ jobs:
           python-version: '3.13'
       - run: python -m pip install --upgrade pip numpy
       - run: python recovery/v0381/tests/test_recovery.py
+      - run: python recovery/v0382/tests/test_contracts.py
