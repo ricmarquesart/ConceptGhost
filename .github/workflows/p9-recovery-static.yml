@@ -1,10 +1,10 @@
-name: P9 Recovery Static Gate
+name: P9 Recovery + P9.10 Static Gate
 on:
   push:
-    branches: [work/p9-recovery-v0381]
+    branches: [work/p9-recovery-v0381, work/p9-10-v0390]
   workflow_dispatch:
 jobs:
-  recovery-static:
+  p9-static:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,3 +14,4 @@ jobs:
       - run: python -m pip install --upgrade pip numpy
       - run: python recovery/v0381/tests/test_recovery.py
       - run: python recovery/v0382/tests/test_contracts.py
+      - run: python recovery/v0390/test_p9_10_regional.py
