@@ -1,7 +1,7 @@
-name: P9 v0.40.2 Focal Consensus Runtime Gate
+name: P9 v0.40.3 Nonblocking Focal Runtime Gate
 on:
   push:
-    branches: [work/p9-focal-consensus-v0402]
+    branches: [work/p9-nonblocking-focal-v0403]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -18,3 +18,4 @@ jobs:
       - run: python recovery/v0400/test_p9_static_complete.py
       - run: python recovery/v0401/test_runtime_wiring.py
       - run: python recovery/v0402/test_focal_consensus.py
+      - run: python recovery/v0403/test_nonblocking_focal.py
