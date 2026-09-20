@@ -1,0 +1,17 @@
+name: P9.10 Semantic Geometry Gate
+on:
+  push:
+    branches: [work/p9-semantic-v0383]
+  workflow_dispatch:
+jobs:
+  p9-semantic-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install --upgrade pip numpy
+      - run: python recovery/v0383/test_semantic_gate.py
+      - run: python recovery/v0382/tests/test_contracts.py
+      - run: python recovery/v0381/tests/test_recovery.py
