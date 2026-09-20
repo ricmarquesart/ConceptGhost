@@ -1,7 +1,7 @@
-name: P9 v0.40.1 Runtime Wiring Gate
+name: P9 v0.40.2 Focal Consensus Runtime Gate
 on:
   push:
-    branches: [work/p9-runtime-wiring-v0401]
+    branches: [work/p9-focal-consensus-v0402]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -17,3 +17,4 @@ jobs:
       - run: python recovery/v0390/test_p9_10_regional.py
       - run: python recovery/v0400/test_p9_static_complete.py
       - run: python recovery/v0401/test_runtime_wiring.py
+      - run: python recovery/v0402/test_focal_consensus.py
