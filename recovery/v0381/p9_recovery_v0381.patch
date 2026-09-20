@@ -1,0 +1,57 @@
+--- a/custom_nodes/ConceptGhost_Stage68/nodes.py
++++ b/custom_nodes/ConceptGhost_Stage68/nodes.py
+@@ -1703,14 +1703,19 @@
+             f"[PRIMARY_MESH_BUILD] canonical profile mismatch: "
+             f"{canonical.get('geometry_profile')!r} != {selected_profile!r}"
+         )
+-    if str(canonical.get("engine") or "").lower() != "moge":
+-        raise RuntimeError("[PRIMARY_MESH_BUILD] v0.30 final mesh authority must be MoGe")
++    geometry_engine = str(canonical.get("engine") or "").lower()
++    allowed_engines = {"moge", "p9_solver_fusion"}
++    if geometry_engine not in allowed_engines:
++        raise RuntimeError(
++            f"[PRIMARY_MESH_BUILD] unsupported canonical geometry authority: {geometry_engine!r}; "
++            f"expected one of {sorted(allowed_engines)}"
++        )
+ 
+     xyz_full = np.asarray(canonical.get("xyz"), dtype=np.float32).reshape((-1, 3))
+     source_uv_full = np.asarray(canonical.get("source_uv"), dtype=np.float32).reshape((-1, 2))
+     grid_xy = np.asarray(canonical.get("grid_xy"), dtype=np.int64).reshape((-1, 2))
+     if len(xyz_full) < 3 or len(source_uv_full) != len(xyz_full) or len(grid_xy) != len(xyz_full):
+-        raise ValueError("Canonical MoGe geometry is missing aligned xyz/source_uv/grid_xy arrays")
++        raise ValueError("Canonical geometry is missing aligned xyz/source_uv/grid_xy arrays")
+@@ -1876,7 +1881,7 @@
+     mesher_policy = str(profile["mesher_policy"])
+     report = {
+-        "source_engine": "moge",
++        "source_engine": geometry_engine,
+@@ -2163,7 +2166,7 @@
+             "coordinate_convention": dict(CANONICAL_COORDINATES),
+             "point_count": int(len(xyz)),
+-            "geometry_engine": "moge",
++            "geometry_engine": str(canonical.get("engine") or "unknown"),
+--- a/custom_nodes/ConceptGhost_Stage68/conceptghost_dense_depth.py
++++ b/custom_nodes/ConceptGhost_Stage68/conceptghost_dense_depth.py
+@@ -184,9 +184,14 @@
+     for i, name in enumerate(names):
+         g = _log_gradient(stack[i], valid[i])
+         vals = g[valid[i]]
+-        thr = float(np.quantile(vals, boundary_quantile)) if vals.size else float("inf")
++        positive = vals[np.isfinite(vals) & (vals > 1e-6)]
++        thr = float(np.quantile(positive, boundary_quantile)) if positive.size else float("inf")
+         edge_thresholds[name] = thr
+-        edges.append(g >= thr)
++        edges.append(valid[i] & np.isfinite(g) & (g > 1e-6) & (g >= thr))
+@@ -203,8 +208,18 @@
+-    availability = valid_count.astype(np.float32) / float(len(names))
+-    confidence = (availability * np.nan_to_num(agreement, nan=0.0)).astype(np.float32)
++    coherent_availability = inlier_count.astype(np.float32) / float(len(names))
++    rejection_penalty = np.divide(
++        inlier_count.astype(np.float32),
++        np.maximum(valid_count, 1).astype(np.float32),
++    )
++    confidence = (
++        coherent_availability
++        * np.nan_to_num(agreement, nan=0.0)
++        * rejection_penalty
++    ).astype(np.float32)
