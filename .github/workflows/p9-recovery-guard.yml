@@ -1,0 +1,55 @@
+name: P9 Recovery Guard
+
+on:
+  push:
+    branches:
+      - work/v0.38.1-p9-recovery
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout recovery branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify frozen v0.36 source snapshot hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "02ff409d700f37693c7b1e802b5e10123227856a3eabc4346d24b1b3a6f0dfd8  releases/ConceptGhost_v0.36_FROZEN_BASELINE/ConceptGhost_v0.36_FROZEN_SOURCE.zip" | sha256sum -c -
+
+      - name: Prove v0.36 frozen baseline was not modified
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin frozen/v0.36-stable-p9-20260919 --depth=1
+          git diff --exit-code origin/frozen/v0.36-stable-p9-20260919 -- releases/ConceptGhost_v0.36_FROZEN_BASELINE
+
+      - name: Validate recovery checkpoint contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="releases/ConceptGhost_v0.38.1_P9_RECOVERY/RECOVERY_CHECKPOINT.md"
+          test -f "$FILE"
+          grep -Fq "24971e79972e9b82eee7918ef1596f6362dfdd06b0da67ea07c383685e66a3fa" "$FILE"
+          grep -Fq "STATIC RECOVERY PASS" "$FILE"
+          grep -Fq "promotion_allowed: false" "$FILE"
+          grep -Fq "WINDOWS-COMFYUI-MAYA RUNTIME PENDING" "$FILE"
+          grep -Fq "P9.3-P9.8" "$FILE"
+
+      - name: Guard against false promotion
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="releases/ConceptGhost_v0.38.1_P9_RECOVERY/RECOVERY_CHECKPOINT.md"
+          if grep -Eqi 'promotion_allowed:[[:space:]]*true' "$FILE"; then
+            echo "Recovery checkpoint must not be promoted before runtime acceptance."
+            exit 1
+          fi
+          echo "P9 Recovery Guard PASS"
