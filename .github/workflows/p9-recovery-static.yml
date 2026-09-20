@@ -1,7 +1,7 @@
-name: P9 Static Complete Gate
+name: P9 v0.40.1 Runtime Wiring Gate
 on:
   push:
-    branches: [work/p9-static-complete-v0400]
+    branches: [work/p9-runtime-wiring-v0401]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -16,3 +16,4 @@ jobs:
       - run: python recovery/v0382/tests/test_contracts.py
       - run: python recovery/v0390/test_p9_10_regional.py
       - run: python recovery/v0400/test_p9_static_complete.py
+      - run: python recovery/v0401/test_runtime_wiring.py
