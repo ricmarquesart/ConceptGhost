@@ -18,6 +18,12 @@ Recovery checkpoint:
 - bundle manifest: 59 payload files, hash/size validation PASS
 - promotion_allowed: false
 
+GitHub recovery guard:
+- workflow: `.github/workflows/p9-recovery-guard.yml`
+- protects the frozen v0.36 source hash and baseline path
+- validates the checkpoint contract and blocks a false `promotion_allowed: true`
+- connector-created commits did not auto-trigger an Actions run at checkpoint creation; no CI PASS is claimed until GitHub records an actual run
+
 ## Recovery fixes completed
 
 1. Dense Depth Fusion boundary voting ignores zero/near-zero gradients before quantile selection.
