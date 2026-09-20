@@ -1,7 +1,7 @@
-name: P9 v0.41.4 PrimaryMesh Optional Array Gate
+name: P9 v0.41.5 Maya FOV Zero Delta Gate
 on:
   push:
-    branches: [work/p9-primarymesh-optional-array-v0414]
+    branches: [work/p9-maya-fov-zero-delta-v0415]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -22,3 +22,4 @@ jobs:
       - run: python recovery/v0412/test_branch_export_layout.py
       - run: python recovery/v0413/test_maya_camera_signature.py
       - run: python recovery/v0414/test_primarymesh_optional_array.py
+      - run: python recovery/v0415/test_maya_fov_zero_delta.py
