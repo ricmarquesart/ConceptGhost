@@ -6,7 +6,8 @@ from .contracts import CompletionBundle
 from .path_planner import CameraPath
 
 
-class BaselineBundleAdapter(Protocol):
+class P9BundleAdapter(Protocol):
+    """Load the P9 handoff. Baseline-equivalent bundles are valid in lab mode."""
     def load(self, bundle: CompletionBundle) -> Any: ...
 
 
@@ -38,7 +39,8 @@ class ColmapDenseAdapter(Protocol):
     def reconstruct_dense(self, sparse_model: Path, output_dir: Path) -> Path: ...
 
 
-class BaselineFusionAdapter(Protocol):
+class P9FusionAdapter(Protocol):
+    """Fuse P10 reconstruction into P9/Baseline coordinates."""
     def fuse(self, scene: Any, dense_result: Path, output_dir: Path) -> Path: ...
 
 
