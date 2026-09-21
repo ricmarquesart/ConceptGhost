@@ -1,5 +1,5 @@
 {
-  "schema": "ConceptGhost.EnvironmentLock.v1.1",
+  "schema": "ConceptGhost.EnvironmentLock.v1.51",
   "authority": "PROJECT_CONTROL.md",
   "effective_date": "2026-09-21",
   "shared_comfy": {
@@ -39,7 +39,8 @@
     "moge_runtime": "%LOCALAPPDATA%\\ConceptGhost-MoGeRuntime-v1",
     "isolated_portable_fallback": "%LOCALAPPDATA%\\ConceptGhost\\ComfyUI_windows_portable",
     "workflow_dir": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\ComfyUI\\ComfyUI\\user\\default\\workflows\\ConceptGhost",
-    "forbid_versioned_state_roots": true
+    "forbid_versioned_state_roots": true,
+    "artist_output_root": "G:\\My Drive\\ConceptGhost\\Outputs\\ConceptGhost"
   },
   "private_moge": {
     "python": "3.11.9",
@@ -72,7 +73,7 @@
     "03_INSTALL_ALL.bat",
     "04_VERIFY_INSTALL.bat",
     "05_RUN_CONCEPTGHOST.bat",
-    "ConceptGhost_Master_v1.50.1.json",
+    "ConceptGhost_Master_v1.51.0.json",
     "LOCKS.json",
     "RELEASE.json",
     "BUNDLE_MANIFEST.json",
@@ -80,7 +81,7 @@
   ],
   "workflow_policy": {
     "ship_only_current_workflow": true,
-    "bundle_workflow_location": "ConceptGhost_Master_v1.50.1.json",
+    "bundle_workflow_location": "ConceptGhost_Master_v1.51.0.json",
     "installed_workflow_dir": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\ComfyUI\\ComfyUI\\user\\default\\workflows\\ConceptGhost",
     "remove_historical_conceptghost_master_workflows": true,
     "do_not_touch_unrelated_workflow_directories": true
@@ -119,5 +120,21 @@
     "pip_freeze_sha256": "f19ee87bba4fe26c17cfc65945f8a82e65f220f6f296730a0d0e510bbd72ffa9",
     "source": "user-captured read-only environment snapshot",
     "role": "known-good shared ComfyUI baseline reference"
+  },
+  "output_policy": {
+    "default_artist_output_root": "G:\\My Drive\\ConceptGhost\\Outputs\\ConceptGhost",
+    "runtime_stays_local": true,
+    "silent_output_fallback_allowed": false,
+    "baseline_refined_share_output_root": true
+  },
+  "draft_preview_policy": {
+    "node_type": "ConceptGhostFastDraftPreviewV151",
+    "display_only": true,
+    "final_geometry_authority": false,
+    "before_moge": true,
+    "target_seconds": 5,
+    "depth_policy": "cheap_perspective_proxy_not_moge",
+    "same_scene_authority_transform_code": true,
+    "must_not_block_final_on_draft_warning": true
   }
 }
