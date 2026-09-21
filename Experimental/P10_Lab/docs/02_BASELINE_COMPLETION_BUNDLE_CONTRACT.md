@@ -1,10 +1,12 @@
-# Baseline Completion Bundle Contract
+# P9 Completion Bundle Contract — P9 = Baseline
 
 ## User input
 
 One file only:
 
-`ConceptGhost_Baseline_CompletionBundle.zip`
+`ConceptGhost_P9_CompletionBundle.zip`
+
+The integrated Refined branch produces this package at the boundary between P9 and P10. During isolated laboratory testing, a Baseline-equivalent package is also accepted because P9 is defined to be identical to Baseline.
 
 ## Required
 
@@ -21,21 +23,30 @@ One file only:
 - source material references
 - geometry-health report
 
-## Optional future P9 enrichment
+## Optional auxiliary evidence
 
 - confidence
 - semantics
 - normals
 - boundaries
 - ground/sky masks
-- canonical Scene Contract
+- canonical scene metadata
 - region provenance
 
-The P10 laboratory must still start if every P9-only optional field is absent.
+These fields are not "P9-only refinements." P9 remains Baseline-identical. If any auxiliary evidence is later formalized, it must be compatible with the P9 = Baseline identity.
+
+## Manifest identity
+
+The canonical integrated manifest declares:
+
+- `source_stage = "p9"`
+- `source_equivalent_to = "baseline"`
+
+For isolated lab compatibility only, `source_stage = "baseline"` may be accepted as an equivalent source.
 
 ## Reference only
 
-A `.ma` file may be included for audit but is not the technical source of truth between Baseline and P10.
+A `.ma` file may be included for audit but is not the technical source of truth between P9 and P10.
 
 ## Output
 
@@ -46,3 +57,7 @@ A `.ma` file may be included for audit but is not the technical source of truth 
 - generated-view manifest
 - validation report
 - reconstruction references
+
+## Identity gate
+
+P10 must reject or clearly flag an input that claims to be P9 but is not marked Baseline-equivalent.
