@@ -1,5 +1,5 @@
 {
-  "schema": "ConceptGhost.EnvironmentLock.v1",
+  "schema": "ConceptGhost.EnvironmentLock.v1.1",
   "authority": "PROJECT_CONTROL.md",
   "effective_date": "2026-09-21",
   "shared_comfy": {
@@ -72,7 +72,7 @@
     "03_INSTALL_ALL.bat",
     "04_VERIFY_INSTALL.bat",
     "05_RUN_CONCEPTGHOST.bat",
-    "ConceptGhost_Master_v1.50.0.json",
+    "ConceptGhost_Master_v1.50.1.json",
     "LOCKS.json",
     "RELEASE.json",
     "BUNDLE_MANIFEST.json",
@@ -80,7 +80,7 @@
   ],
   "workflow_policy": {
     "ship_only_current_workflow": true,
-    "bundle_workflow_location": "ConceptGhost_Master_v1.50.0.json",
+    "bundle_workflow_location": "ConceptGhost_Master_v1.50.1.json",
     "installed_workflow_dir": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\ComfyUI\\ComfyUI\\user\\default\\workflows\\ConceptGhost",
     "remove_historical_conceptghost_master_workflows": true,
     "do_not_touch_unrelated_workflow_directories": true
@@ -94,10 +94,30 @@
     "05_RUN_CONCEPTGHOST.bat"
   ],
   "environment_snapshot": {
-    "required_before_major_install_or_environment_change": true,
-    "script": "01_CAPTURE_ENVIRONMENT.bat",
+    "schema": "ConceptGhost.EnvironmentSnapshot.v2",
+    "manual_script": "01_CAPTURE_ENVIRONMENT.bat",
+    "automatic_pre_post_install": true,
     "preferred_storage": "G:\\My Drive\\ConceptGhost\\Reports\\EnvironmentSnapshots",
     "fallback_storage": "%LOCALAPPDATA%\\ConceptGhost\\EnvironmentSnapshots",
+    "dynamic_discovery": [
+      "all detected Python interpreters and pip environments",
+      "Windows installed applications and versions",
+      "toolchain versions",
+      "safe relevant environment variables",
+      "full current ComfyUI pip freeze",
+      "custom nodes and Git commits when available",
+      "workflow hashes and node types",
+      "model filenames/sizes",
+      "ConceptGhost private MoGe runtime"
+    ],
+    "newly_discovered_software_is_automatically_recorded": true,
+    "newly_discovered_software_is_automatically_authorized_for_modification": false,
     "workflow_json_alone_is_sufficient": false
+  },
+  "baseline_snapshot": {
+    "captured_utc": "2026-09-21T18:30:33.248867+00:00",
+    "pip_freeze_sha256": "f19ee87bba4fe26c17cfc65945f8a82e65f220f6f296730a0d0e510bbd72ffa9",
+    "source": "user-captured read-only environment snapshot",
+    "role": "known-good shared ComfyUI baseline reference"
   }
 }
