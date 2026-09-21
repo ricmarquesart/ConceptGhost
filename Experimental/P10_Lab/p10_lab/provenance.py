@@ -2,8 +2,8 @@ from enum import IntEnum
 
 
 class GeometrySource(IntEnum):
-    OBSERVED_BASELINE = 1
-    BASELINE_LOW_CONFIDENCE = 2
+    OBSERVED_P9_BASELINE = 1
+    P9_BASELINE_LOW_CONFIDENCE = 2
     P10_GENERATED_VIEW = 3
     P10_RECONSTRUCTED = 4
     P10_TRANSITION = 5
