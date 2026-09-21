@@ -1,7 +1,7 @@
-name: P9 v0.41.9 Run Parameters + Baseline Identity Gate
+name: P9 v0.41.10 Legacy Workflow Compatibility Gate
 on:
   push:
-    branches: [work/p9-run-parameters-baseline-identity-v0419]
+    branches: [work/legacy-workflow-compat-v04110]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -27,3 +27,4 @@ jobs:
       - run: python recovery/v0417/test_output_run_pack.py
       - run: python recovery/v0418/test_moge3_watchdog_race.py
       - run: python recovery/v0419/test_run_parameters_baseline_identity.py
+      - run: python recovery/v04110/test_legacy_workflow_compatibility.py
