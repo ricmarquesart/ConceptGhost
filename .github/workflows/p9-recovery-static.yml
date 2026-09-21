@@ -1,7 +1,7 @@
-name: P9 v0.41.5 Maya FOV Zero Delta Gate
+name: P9 v0.41.6 MoGe-3 Watchdog Gate
 on:
   push:
-    branches: [work/p9-maya-fov-zero-delta-v0415]
+    branches: [work/p9-moge3-watchdog-v0416]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -23,3 +23,4 @@ jobs:
       - run: python recovery/v0413/test_maya_camera_signature.py
       - run: python recovery/v0414/test_primarymesh_optional_array.py
       - run: python recovery/v0415/test_maya_fov_zero_delta.py
+      - run: python recovery/v0416/test_moge3_watchdog.py
