@@ -133,14 +133,18 @@ Never automatically delete:
 ## 7. Required bundle contents
 
 Every COMPLETE ConceptGhost bundle MUST contain, at minimum:
-- `PROJECT_CONTROL.md` — this contract
-- `ENVIRONMENT_LOCK.json` — machine-readable version/path policy
+
+- `PROJECT_CONTROL.md`
+- `ENVIRONMENT_LOCK.json`
+- `PROTECTED_PROJECTS.json`
 - `README.md`
-- `INSTALL_ALL.bat`
-- `VERIFY_INSTALL.bat`
-- `RUN_CONCEPTGHOST.bat`
-- current root workflow JSON: `ConceptGhost_Master_v<current>.json`
-- same current workflow under `Payload\workflows`
+- `00_READ_PROJECT_CONTROL.bat`
+- `01_CAPTURE_ENVIRONMENT.bat`
+- `02_OPTIONAL_RECOVER_SHARED_ENVIRONMENT.bat`
+- `03_INSTALL_ALL.bat`
+- `04_VERIFY_INSTALL.bat`
+- `05_RUN_CONCEPTGHOST.bat`
+- exactly one current workflow JSON at bundle root: `ConceptGhost_Master_v<current>.json`
 - current ConceptGhost custom-node payload
 - required private runtime installer/worker payload
 - `LOCKS.json`
@@ -148,7 +152,8 @@ Every COMPLETE ConceptGhost bundle MUST contain, at minimum:
 - `BUNDLE_MANIFEST.json`
 - `SHA256SUMS.txt`
 
-A bundle missing the workflow JSON or PROJECT_CONTROL is INVALID.
+A bundle missing PROJECT_CONTROL or the single current workflow JSON is INVALID.
+Historical/legacy ConceptGhost workflow JSONs MUST NOT ship in a current complete bundle.
 
 ## 8. Installer gates
 
@@ -256,3 +261,48 @@ In shared Desktop mode the script does not start a second Desktop instance autom
 ### Dynamic inventory safety note
 
 Newly discovered applications are descriptive records, not new protected locks by themselves. Snapshots are append-only historical evidence. `ENVIRONMENT_LOCK.json` changes only through explicit change control; otherwise a newly installed Python, Maya, Blender, CUDA Toolkit or other application is simply captured in the next snapshot and diff.
+
+
+## 15. Artist output root
+
+The default artist output root is stable and version-independent:
+
+`G:\My Drive\ConceptGhost\Outputs\ConceptGhost`
+
+This includes timestamped run folders, geometry, point clouds, meshes, reports, Maya `.ma`, packages
+and validation files produced by both Baseline/P9 and Refined/P9 Clone.
+
+Runtime/cache/temp data stays local. ConceptGhost must not move Python environments, model caches or
+temporary inference state to Google Drive. If G: is unavailable, the exporter must fail clearly
+instead of silently writing authoritative outputs to another disk. The artist may explicitly change
+`MASTER CONTROLS → output_root` when needed.
+
+## 16. Fast Draft Preview
+
+Both Baseline/P9 and Refined/P9 Clone contain an equivalent `FAST DRAFT` node before heavy MoGe
+inference. The draft:
+
+- uses the selected Atlas/FOV camera;
+- uses the same Scene Authority transformation implementation as the final path;
+- represents Camera Anchor / Known Distance / World Up / Scene Origin / Ground choices;
+- uses an intentionally cheap perspective-shaped proxy depth, not MoGe;
+- is display-only and must never become final geometry or evidence;
+- is allowed to warn/fallback without blocking the final solve;
+- targets <5 seconds on the target workstation, but quality/final geometry must never be reduced to force the target;
+- is explicitly connected as a lightweight pre-MoGe gate so it appears before heavy inference.
+
+The draft is for proportion/orientation inspection only. The final MoGe result remains authoritative.
+
+## 17. Scene Authority reference-image UI
+
+Every click/draw Scene Authority control must display the shared source reference image:
+
+- Known Height / Distance
+- Camera → Anchor Distance
+- World Up / Gravity
+- Scene Origin
+- Ground Level
+
+Each interactive control must expose `Refresh Reference Image`, retry image binding after workflow
+restore/link changes, and show a visible REFERENCE ready/loading/error indicator. A blank interactive
+canvas is a UI failure and must not be accepted as normal behavior.
