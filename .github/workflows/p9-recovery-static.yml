@@ -1,10 +1,10 @@
-name: ConceptGhost v0.42 Frozen Baseline Reset Gate
+name: ConceptGhost v0.43 Manual Metric Authority Gate
 on:
   push:
-    branches: [frozen/v0.42-baseline-reset-20260921]
+    branches: [work/p9-manual-metric-v0430]
   workflow_dispatch:
 jobs:
-  v042-freeze:
+  v043-manual-metric:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,3 +18,4 @@ jobs:
       - run: python recovery/v0419/test_run_parameters_baseline_identity.py
       - run: python recovery/v04110/test_legacy_workflow_compatibility.py
       - run: python recovery/v0420/test_v042_policy.py
+      - run: python recovery/v0430/test_v043_manual_metric_policy.py
