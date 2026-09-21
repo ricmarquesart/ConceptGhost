@@ -1,7 +1,7 @@
-name: P9 v0.41.8 MoGe-3 Watchdog Race Gate
+name: P9 v0.41.9 Run Parameters + Baseline Identity Gate
 on:
   push:
-    branches: [work/p9-moge3-watchdog-race-v0418]
+    branches: [work/p9-run-parameters-baseline-identity-v0419]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -26,3 +26,4 @@ jobs:
       - run: python recovery/v0416/test_moge3_watchdog.py
       - run: python recovery/v0417/test_output_run_pack.py
       - run: python recovery/v0418/test_moge3_watchdog_race.py
+      - run: python recovery/v0419/test_run_parameters_baseline_identity.py
