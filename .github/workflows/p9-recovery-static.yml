@@ -1,10 +1,10 @@
-name: ConceptGhost v0.43.1 Maya Metric Unit Hotfix Gate
+name: ConceptGhost v0.43.2 Low Resolution Projection Support Gate
 on:
   push:
-    branches: [work/p9-maya-metric-unit-v0431]
+    branches: [work/p9-lowres-projection-support-v0432]
   workflow_dispatch:
 jobs:
-  v0431-maya-metric-unit:
+  v0432-lowres-projection-support:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,3 +20,4 @@ jobs:
       - run: python recovery/v0420/test_v042_policy.py
       - run: python recovery/v0430/test_v043_manual_metric_policy.py
       - run: python recovery/v0431/test_v0431_maya_metric_unit_policy.py
+      - run: python recovery/v0432/test_v0432_lowres_projection_support_policy.py
