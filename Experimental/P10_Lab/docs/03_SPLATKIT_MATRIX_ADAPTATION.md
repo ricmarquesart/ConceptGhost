@@ -1,5 +1,9 @@
 # SplatKit / Matrix-Style Adaptation
 
+## Refined-branch position
+
+This adaptation begins **after P9**, where P9 is a copy of Baseline. It does not replace or modify P9.
+
 ## Reuse
 
 - virtual camera geometry rendering
@@ -19,7 +23,7 @@
 
 ## Panorama policy
 
-The public pipeline is panorama-centered, so the first lab preserves a temporary panoramic working representation internally. The user still supplies a normal ConceptGhost image. Baseline camera data positions/locks the original image region; generated surroundings are temporary context.
+The public pipeline is panorama-centered, so the first lab preserves a temporary panoramic working representation internally. The user still supplies a normal ConceptGhost image. P9/Baseline camera data positions and locks the original image region; generated surroundings are temporary context.
 
 ## Automatic flight
 
@@ -42,9 +46,9 @@ Paths scale to scene size and pass a collision gate.
 
 ## Fusion policy
 
-Observed reliable Baseline region → Baseline wins.
-Unseen region → multiview reconstruction allowed.
-Transition region → narrow blend/remesh.
+Observed reliable P9/Baseline region → P9/Baseline wins.  
+Unseen region → multiview reconstruction allowed.  
+Transition region → narrow blend/remesh.  
 Generated conflict in strongly observed region → reject generated geometry.
 
-Hunyuan is deferred as a possible future object-only fallback.
+Hunyuan remains deferred as a possible future object-only fallback.
