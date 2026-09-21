@@ -1,5 +1,13 @@
 # ConceptGhost
 
+> **MANDATORY BEFORE ANY CHANGE OR INSTALLATION**
+>
+> Read [PROJECT_CONTROL.md](PROJECT_CONTROL.md) first. It is the authoritative Environment & Installation Contract for ConceptGhost and the protected Single View / Multi View / Trellis2 shared ComfyUI Desktop environment.
+>
+> Machine-readable protected versions and paths are in [ENVIRONMENT_LOCK.json](ENVIRONMENT_LOCK.json).
+>
+> If an installer, upstream dependency, README, or proposed code change conflicts with PROJECT_CONTROL, **STOP**. Do not mutate the shared environment automatically.
+
 Camera-aware 3D reference reconstruction from concept art using existing, demonstrated projects rather than reimplementing core solvers from scratch.
 
 ## Current status
