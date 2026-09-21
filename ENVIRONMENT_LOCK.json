@@ -136,5 +136,13 @@
     "depth_policy": "cheap_perspective_proxy_not_moge",
     "same_scene_authority_transform_code": true,
     "must_not_block_final_on_draft_warning": true
+  },
+  "release_mirroring_policy": {
+    "google_drive_required": true,
+    "artifact": "complete_current_version_zip",
+    "destination": "ConceptGhost/Evaluation_Builds",
+    "filename_must_match_delivered_bundle": true,
+    "update_drive_copy_after_any_final_rebuild": true,
+    "avoid_unnecessary_intermediate_duplicates": true
   }
 }
