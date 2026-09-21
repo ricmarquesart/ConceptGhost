@@ -10,7 +10,9 @@ from .pipeline import ORDERED_STAGES
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="ConceptGhost P10-Lab dry-run validator")
+    parser = argparse.ArgumentParser(
+        description="ConceptGhost P10-Lab dry-run validator for P9 (= Baseline)"
+    )
     parser.add_argument("bundle_dir", type=Path)
     parser.add_argument("--scene-radius", type=float, default=1.0)
     args = parser.parse_args()
@@ -19,6 +21,8 @@ def main() -> int:
     paths = default_paths(SceneScale(args.scene_radius))
 
     report = {
+        "source_stage": bundle.source_stage,
+        "source_equivalent_to": "baseline",
         "source_run_id": bundle.source_run_id,
         "optional_inputs": sorted(bundle.optional),
         "paths": [
