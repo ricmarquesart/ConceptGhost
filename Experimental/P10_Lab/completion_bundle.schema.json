@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConceptGhost Baseline Completion Bundle",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "source_branch",
+    "source_run_id",
+    "source_image",
+    "camera",
+    "primary_mesh",
+    "run_metadata"
+  ],
+  "properties": {
+    "contract_version": {"const": "p10-baseline-bundle/0.1"},
+    "source_branch": {"const": "baseline"},
+    "source_run_id": {"type": "string", "minLength": 1},
+    "source_image": {"type": "string"},
+    "camera": {"type": "string"},
+    "primary_mesh": {"type": "string"},
+    "run_metadata": {"type": "string"},
+    "optional": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "additionalProperties": true
+}
