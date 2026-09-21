@@ -1,7 +1,7 @@
-name: P9 v0.41.6 MoGe-3 Watchdog Gate
+name: P9 v0.41.7 Official Run Pack Gate
 on:
   push:
-    branches: [work/p9-moge3-watchdog-v0416]
+    branches: [work/p9-output-run-pack-v0417]
   workflow_dispatch:
 jobs:
   p9-static:
@@ -24,3 +24,4 @@ jobs:
       - run: python recovery/v0414/test_primarymesh_optional_array.py
       - run: python recovery/v0415/test_maya_fov_zero_delta.py
       - run: python recovery/v0416/test_moge3_watchdog.py
+      - run: python recovery/v0417/test_output_run_pack.py
