@@ -1,0 +1,78 @@
+{
+  "schema": "ConceptGhost.EnvironmentLock.v1",
+  "authority": "PROJECT_CONTROL.md",
+  "effective_date": "2026-09-21",
+  "shared_comfy": {
+    "root": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\ComfyUI\\ComfyUI",
+    "shared_models": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Shared\\models",
+    "shared_input": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Shared\\input",
+    "mutation_policy": "READ_ONLY_BY_DEFAULT",
+    "protected_exact": {
+      "python": "3.13.12",
+      "torch": "2.12.1+cu130",
+      "torchvision": "0.27.1+cu130",
+      "numpy": "2.5.2",
+      "transformers": "5.16.1",
+      "huggingface-hub": "1.30.0",
+      "tokenizers": "0.23.2"
+    },
+    "kornia": {
+      "mutation_policy": "DO_NOT_CHANGE_AUTOMATICALLY",
+      "allowed_observed_states": [
+        "0.8.2",
+        "0.8.3"
+      ],
+      "historical_protected_baseline_2026_09_16": "0.8.3",
+      "observed_pre_v1491_2026_09_21": "0.8.2"
+    },
+    "protected_compiled_components": [
+      "cumesh",
+      "nvdiffrast",
+      "nvdiffrec_render",
+      "o-voxel",
+      "natten",
+      "custom-rasterizer"
+    ]
+  },
+  "conceptghost_paths": {
+    "state_root": "%LOCALAPPDATA%\\ConceptGhost",
+    "moge_runtime": "%LOCALAPPDATA%\\ConceptGhost-MoGeRuntime-v1",
+    "isolated_portable_fallback": "%LOCALAPPDATA%\\ConceptGhost\\ComfyUI_windows_portable",
+    "workflow_dir": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\ComfyUI\\ComfyUI\\user\\default\\workflows\\ConceptGhost",
+    "forbid_versioned_state_roots": true
+  },
+  "private_moge": {
+    "python": "3.11.9",
+    "torch": "2.14.0+cu130",
+    "torchvision": "0.29.0+cu130",
+    "cuda_runtime": "13.0",
+    "moge": "3.0.0",
+    "low_resolution_model": "Ruicheng/moge-3-vitl",
+    "high_fidelity_model": "Ruicheng/moge-3-vitg",
+    "shared_environment_mutation_allowed": false
+  },
+  "protected_projects": [
+    "PixelArtistry_Pixal3D_RTX2080Ti_HQ_SAFE_ANNOTATED.json",
+    "PixelArtistry_Pixal3D_ORIGINAL_SAFE_300K.json",
+    "Pixal3D_MultiView_2VIEW_RTX2080Ti_SAFE.json",
+    "Pixal3D_MultiView_3VIEW_RTX2080Ti_SAFE.json",
+    "Pixal3D_MultiView_4VIEW_RTX2080Ti_SAFE.json",
+    "Geekatplay_Pixal3D_Turnaround_Meshwright_Integrated_v1.json",
+    "visualbruno/ComfyUI-Trellis2",
+    "ConceptGhost"
+  ],
+  "required_bundle_files": [
+    "PROJECT_CONTROL.md",
+    "ENVIRONMENT_LOCK.json",
+    "README.md",
+    "INSTALL_ALL.bat",
+    "VERIFY_INSTALL.bat",
+    "RUN_CONCEPTGHOST.bat",
+    "ROOT_WORKFLOW_JSON",
+    "Payload/workflows/CURRENT_WORKFLOW_JSON",
+    "LOCKS.json",
+    "RELEASE.json",
+    "BUNDLE_MANIFEST.json",
+    "SHA256SUMS.txt"
+  ]
+}
