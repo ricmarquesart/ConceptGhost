@@ -1,5 +1,15 @@
 # ConceptGhost
 
+## Current ConceptGhost production bundle
+
+Current complete bundle: **v1.51.0**.
+
+- exactly one current workflow: `ConceptGhost_Master_v1.51.0.json`
+- artist outputs default to `G:\My Drive\ConceptGhost\Outputs\ConceptGhost`
+- Scene Authority click/draw controls must show the shared reference image
+- display-only FAST DRAFT runs before heavy MoGe and never becomes final geometry
+- shared ComfyUI Desktop package environment remains read-only
+
 > **MANDATORY BEFORE ANY CHANGE OR INSTALLATION**
 >
 > Read [PROJECT_CONTROL.md](PROJECT_CONTROL.md) first. It is the authoritative Environment & Installation Contract for ConceptGhost and the protected Single View / Multi View / Trellis2 shared ComfyUI Desktop environment.
