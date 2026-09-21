@@ -33,8 +33,8 @@
     },
     {
       "name": "ConceptGhost",
-      "workflow": "ConceptGhost_Master_v1.50.0.json"
+      "workflow": "ConceptGhost_Master_v1.50.1.json"
     }
   ],
-  "compatibility_record_rule": "Workflow JSON + ENVIRONMENT_SNAPSHOT.json. Workflow JSON alone is insufficient."
+  "compatibility_record_rule": "Workflow JSON + ENVIRONMENT_SNAPSHOT.json; snapshots dynamically record future Python/application/toolchain changes. Workflow JSON alone is insufficient."
 }
