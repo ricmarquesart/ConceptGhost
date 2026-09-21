@@ -6,16 +6,18 @@ from typing import Any
 import json
 
 
-CONTRACT_VERSION = "p10-baseline-bundle/0.1"
+CONTRACT_VERSION = "p10-p9-baseline-equivalent/0.2"
 REQUIRED_KEYS = {
     "contract_version",
-    "source_branch",
+    "source_stage",
+    "source_equivalent_to",
     "source_run_id",
     "source_image",
     "camera",
     "primary_mesh",
     "run_metadata",
 }
+ACCEPTED_SOURCE_STAGES = {"p9", "baseline"}
 
 
 class ContractError(ValueError):
@@ -25,6 +27,7 @@ class ContractError(ValueError):
 @dataclass(frozen=True)
 class CompletionBundle:
     root: Path
+    source_stage: str
     source_run_id: str
     source_image: Path
     camera: Path
@@ -48,8 +51,18 @@ class CompletionBundle:
                 f"Unsupported contract_version={data['contract_version']!r}; "
                 f"expected {CONTRACT_VERSION!r}"
             )
-        if data["source_branch"] != "baseline":
-            raise ContractError("P10-Lab 0.1 accepts source_branch='baseline' only")
+
+        source_stage = str(data["source_stage"])
+        if source_stage not in ACCEPTED_SOURCE_STAGES:
+            raise ContractError(
+                f"Unsupported source_stage={source_stage!r}; "
+                f"expected one of {sorted(ACCEPTED_SOURCE_STAGES)!r}"
+            )
+        if data["source_equivalent_to"] != "baseline":
+            raise ContractError(
+                "P10-Lab requires source_equivalent_to='baseline'; "
+                "P9 must remain Baseline-equivalent before P10 starts"
+            )
 
         def required_file(key: str) -> Path:
             path = (root / data[key]).resolve()
@@ -67,6 +80,7 @@ class CompletionBundle:
 
         return cls(
             root=root,
+            source_stage=source_stage,
             source_run_id=str(data["source_run_id"]),
             source_image=required_file("source_image"),
             camera=required_file("camera"),
