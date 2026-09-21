@@ -306,3 +306,17 @@ Every click/draw Scene Authority control must display the shared source referenc
 Each interactive control must expose `Refresh Reference Image`, retry image binding after workflow
 restore/link changes, and show a visible REFERENCE ready/loading/error indicator. A blank interactive
 canvas is a UI failure and must not be accepted as normal behavior.
+
+
+## 20. Release mirroring to Google Drive
+
+Every generated ConceptGhost release bundle must be mirrored to Google Drive in the same release cycle.
+
+The authoritative binary mirror is the complete ZIP bundle stored in the ConceptGhost Evaluation_Builds area on Google Drive. A release is not considered fully delivered until both are available:
+
+- the local/sandbox downloadable ZIP for the current chat; and
+- the same current-version ZIP on Google Drive.
+
+The Google Drive copy must use the same filename/version as the delivered bundle. If the bundle is rebuilt after validation or documentation changes, the Drive file must be updated/replaced so its bytes match the final delivered ZIP.
+
+Do not create unnecessary intermediate duplicates. Keep the current version canonical and preserve intentionally frozen baselines separately.
