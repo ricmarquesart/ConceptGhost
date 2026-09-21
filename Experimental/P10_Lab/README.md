@@ -1,16 +1,23 @@
-# ConceptGhost P10-Lab — Baseline-First Multiview Completion
+# ConceptGhost P10-Lab — Refined Solver Fusion = P9 + P10
 
-Experimental, isolated laboratory for completing occluded/unseen geometry after the stable Baseline branch.
+Experimental, isolated laboratory for multiview scene completion.
 
-## Current decision
+## Current architecture
 
-P10 starts **after Baseline**, not after P9. P9 enrichment is optional and deferred until its quality is stable.
+The official relationship is now:
 
-The laboratory must not modify the official Baseline workflow. It consumes one `ConceptGhost_Baseline_CompletionBundle.zip`, performs controlled multiview completion/reconstruction, validates against the original camera, and produces Maya-compatible geometry.
+- **Baseline branch = Baseline only**
+- **P9 = a functionally identical copy of Baseline**
+- **Refined Solver Fusion = P9 + P10**
+
+P9 does not contain a separate solver-fusion refinement layer. Before P10 starts, P9 must reproduce Baseline behavior and expected output. P10 is the first stage that adds new behavior.
+
+The lab therefore consumes one `ConceptGhost_P9_CompletionBundle.zip`. During isolated development, a direct Baseline-equivalent bundle may also be accepted because P9 and Baseline are contractually equivalent.
 
 ## Core path
 
-Baseline Bundle
+P9 (= Baseline)
+→ P9 Completion Bundle
 → temporary panoramic working context
 → automatic scene-relative camera paths
 → geometry control frames + disocclusion masks
@@ -18,11 +25,15 @@ Baseline Bundle
 → source-preserving composite
 → SphereSfM
 → COLMAP dense reconstruction
-→ Baseline registration/fusion
+→ P9/Baseline registration and fusion
 → local cleanup
 → texture recovery
 → original-view regression
 → Maya export
+
+## Identity gate
+
+P10 must never be used to justify changes inside P9. If P9 diverges from Baseline before the P10 boundary, the Refined branch fails the architecture contract.
 
 ## Not the final product
 
@@ -34,4 +45,4 @@ RTX 2080 Ti, 11 GB VRAM. Use quantized WAN, sequential workers, one path at a ti
 
 ## Repository rule
 
-This directory is experimental and must remain disconnected from the official workflow until promotion gates pass.
+This directory is experimental. Promotion means connecting proven P10 modules **after P9** in the Refined Solver Fusion branch while leaving the normal Baseline branch unchanged.
