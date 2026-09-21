@@ -224,3 +224,35 @@ Before installation or a major environment change, run `01_CAPTURE_ENVIRONMENT.b
 The snapshot is read-only and records Python, complete `pip freeze`, PyTorch/torchvision/CUDA, NVIDIA GPU/driver, protected package versions, custom-node folders and Git commits when available, workflow hashes/node types, model filenames/sizes, and the private MoGe runtime.
 
 A workflow JSON by itself is NOT a complete compatibility record. Preserve the workflow JSON plus an environment snapshot. For diagnosis, send `ENVIRONMENT_SNAPSHOT.json` from the same machine/state together with the affected workflow JSON whenever possible.
+
+
+## 13. Dynamic software/version inventory
+
+The protected lock is NOT limited to the software versions known today.
+
+Every manual environment capture and every ConceptGhost installation must rediscover the machine state dynamically. The snapshot must record newly installed Python interpreters/environments, Windows applications and versions, toolchains, custom nodes, workflows and model inventory without requiring the capture script to know those products in advance.
+
+The ConceptGhost installer performs an automatic READ-ONLY environment snapshot immediately before and after installation. Manual `01_CAPTURE_ENVIRONMENT.bat` remains available at any time.
+
+Important distinction:
+
+- **Snapshot/inventory:** descriptive and historical. New software is automatically recorded.
+- **ENVIRONMENT_LOCK / PROJECT_CONTROL:** prescriptive safety authority. Discovery of a new version does NOT grant ConceptGhost permission to upgrade, downgrade, remove or replace it.
+
+Future Python/app installations therefore appear in later snapshots and diffs automatically while the protected shared-environment mutation rules remain unchanged.
+
+## 14. RUN/CHECK visibility
+
+`05_RUN_CONCEPTGHOST.bat` must never close silently. It must:
+
+- print PASS/FAIL;
+- print the installed workflow path and host mode;
+- report whether ComfyUI Desktop is already listening on localhost:8188;
+- write a timestamped run log under `%LOCALAPPDATA%\ConceptGhost\logs`;
+- pause at the end on both success and failure so the operator can read the result.
+
+In shared Desktop mode the script does not start a second Desktop instance automatically, avoiding duplicate-server/process conflicts. It reports READY or tells the operator to open/restart Desktop.
+
+### Dynamic inventory safety note
+
+Newly discovered applications are descriptive records, not new protected locks by themselves. Snapshots are append-only historical evidence. `ENVIRONMENT_LOCK.json` changes only through explicit change control; otherwise a newly installed Python, Maya, Blender, CUDA Toolkit or other application is simply captured in the next snapshot and diff.
