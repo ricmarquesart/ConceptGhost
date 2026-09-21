@@ -1,10 +1,10 @@
-name: P9 v0.41.10 Legacy Workflow Compatibility Gate
+name: ConceptGhost v0.42 Frozen Baseline Reset Gate
 on:
   push:
-    branches: [work/legacy-workflow-compat-v04110]
+    branches: [frozen/v0.42-baseline-reset-20260921]
   workflow_dispatch:
 jobs:
-  p9-static:
+  v042-freeze:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,19 +12,9 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install --upgrade pip numpy
-      - run: python recovery/v0381/tests/test_recovery.py
-      - run: python recovery/v0382/tests/test_contracts.py
-      - run: python recovery/v0390/test_p9_10_regional.py
-      - run: python recovery/v0400/test_p9_static_complete.py
-      - run: python recovery/v0401/test_runtime_wiring.py
-      - run: python recovery/v0410/test_fov_authority.py
-      - run: python recovery/v0411/test_dense_depth_tensor_coalesce.py
-      - run: python recovery/v0412/test_branch_export_layout.py
       - run: python recovery/v0413/test_maya_camera_signature.py
       - run: python recovery/v0414/test_primarymesh_optional_array.py
       - run: python recovery/v0415/test_maya_fov_zero_delta.py
-      - run: python recovery/v0416/test_moge3_watchdog.py
-      - run: python recovery/v0417/test_output_run_pack.py
-      - run: python recovery/v0418/test_moge3_watchdog_race.py
       - run: python recovery/v0419/test_run_parameters_baseline_identity.py
       - run: python recovery/v04110/test_legacy_workflow_compatibility.py
+      - run: python recovery/v0420/test_v042_policy.py
