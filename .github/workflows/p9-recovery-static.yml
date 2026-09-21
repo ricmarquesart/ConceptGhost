@@ -1,10 +1,10 @@
-name: ConceptGhost v0.43 Manual Metric Authority Gate
+name: ConceptGhost v0.43.1 Maya Metric Unit Hotfix Gate
 on:
   push:
-    branches: [work/p9-manual-metric-v0430]
+    branches: [work/p9-maya-metric-unit-v0431]
   workflow_dispatch:
 jobs:
-  v043-manual-metric:
+  v0431-maya-metric-unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,3 +19,4 @@ jobs:
       - run: python recovery/v04110/test_legacy_workflow_compatibility.py
       - run: python recovery/v0420/test_v042_policy.py
       - run: python recovery/v0430/test_v043_manual_metric_policy.py
+      - run: python recovery/v0431/test_v0431_maya_metric_unit_policy.py
