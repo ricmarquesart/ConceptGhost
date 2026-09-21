@@ -30,10 +30,20 @@ D. shell-like object side/back
 E. original-view preservation  
 F. path collision adaptation  
 G. restart from saved intermediates  
-H. Baseline-only bundle with no P9 fields  
-I. later P9-enriched bundle  
+H. P9 input containing only the same class of data available from Baseline  
+I. P9 identity regression: before P10 begins, P9 remains equivalent to Baseline  
 J. editable Maya delivery
+
+## Architecture gate
+
+The normal Baseline branch contains no P10.
+
+The Refined Solver Fusion branch is exactly:
+
+`P9 (= Baseline) → P10`
+
+Any new behavior before the P10 boundary is an architecture regression.
 
 ## Definition of Done
 
-One queue/run from Baseline bundle to validated Maya result, with no manual file handoff between internal stages.
+One queue/run from the P9 handoff to validated Maya result, with no manual file handoff between internal P10 stages.
