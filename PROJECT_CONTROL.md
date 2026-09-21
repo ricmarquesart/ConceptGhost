@@ -200,3 +200,27 @@ Any proposal to change a protected shared version, shared path, installer owners
 5. update to this document, ENVIRONMENT_LOCK.json, Google Drive copy, GitHub copy, and the bundle copy in the same release.
 
 No silent drift is allowed.
+
+
+## 11. Operator BAT numbering and workflow retention
+
+User-facing root BAT files are always numbered in execution order:
+
+0. `00_READ_PROJECT_CONTROL.bat`
+1. `01_CAPTURE_ENVIRONMENT.bat`
+2. `02_OPTIONAL_RECOVER_SHARED_ENVIRONMENT.bat` — only if recovery is required
+3. `03_INSTALL_ALL.bat`
+4. `04_VERIFY_INSTALL.bat`
+5. `05_RUN_CONCEPTGHOST.bat`
+
+Internal BAT/PowerShell helpers below `Payload` or `Installer` are not operator entry points.
+
+Current complete bundles ship exactly one ConceptGhost master workflow JSON. Historical/legacy ConceptGhost workflow JSONs must not ship in the bundle. During install, only ConceptGhost-owned historical master workflows may be removed; unrelated workflow folders must never be cleaned.
+
+## 12. Environment snapshot / compatibility record
+
+Before installation or a major environment change, run `01_CAPTURE_ENVIRONMENT.bat`.
+
+The snapshot is read-only and records Python, complete `pip freeze`, PyTorch/torchvision/CUDA, NVIDIA GPU/driver, protected package versions, custom-node folders and Git commits when available, workflow hashes/node types, model filenames/sizes, and the private MoGe runtime.
+
+A workflow JSON by itself is NOT a complete compatibility record. Preserve the workflow JSON plus an environment snapshot. For diagnosis, send `ENVIRONMENT_SNAPSHOT.json` from the same machine/state together with the affected workflow JSON whenever possible.
