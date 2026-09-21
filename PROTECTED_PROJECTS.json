@@ -1,0 +1,40 @@
+{
+  "schema": "ConceptGhost.ProtectedProjects.v1",
+  "purpose": "Known projects/workflows sharing the protected ComfyUI Desktop environment. Capture the real local state with 01_CAPTURE_ENVIRONMENT.bat.",
+  "shared_environment": "ENVIRONMENT_LOCK.json",
+  "projects": [
+    {
+      "name": "Pixal3D Single View HQ",
+      "workflow": "PixelArtistry_Pixal3D_RTX2080Ti_HQ_SAFE_ANNOTATED.json"
+    },
+    {
+      "name": "Pixal3D Single View Original",
+      "workflow": "PixelArtistry_Pixal3D_ORIGINAL_SAFE_300K.json"
+    },
+    {
+      "name": "Pixal3D Multi View 2",
+      "workflow": "Pixal3D_MultiView_2VIEW_RTX2080Ti_SAFE.json"
+    },
+    {
+      "name": "Pixal3D Multi View 3",
+      "workflow": "Pixal3D_MultiView_3VIEW_RTX2080Ti_SAFE.json"
+    },
+    {
+      "name": "Pixal3D Multi View 4",
+      "workflow": "Pixal3D_MultiView_4VIEW_RTX2080Ti_SAFE.json"
+    },
+    {
+      "name": "Meshwright Turnaround",
+      "workflow": "Geekatplay_Pixal3D_Turnaround_Meshwright_Integrated_v1.json"
+    },
+    {
+      "name": "Trellis2",
+      "custom_node": "visualbruno/ComfyUI-Trellis2"
+    },
+    {
+      "name": "ConceptGhost",
+      "workflow": "ConceptGhost_Master_v1.50.0.json"
+    }
+  ],
+  "compatibility_record_rule": "Workflow JSON + ENVIRONMENT_SNAPSHOT.json. Workflow JSON alone is insufficient."
+}
