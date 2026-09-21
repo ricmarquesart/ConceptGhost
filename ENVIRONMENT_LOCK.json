@@ -64,15 +64,40 @@
   "required_bundle_files": [
     "PROJECT_CONTROL.md",
     "ENVIRONMENT_LOCK.json",
+    "PROTECTED_PROJECTS.json",
     "README.md",
-    "INSTALL_ALL.bat",
-    "VERIFY_INSTALL.bat",
-    "RUN_CONCEPTGHOST.bat",
-    "ROOT_WORKFLOW_JSON",
-    "Payload/workflows/CURRENT_WORKFLOW_JSON",
+    "00_READ_PROJECT_CONTROL.bat",
+    "01_CAPTURE_ENVIRONMENT.bat",
+    "02_OPTIONAL_RECOVER_SHARED_ENVIRONMENT.bat",
+    "03_INSTALL_ALL.bat",
+    "04_VERIFY_INSTALL.bat",
+    "05_RUN_CONCEPTGHOST.bat",
+    "ConceptGhost_Master_v1.50.0.json",
     "LOCKS.json",
     "RELEASE.json",
     "BUNDLE_MANIFEST.json",
     "SHA256SUMS.txt"
-  ]
+  ],
+  "workflow_policy": {
+    "ship_only_current_workflow": true,
+    "bundle_workflow_location": "ConceptGhost_Master_v1.50.0.json",
+    "installed_workflow_dir": "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\ComfyUI\\ComfyUI\\user\\default\\workflows\\ConceptGhost",
+    "remove_historical_conceptghost_master_workflows": true,
+    "do_not_touch_unrelated_workflow_directories": true
+  },
+  "operator_entrypoints": [
+    "00_READ_PROJECT_CONTROL.bat",
+    "01_CAPTURE_ENVIRONMENT.bat",
+    "02_OPTIONAL_RECOVER_SHARED_ENVIRONMENT.bat",
+    "03_INSTALL_ALL.bat",
+    "04_VERIFY_INSTALL.bat",
+    "05_RUN_CONCEPTGHOST.bat"
+  ],
+  "environment_snapshot": {
+    "required_before_major_install_or_environment_change": true,
+    "script": "01_CAPTURE_ENVIRONMENT.bat",
+    "preferred_storage": "G:\\My Drive\\ConceptGhost\\Reports\\EnvironmentSnapshots",
+    "fallback_storage": "%LOCALAPPDATA%\\ConceptGhost\\EnvironmentSnapshots",
+    "workflow_json_alone_is_sufficient": false
+  }
 }
