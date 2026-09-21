@@ -1,10 +1,10 @@
-name: ConceptGhost v0.43.2 Low Resolution Projection Support Gate
+name: ConceptGhost v0.44 Consolidated Runtime Gate
 on:
   push:
-    branches: [work/p9-lowres-projection-support-v0432]
+    branches: [work/v044-consolidated-runtime]
   workflow_dispatch:
 jobs:
-  v0432-lowres-projection-support:
+  v044-consolidated-runtime:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,12 +12,8 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install --upgrade pip numpy
-      - run: python recovery/v0413/test_maya_camera_signature.py
-      - run: python recovery/v0414/test_primarymesh_optional_array.py
-      - run: python recovery/v0415/test_maya_fov_zero_delta.py
-      - run: python recovery/v0419/test_run_parameters_baseline_identity.py
-      - run: python recovery/v04110/test_legacy_workflow_compatibility.py
       - run: python recovery/v0420/test_v042_policy.py
       - run: python recovery/v0430/test_v043_manual_metric_policy.py
       - run: python recovery/v0431/test_v0431_maya_metric_unit_policy.py
       - run: python recovery/v0432/test_v0432_lowres_projection_support_policy.py
+      - run: python recovery/v0440/test_v044_consolidated_runtime_policy.py
