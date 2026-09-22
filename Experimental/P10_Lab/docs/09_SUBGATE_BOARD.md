@@ -88,6 +88,93 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 7.4 Per-face/per-region provenance, including confidence classification metadata for diagnostics and optional refinement provenance only when 7.2C refinement is enabled.
 7.5 Registration/fusion Preview and runtime validation. Confidence analysis/3D preview is expected as a normal diagnostic surface, while the required refinement-OFF path remains the geometry acceptance baseline; confidence refinement ON must pass a separate A/B regression before it can be considered beneficial.
 
+### Gate 7.3 internal implementation plan — Free-Space / Visibility Carving
+
+**Why this exists:** the pipeline must distinguish a valid opening from missing reconstruction. A table-leg gap, fence opening, arch center or visible gap between geometry must not be treated as a hole that should be sealed. Conversely, an unseen back surface is UNKNOWN and may still require generation/reconstruction. Empty space therefore becomes explicit evidence, not merely absence of triangles.
+
+**Primary rule:** use known-camera visibility + geometrically consistent depth, not semantic object labels. If a camera ray reaches a supported farther surface, the traversed segment before that first surface is evidence of FREE space. A narrow band around the first surface is OCCUPIED. Volume behind the first surface remains UNKNOWN. Mixed FREE/OCCUPIED evidence becomes CONFLICT.
+
+**Gate placement and dependency flow:**
+- Gate 6.4 supplies geometric depth maps, normal maps and consistency graphs from the existing COLMAP dense workspace.
+- Gate 6.5 gains a Delaunay visibility-aware meshing candidate beside the already-proven Poisson output. Gate 6 is not reopened as a current blocker; these producer extensions are activated when Gate 7 implementation begins.
+- Gate 7.2C consumes FREE/OCCUPIED/CONFLICT as confidence evidence.
+- Gate 7.3 is the main consumer and applies CONFIRMED_FREE as a no-fill/no-bridge topology constraint.
+- Gate 8.1/8.2 classifies and repairs defects using explicit labels such as VALID_OPENING, FALSE_SURFACE_IN_CONFIRMED_FREE, MISSING_SURFACE_UNKNOWN and CONFLICT_REGION.
+- Gate 11 may use UNKNOWN/CONFLICT to spend additional drone coverage only after first end-to-end completion.
+- Gate 12 adds standardized Free-Space 3D diagnostics.
+
+**Required components:**
+- existing COLMAP 4.2.0 CUDA runtime;
+- known P9-derived per-frame cameras;
+- Gate 5 source-preserved composite views;
+- COLMAP PatchMatch `*.geometric.bin` depth maps;
+- COLMAP normal maps;
+- COLMAP consistency graphs;
+- existing Poisson mesh;
+- new COLMAP Delaunay branch;
+- native sparse visibility/free-space field;
+- Gate 7 confidence layer;
+- ComfyUI-only Free-Space 3D Preview.
+
+**New ConceptGhost modules planned:**
+- `p10_lab/colmap_dense_io.py` — parse/validate depth, normals and consistency graphs;
+- `p10_lab/free_space_evidence.py` — sparse ray-carving evidence;
+- `p10_lab/free_space_constraints.py` — FREE/OCCUPIED/UNKNOWN/CONFLICT classification and no-fill constraints;
+- `p10_lab/free_space_preview.py` — temporary 3D diagnostic representation.
+
+**Files to extend:**
+- `dense_reconstruction.py`;
+- `prefusion_mesh.py`;
+- `reconstruction_runtime.py`;
+- `preview_nodes.py`;
+- `workflow_integration.py`.
+
+**Initial free-space classification policy:**
+- CONFIRMED_FREE requires multiple supporting views and at least two independent route/view groups;
+- adjacent frames from one drone are correlated and do not count as fully independent votes;
+- require useful baseline/view-angle diversity;
+- reject low-consistency depth samples;
+- protected original-source/P9 surfaces outrank generated-view contradictions;
+- UNKNOWN is never treated as FREE;
+- CONFLICT fails conservatively and is not auto-carved.
+
+**Authority order for free-space decisions:**
+1. original-source/P9 observed geometry;
+2. HiRes source-authority reprojection;
+3. P10 COLMAP geometric support;
+4. WAN-only generated multiview evidence;
+5. isolated/low-consistency generated evidence as diagnostic only.
+
+**Meshing strategy:** keep both Poisson and Delaunay. Poisson provides smoother surface candidates; Delaunay contributes visibility-aware structural evidence. Neither is globally authoritative by itself. Gate 7 fusion compares both against explicit free-space evidence.
+
+**ComfyUI diagnostic:** planned node `P10 · Free-Space 3D Preview`:
+- FREE/CONFIRMED_FREE = cyan/green;
+- OCCUPIED = neutral/white;
+- CONFLICT = magenta/yellow;
+- UNKNOWN = hidden;
+- orbit/zoom/pan inspection;
+- diagnostic only;
+- no Maya materials/groups/selection sets;
+- temporary proxy stored in the run TEMP workspace and auto-cleaned after validated success.
+
+**Hardware/storage policy:** target RTX 2080 Ti 11 GB; use sparse/hash/chunked cells, sequential camera processing and depth downsampling. Never allocate a full dense world grid at image resolution. First target is approximately 256–384 sparse cells across the useful scene span, independent of final mesh triangle density.
+
+**Internal execution steps (do not change the 66 required-subgate count):**
+- FS-1 Dense evidence contract.
+- FS-2 Sparse ray evidence accumulator.
+- FS-3 Independence + state classification.
+- FS-4 Delaunay mesh branch.
+- FS-5 Coupling to Gate 7.2C confidence.
+- FS-6 CONFIRMED_FREE no-fill enforcement in Gate 7.3.
+- FS-7 ComfyUI Free-Space 3D Preview.
+- FS-8 A/B fixtures: table, fence/railing, arch/doorway, chair, foliage and solid-wall control.
+- FS-9 RTX 2080 Ti / 7 routes × 30 frames runtime and TEMP storage validation.
+- FS-10 Promotion decision after repeatable improvement and no original-view regression.
+
+**Acceptance:** valid openings stay open; false bridges/walls crossing CONFIRMED_FREE are materially reduced; source-observed geometry remains unchanged; UNKNOWN is not accidentally carved; foliage/conflict fails conservatively; checkpoints remain resumable; free-space failures do not corrupt the standard Poisson/Gate 7 path.
+
+Full specification: `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md`.
+
 ## Gate 8 — 5 subgates
 
 8.1 Defect analysis and bounded repair regions.
