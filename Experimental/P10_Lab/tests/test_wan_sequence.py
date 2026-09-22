@@ -5,6 +5,17 @@ from pathlib import Path
 
 
 class WanSequentialSamplerTests(unittest.TestCase):
+    def test_sampler_body_does_not_load_removed_seed_parameter(self):
+        from p10_lab.wan_sequence import ConceptGhostP10WanSequentialSampler
+
+        sample_code = ConceptGhostP10WanSequentialSampler.sample.__code__
+        self.assertIn("wan_seed", sample_code.co_varnames)
+        self.assertNotIn(
+            "seed",
+            sample_code.co_names,
+            "sample() still loads the removed legacy seed parameter",
+        )
+
     def test_node_is_registered(self):
         import p10_lab
         self.assertIn(
