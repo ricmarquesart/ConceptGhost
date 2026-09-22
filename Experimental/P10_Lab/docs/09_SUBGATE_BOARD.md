@@ -361,3 +361,19 @@ Hotfix policy:
 - obviously corrupt/small/out-of-range values fall back to the proven 832×480 RTX 2080 Ti profile;
 - record requested dimensions, effective dimensions and normalization mode in `wan_manifest.json` and diagnostics;
 - Gate 6 resumes automatically after Gate 5 produces a valid WAN manifest.
+
+### Gate 6 r2 WAN-dimension hotfix package
+
+The real Gate 5/6 runtime blocker was fixed and repackaged.
+- Hotfix implementation commit: `fa6d0b9cb547bc2a51bd34d4dfd56c59960b9fb7`.
+- GitHub Actions run `35757635947`: SUCCESS.
+- Artifact: `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r2.zip`.
+- Artifact SHA-256: `21bb2f2276fc4cdf4833c74213180ee58d863acb1aab235e47e2d02951cd428a`.
+- ZIP size: 12,075,894 bytes; 150 members; ZIP integrity PASS.
+- Evaluation_Builds Drive ID: `1FAonnTDX0sJ7ucUUJEhz_CKoYP6aZJIR`.
+- P10 recovery mirror Drive ID: `17x-IXXSAYHhdy6IBqVQ53zHAfKy8gEyC`.
+- Exactly one canonical `ConceptGhost_Master_v*.json` remains in the package.
+- Gate 6 code overlay now pins 13 files at the hotfix commit, including `wan_sequence.py`.
+- Integrated Gate 6 workflow ships under the new filename `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_PREVIEW_r2.json`, avoiding reuse of stale r1 workflow-tab state.
+
+Runtime acceptance remains pending. User should discard r1 and use Gate 6 r2. The same r2 package fixes Gate 5 because Gate 6 installs/verifies the complete Gate 5 stack before applying the Gate 6 overlay.
