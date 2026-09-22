@@ -18,7 +18,7 @@ to bypass missing runtime evidence.
 | 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
 | 4. Automatic paths, collision, raw controls and masks | 6 | COMPLETED FUNCTIONALLY; route-quality refinements deferred to Gate 11 |
 | 5. WAN completion and source-preserving composite | 5 | 5.1-5.4 COMPLETED; 5.5 PREVIEW READY / USER RUNTIME PENDING |
-| 6. SphereSfM and COLMAP reconstruction | 6 | PLANNED |
+| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1 COMPLETED; 6.2 NEXT |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
@@ -70,8 +70,8 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 
 ## Gate 6 — 6 subgates
 
-6.1 Generated-view collection and camera manifest.
-6.2 SphereSfM dataset adapter.
+6.1 Generated-view collection and camera manifest — COMPLETED. The Refined evidence stage now persists a Scene-Contract-bound per-frame PINHOLE camera manifest, and Gate 6 pairs every source-preserved Gate 5 composite with the exact planned P9-world camera using global frame index as the join key. GitHub Actions run 35746991214 SUCCESS.
+6.2 SphereSfM dataset adapter — NEXT.
 6.3 SphereSfM camera/sparse reconstruction.
 6.4 COLMAP dense stereo/fusion.
 6.5 Dense cloud → pre-fusion triangle mesh + health checks.
@@ -193,3 +193,8 @@ Artifact:
 - P10 recovery mirror Drive ID: `1nrTSZ6vM-HPYBBGdxYJdYsSKnFOp66jA`
 
 Runtime installation path remains `03_INSTALL_ALL.bat → 04_VERIFY_INSTALL.bat → 05_RUN_CONCEPTGHOST.bat`. The installer validates or downloads the four hashed WAN assets (~24 GB) and reuses any matching files already present. The full preview workflow is `ConceptGhost_v1.54_P10_Gate05_REFINED_WAN_PREVIEW_r1.json`. Gate 5 remains open until the user confirms WAN hole filling + source-preserving composite in the real Refined workflow.
+
+
+### Gate 6.1 image-camera authority checkpoint
+
+Gate 6.1 is complete. The pipeline no longer needs to rediscover P10 camera poses from generated imagery. Each drone frame now carries authoritative PINHOLE intrinsics and a 4×4 P9-world camera matrix in `camera_manifest.json`, bound to the same Scene Contract. The reconstruction-input collector pairs Gate 5 source-preserved composite frames with those cameras and fails closed on missing/duplicate/mismatched frame identities. GitHub Actions run 35746991214 SUCCESS. Next subgate: 6.2 dataset adapter.
