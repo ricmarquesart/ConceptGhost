@@ -128,6 +128,31 @@ class P9BoundaryTests(unittest.TestCase):
             self.assertEqual(bundle.source_stage, "p9")
             self.assertEqual(bundle.source_equivalent_to, "baseline")
 
+    def test_official_refined_p10_reserved_label_is_accepted_as_p9_boundary(self):
+        api = self._api()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run = _write_official_run(
+                root / "run-refined-reserved",
+                branch_mode="Refined / P9 Clone · P10 Reserved",
+            )
+            boundary = api.validate_official_run(run)
+            self.assertEqual(boundary.source_stage, "p9")
+            self.assertEqual(
+                boundary.branch_mode,
+                "Refined / P9 Clone · P10 Reserved",
+            )
+
+    def test_near_match_refined_label_is_still_rejected_fail_closed(self):
+        api = self._api()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run = _write_official_run(
+                Path(temp_dir) / "run",
+                branch_mode="Refined / P9 Clone · Experimental",
+            )
+            with self.assertRaises(ContractError):
+                api.validate_official_run(run)
+
     def test_identity_chain_mismatch_is_rejected(self):
         api = self._api()
         with tempfile.TemporaryDirectory() as temp_dir:
