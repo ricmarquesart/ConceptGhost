@@ -70,6 +70,7 @@ class CameraFrameRecord:
 @dataclass(frozen=True)
 class CameraSequenceManifest:
     frames: tuple[CameraFrameRecord,...]
+    scene_contract_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.frames:
@@ -82,6 +83,7 @@ class CameraSequenceManifest:
     def to_dict(self) -> dict[str,object]:
         return {
             "schema":"ConceptGhost.P10CameraSequence.v0.1",
+            "scene_contract_id":self.scene_contract_id,
             "coordinate_authority":"P9_BASELINE_WORLD",
             "camera_model":"PINHOLE",
             "frame_count":len(self.frames),
