@@ -11,6 +11,7 @@ from .observation_map import build_observation_map
 from .p9_boundary import build_completion_bundle, load_completion_bundle
 from .panorama import CameraAuthority, PanoramaSpec
 from .panorama_projection import build_projection_plan
+from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
 
 
 _CATEGORY = "ConceptGhost/P10 Lab"
@@ -280,6 +281,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10BundleLoader": ConceptGhostP10BundleLoader,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
+    "ConceptGhostP10WanMaskedConditioning": ConceptGhostP10WanMaskedConditioning,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -287,4 +289,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10BundleLoader": "P10 P9 Bundle Loader / Validator",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
+    "ConceptGhostP10WanMaskedConditioning": "P10 Refined · WAN Masked Conditioning",
 }
