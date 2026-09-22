@@ -74,6 +74,16 @@ def mission_ranges_from_manifest(path: str | Path) -> tuple[MissionRange, ...]:
     return mission_ranges_from_payload(payload)
 
 
+
+def padded_wan_length(length: int) -> int:
+    if type(length) is not int or length < 1:
+        raise ContractError("WAN window length must be a positive integer")
+    if length == 1:
+        return 1
+    remainder = (length - 1) % 4
+    return length if remainder == 0 else length + (4 - remainder)
+
+
 def _window_ranges(mission: MissionRange, max_length: int) -> tuple[MissionRange, ...]:
     if type(max_length) is not int or max_length < 1:
         raise ContractError("WAN max_length must be a positive integer")
@@ -196,15 +206,31 @@ class ConceptGhostP10WanSequentialSampler:
             if actual_length <= 0:
                 raise ContractError(f"WAN window {window.name} is empty")
 
+            conditioning_length = padded_wan_length(actual_length)
+            if conditioning_length > int(max_window_length):
+                raise ContractError(
+                    f"WAN padded length {conditioning_length} exceeds max_window_length "
+                    f"{max_window_length} for {window.name}"
+                )
+            if conditioning_length > actual_length:
+                pad_count = conditioning_length - actual_length
+                control_pad = control_slice[-1:].repeat((pad_count, 1, 1, 1))
+                mask_pad = mask_slice[-1:].repeat((pad_count, 1, 1))
+                control_condition = torch.cat((control_slice, control_pad), dim=0)
+                mask_condition = torch.cat((mask_slice, mask_pad), dim=0)
+            else:
+                control_condition = control_slice
+                mask_condition = mask_slice
+
             conditioned_positive, conditioned_negative, latent = conditioner.encode(
                 positive,
                 negative,
                 vae,
-                control_slice,
-                mask_slice,
+                control_condition,
+                mask_condition,
                 int(width),
                 int(height),
-                actual_length,
+                conditioning_length,
                 clip_vision_output=clip_vision_output,
                 hole_fill="black",
             )
@@ -240,6 +266,7 @@ class ConceptGhostP10WanSequentialSampler:
             mask_resized = (mask_resized > 0.5).float()
 
             frame_count = min(
+                actual_length,
                 int(generated.shape[0]),
                 int(control_resized.shape[0]),
                 int(mask_resized.shape[0]),
@@ -302,6 +329,7 @@ class ConceptGhostP10WanSequentialSampler:
                     "source_start": window.start,
                     "source_end": window.end,
                     "requested_length": actual_length,
+                    "conditioning_length": conditioning_length,
                     "decoded_frame_count": frame_count,
                     "raw_dir": str(window_raw_dir),
                     "composite_dir": str(window_comp_dir),
