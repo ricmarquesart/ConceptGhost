@@ -131,6 +131,48 @@ def padded_wan_length(length: int) -> int:
     return length if remainder == 0 else length + (4 - remainder)
 
 
+def normalize_decoded_wan_images(images):
+    """Normalize ComfyUI video VAE output to IMAGE batch shape [N, H, W, C].
+
+    ComfyUI's standard VAEDecode node flattens a five-dimensional decoded video
+    tensor before exposing it as IMAGE. The P10 sequential sampler decodes the
+    VAE directly, so it must apply the same normalization before compositing or
+    saving frames with Pillow.
+    """
+    shape = getattr(images, "shape", None)
+    if shape is None:
+        raise ContractError("WAN VAE decode returned a value without shape")
+
+    try:
+        rank = len(shape)
+    except TypeError as error:
+        raise ContractError("WAN VAE decode returned an invalid shape") from error
+
+    if rank == 5:
+        images = images.reshape(
+            -1,
+            images.shape[-3],
+            images.shape[-2],
+            images.shape[-1],
+        )
+        shape = images.shape
+        rank = len(shape)
+
+    if rank != 4:
+        raise ContractError(
+            f"WAN VAE decode must normalize to [N,H,W,C], got shape {tuple(shape)}"
+        )
+
+    channels = int(shape[-1])
+    if channels not in (1, 3, 4):
+        raise ContractError(
+            f"WAN VAE decode produced unsupported channel count {channels} "
+            f"for shape {tuple(shape)}"
+        )
+
+    return images
+
+
 def _window_ranges(mission: MissionRange, max_length: int) -> tuple[MissionRange, ...]:
     if type(max_length) is not int or max_length < 1:
         raise ContractError("WAN max_length must be a positive integer")
@@ -302,7 +344,9 @@ class ConceptGhostP10WanSequentialSampler:
                 latent,
                 denoise=1.0,
             )[0]
-            generated = vae.decode(sampled["samples"])
+            generated = normalize_decoded_wan_images(
+                vae.decode(sampled["samples"])
+            )
 
             control_resized = comfy.utils.common_upscale(
                 control_slice.movedim(-1, 1),
