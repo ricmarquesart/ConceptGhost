@@ -25,8 +25,12 @@ class Gate2PreviewNodeTests(unittest.TestCase):
             output = root / "ConceptGhost_P9_CompletionBundle.zip"
 
             node = builder_cls()
-            bundle_path, diagnostics = node.build(str(run), str(output))
+            response = node.build(str(run), str(output))
+            self.assertIn("ui", response)
+            self.assertIn("text", response["ui"])
+            bundle_path, diagnostics = response["result"]
             report = json.loads(diagnostics)
+            self.assertEqual(json.loads(response["ui"]["text"][0])["status"], "PASS")
 
             self.assertEqual(Path(bundle_path), output.resolve())
             self.assertTrue(output.is_file())
@@ -43,8 +47,10 @@ class Gate2PreviewNodeTests(unittest.TestCase):
             output = root / "p9.zip"
             builder_cls().build(str(run), str(output))
 
-            result = loader_cls().load(str(output), str(root / "cache"))
-            bundle_root, source, camera, mesh, diagnostics = result
+            response = loader_cls().load(str(output), str(root / "cache"))
+            self.assertIn("ui", response)
+            self.assertIn("text", response["ui"])
+            bundle_root, source, camera, mesh, diagnostics = response["result"]
             report = json.loads(diagnostics)
 
             self.assertTrue(Path(bundle_root).is_dir())
@@ -76,6 +82,7 @@ class Gate2PreviewNodeTests(unittest.TestCase):
             self.assertTrue(cls.RETURN_NAMES)
             self.assertTrue(cls.FUNCTION)
             self.assertEqual(cls.CATEGORY, "ConceptGhost/P10 Lab")
+            self.assertTrue(cls.OUTPUT_NODE)
 
 
 if __name__ == "__main__":
