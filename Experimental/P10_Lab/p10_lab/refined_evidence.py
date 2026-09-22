@@ -8,6 +8,7 @@ from typing import Any
 
 from .contracts import ContractError
 from .scene_coverage import derive_scene_footprint_from_primary_mesh, plan_geometry_aware_flights
+from .mesh_clearance import build_clearance_cloud, adapt_paths_for_clearance
 from .p9_boundary import validate_official_run
 from .panorama import CameraAuthority, PanoramaSpec
 from .path_planner import RelativeWaypoint, plan_flights
@@ -430,6 +431,19 @@ def build_refined_evidence(
         camera,
     )
     flight_plan = plan_geometry_aware_flights(scene_footprint)
+    clearance_cloud = build_clearance_cloud(
+        boundary.primary_mesh,
+        camera,
+        max_points=5000,
+    )
+    clearance_batch = adapt_paths_for_clearance(
+        flight_plan.paths,
+        clearance_cloud,
+        min_clearance=max(0.05, scene_footprint.median_depth * 0.01),
+        samples_per_segment=2,
+        shrink_factor=0.85,
+        max_shrink_attempts=4,
+    )
 
     resolved_paths = []
     flight_frames = []
@@ -438,7 +452,7 @@ def build_refined_evidence(
     coverage_by_path: dict[str, list[float]] = {}
     view_height = int(round(view_width * camera.height / camera.width))
 
-    for path in flight_plan.paths:
+    for path in clearance_batch.paths:
         waypoints = _interpolated_waypoints(path, steps_per_segment)
         poses = tuple(resolve_world_camera(camera, waypoint, frame_index=index) for index, waypoint in enumerate(waypoints))
         resolved_paths.append((path.name, poses))
@@ -492,7 +506,7 @@ def build_refined_evidence(
     diagnostics = {
         "status": "PASS",
         "gate": 4,
-        "subgate": "4.1",
+        "subgate": "4.2",
         "source_run_id": boundary.run_id,
         "scene_contract_id": boundary.scene_contract_id,
         "source_stage": boundary.source_stage,
@@ -507,6 +521,11 @@ def build_refined_evidence(
         },
         "scene_footprint": footprint_evidence,
         "flight_plan": flight_plan.manifest(),
+        "clearance": {
+            "cloud": clearance_cloud.manifest(),
+            "batch": clearance_batch.manifest(),
+            "minimum_required": max(0.05, scene_footprint.median_depth * 0.01),
+        },
         "paths": {
             name: {
                 "frame_count": len(values),
