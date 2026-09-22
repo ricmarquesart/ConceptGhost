@@ -374,6 +374,24 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
                 "db_image_id": db_image_id,
                 "db_camera_id": db_camera_id,
                 "source_camera_id": original_camera_id,
+                "expected": {
+                    "width": expected_intrinsics[0],
+                    "height": expected_intrinsics[1],
+                    "fx": expected_intrinsics[2],
+                    "fy": expected_intrinsics[3],
+                    "cx": expected_intrinsics[4],
+                    "cy": expected_intrinsics[5],
+                },
+                "database": (
+                    None
+                    if actual_intrinsics is None
+                    else {
+                        "model_id": actual_intrinsics[0],
+                        "width": actual_intrinsics[1],
+                        "height": actual_intrinsics[2],
+                        "params": list(actual_intrinsics[3]),
+                    }
+                ),
             })
             continue
 
@@ -806,6 +824,17 @@ def run_sparse_triangulation(
     executed = []
     synchronized_model: DatabaseSyncedModel | None = None
 
+    # A failed/aborted sparse attempt can leave camera rows in database.db.
+    # Reusing those rows after a camera-viewport correction would preserve stale
+    # width/height/intrinsics and reproduce the exact runtime failure that this
+    # stage is meant to diagnose. The database is Gate-6-owned derived state, so
+    # every sparse rebuild starts from a clean COLMAP database while preserving
+    # the authoritative source images and known-camera model.
+    database_rebuilt_from_scratch = False
+    if plan.database_path.exists():
+        plan.database_path.unlink()
+        database_rebuilt_from_scratch = True
+
     def execute_colmap(index: int, command: str, argv: list[str], log_name: str) -> None:
         result = subprocess.run(
             argv,
@@ -883,6 +912,8 @@ def run_sparse_triangulation(
         "sparse_point_cloud_available": point_count > 0,
         "known_camera_pose_refinement": False,
         "known_camera_intrinsics_refinement": False,
+        "database_policy": "FRESH_REBUILD_PER_SPARSE_ATTEMPT",
+        "database_rebuilt_from_scratch": database_rebuilt_from_scratch,
         "database_synchronized_model": (
             synchronized_model.manifest() if synchronized_model is not None else None
         ),
