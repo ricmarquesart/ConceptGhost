@@ -82,10 +82,10 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 
 7.1 P10 reconstruction → P9 coordinate registration.
 7.2 Authority-aware known/generated fusion.
-   - **Optional non-blocking confidence overlay (7.2C, DEFAULT OFF):** after 7.1 registration, compute a per-face P9/P10 geometry-confidence field and, only when explicitly enabled, allow low/very-low-confidence side/back geometry to become eligible for bounded replacement/remesh while preserving high-confidence source-facing geometry. Visualization is independently toggleable. Full policy: `docs/11_GEOMETRY_CONFIDENCE_REFINEMENT_POLICY.md`.
+   - **Confidence diagnostics + optional refinement overlay (7.2C):** after 7.1 registration, always compute a per-face P9/P10 geometry-confidence field and expose an always-available dedicated ComfyUI 3D confidence preview (HIGH=blue, LOW/VERY_LOW=red, NEUTRAL uncolored). Geometry refinement remains **DEFAULT OFF** and, only when explicitly enabled, may allow low/very-low-confidence side/back geometry to become eligible for bounded replacement/remesh while preserving high-confidence source-facing geometry. Confidence visualization is diagnostic-only and is not exported to Maya. Full policy: `docs/11_GEOMETRY_CONFIDENCE_REFINEMENT_POLICY.md`.
 7.3 Narrow transition geometry handling.
-7.4 Per-face/per-region provenance, including optional confidence/refinement provenance when 7.2C is enabled.
-7.5 Registration/fusion Preview and runtime validation. The required OFF path remains the acceptance baseline; optional confidence ON must pass a separate A/B regression before it can be considered beneficial.
+7.4 Per-face/per-region provenance, including confidence classification metadata for diagnostics and optional refinement provenance only when 7.2C refinement is enabled.
+7.5 Registration/fusion Preview and runtime validation. Confidence analysis/3D preview is expected as a normal diagnostic surface, while the required refinement-OFF path remains the geometry acceptance baseline; confidence refinement ON must pass a separate A/B regression before it can be considered beneficial.
 
 ## Gate 8 — 5 subgates
 
