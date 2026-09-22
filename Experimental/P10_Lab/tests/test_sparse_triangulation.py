@@ -209,6 +209,20 @@ class SparseTriangulationTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     run_sparse_triangulation(root, colmap_executable="colmap")
 
+    def test_sparse_rebuild_deletes_stale_database_before_feature_extraction(self):
+        from p10_lab.sparse_triangulation import run_sparse_triangulation
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._dataset(Path(tmp))
+            stale = root / "database.db"
+            stale.write_bytes(b"stale-camera-state")
+            with patch("p10_lab.sparse_triangulation.subprocess.run") as run:
+                run.return_value.returncode = 2
+                run.return_value.stdout = ""
+                run.return_value.stderr = "expected stop"
+                with self.assertRaises(RuntimeError):
+                    run_sparse_triangulation(root, colmap_executable="colmap")
+            self.assertFalse(stale.exists())
+
     def test_existing_completed_sparse_output_is_not_overwritten_by_default(self):
         from p10_lab.sparse_triangulation import run_sparse_triangulation
         with tempfile.TemporaryDirectory() as tmp:
