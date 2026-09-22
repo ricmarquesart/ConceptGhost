@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from math import atan2, cos, pi, sin, sqrt
 from pathlib import Path
 from typing import Any
 
@@ -208,6 +209,54 @@ def _render_source_erp(source, camera: CameraAuthority, spec: PanoramaSpec, np):
     return panorama, observed
 
 
+def _interpolate_look_direction(left: RelativeWaypoint, right: RelativeWaypoint, amount: float):
+    """Interpolate camera look direction in angular space.
+
+    A linear vector blend is invalid for antipodal directions because +forward
+    and -forward cancel to (0,0,0) at the midpoint. Yaw/pitch interpolation
+    keeps every intermediate look vector unit length and turns the camera
+    continuously through 180 degrees at the far end of a round trip.
+    """
+
+    def angles(waypoint: RelativeWaypoint):
+        look_right = float(waypoint.look_right)
+        look_up = float(waypoint.look_up)
+        look_forward = float(waypoint.look_forward)
+        length = sqrt(
+            look_right * look_right
+            + look_up * look_up
+            + look_forward * look_forward
+        )
+        if length <= 1.0e-12:
+            raise ContractError("Waypoint look vector cannot have zero length")
+        look_right /= length
+        look_up /= length
+        look_forward /= length
+        yaw = atan2(look_right, look_forward)
+        horizontal = sqrt(look_right * look_right + look_forward * look_forward)
+        pitch = atan2(look_up, horizontal)
+        return yaw, pitch
+
+    left_yaw, left_pitch = angles(left)
+    right_yaw, right_pitch = angles(right)
+
+    delta_yaw = (right_yaw - left_yaw + pi) % (2.0 * pi) - pi
+    # Exact 180-degree turns are ambiguous. Choose +pi deterministically so
+    # the turnaround always rotates through camera-local +right instead of
+    # allowing platform/library floating-point differences to pick a side.
+    if abs(delta_yaw + pi) <= 1.0e-12:
+        delta_yaw = pi
+
+    yaw = left_yaw + delta_yaw * amount
+    pitch = left_pitch * (1.0 - amount) + right_pitch * amount
+    cos_pitch = cos(pitch)
+    return (
+        sin(yaw) * cos_pitch,
+        sin(pitch),
+        cos(yaw) * cos_pitch,
+    )
+
+
 def _interpolated_waypoints(path, steps_per_segment: int):
     result = []
     for index in range(len(path.waypoints) - 1):
@@ -215,14 +264,19 @@ def _interpolated_waypoints(path, steps_per_segment: int):
         right = path.waypoints[index + 1]
         for step in range(steps_per_segment):
             amount = step / float(steps_per_segment)
+            look_right, look_up, look_forward = _interpolate_look_direction(
+                left,
+                right,
+                amount,
+            )
             result.append(
                 RelativeWaypoint(
                     right=left.right * (1.0 - amount) + right.right * amount,
                     up=left.up * (1.0 - amount) + right.up * amount,
                     forward=left.forward * (1.0 - amount) + right.forward * amount,
-                    look_right=left.look_right * (1.0 - amount) + right.look_right * amount,
-                    look_up=left.look_up * (1.0 - amount) + right.look_up * amount,
-                    look_forward=left.look_forward * (1.0 - amount) + right.look_forward * amount,
+                    look_right=look_right,
+                    look_up=look_up,
+                    look_forward=look_forward,
                 )
             )
     result.append(path.waypoints[-1])
