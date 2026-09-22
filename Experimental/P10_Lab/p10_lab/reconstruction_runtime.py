@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -57,6 +58,14 @@ def resolve_colmap_executable(explicit: str | None = None) -> str:
     )
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _read_json(path: Path, label: str) -> dict:
     try:
         payload=json.loads(path.read_text(encoding="utf-8"))
@@ -74,6 +83,32 @@ def _stage_manifest(path: Path, *, require_status: bool=False) -> dict | None:
     if require_status and payload.get("status")!="PASS":
         return None
     return payload
+
+
+def _validate_dataset_reuse(
+    manifest: dict | None,
+    *,
+    wan_manifest_path: Path,
+    camera_manifest_path: Path,
+) -> tuple[bool, str]:
+    if not manifest:
+        return False, "MISSING_MANIFEST"
+    if manifest.get("schema") != "ConceptGhost.P10KnownCameraColmapDataset.v0.2":
+        return False, "STALE_DATASET_SCHEMA"
+    source_inputs = manifest.get("source_inputs")
+    if not isinstance(source_inputs, dict):
+        return False, "MISSING_SOURCE_DIGESTS"
+    expected_wan = _sha256_file(wan_manifest_path)
+    expected_camera = _sha256_file(camera_manifest_path)
+    if source_inputs.get("wan_manifest_sha256") != expected_wan:
+        return False, "WAN_MANIFEST_CHANGED"
+    if source_inputs.get("camera_manifest_sha256") != expected_camera:
+        return False, "CAMERA_MANIFEST_CHANGED"
+    if manifest.get("camera_image_mapping_policy") != "COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE":
+        return False, "STALE_CAMERA_VIEWPORT_POLICY"
+    if not manifest.get("frame_count"):
+        return False, "EMPTY_DATASET"
+    return True, "MATCHED_CONTEXT"
 
 
 def _validate_mesh_reuse(dataset_root: Path, manifest: dict | None) -> bool:
@@ -110,16 +145,30 @@ def run_reconstruction_pipeline(
 
     dataset_manifest_path=dataset_root/"dataset_manifest.json"
     dataset_manifest=_stage_manifest(dataset_manifest_path)
-    if dataset_manifest and dataset_manifest.get("frame_count"):
-        stages["dataset"]={"state":"REUSED","manifest_path":str(dataset_manifest_path)}
+    dataset_reusable, dataset_reason = _validate_dataset_reuse(
+        dataset_manifest,
+        wan_manifest_path=wan_manifest_path,
+        camera_manifest_path=camera_manifest_path,
+    )
+    if dataset_reusable:
+        stages["dataset"]={
+            "state":"REUSED",
+            "reason":dataset_reason,
+            "manifest_path":str(dataset_manifest_path),
+        }
     else:
+        had_existing_dataset=dataset_root.exists() and any(dataset_root.iterdir())
         prepare_known_camera_colmap_dataset(
             wan_manifest_path,
             camera_manifest_path,
             dataset_root,
-            overwrite=False,
+            overwrite=had_existing_dataset,
         )
-        stages["dataset"]={"state":"BUILT","manifest_path":str(dataset_manifest_path)}
+        stages["dataset"]={
+            "state":"REBUILT_STALE_CONTEXT" if had_existing_dataset else "BUILT",
+            "reason":dataset_reason,
+            "manifest_path":str(dataset_manifest_path),
+        }
 
     sparse_manifest_path=dataset_root/"sparse_triangulation_manifest.json"
     sparse_manifest=_stage_manifest(sparse_manifest_path,require_status=True)
