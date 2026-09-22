@@ -106,10 +106,10 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 
 10.1 Residual-defect analyzer.
 10.2 Adaptive-flight spending policy.
-10.3 Restart/cache/resource cleanup.
+10.3 Unified per-run TEMP workspace lifecycle + restart/cache/resource cleanup. Implement `<ComfyUI output>/conceptghost/_temp/<run_id>/`, expose `temp_workspace_path`, record ACTIVE/FAILED_RETAINED/CLEANUP_PENDING/CLEAN states, preserve on failure, and only mark intermediates cleanup-eligible after downstream validation.
 10.4 RTX 2080 Ti 11 GB compliance run.
 10.5 Refined topology integration: P9 (= Baseline) → P10.
-10.6 Complete v1.54 release candidate, end-to-end validation and recovery bundle.
+10.6 Complete v1.54 release candidate, end-to-end validation, safe auto-clean and recovery bundle. Confirm final `.ma`/mesh/textures before deleting heavy intermediates, emit `cleanup_manifest.json`, preserve failed-run workspaces, and retain the compact diagnostic package.
 
 ## Integration-first preview rule
 
@@ -175,12 +175,12 @@ This gate exists deliberately so current end-to-end development does not stall o
 
 11.1 Panorama/context quality audit: compare P9 partial ERP, source ERP and generated context.
 11.2 Generic scene-coverage scoring from mesh footprint, occupancy, depth and uncovered solid angle.
-11.3 Expand adaptive mission budget from the current 3 stabilization missions to a data-driven 7–10 mission budget without graph duplication.
+11.3 Official default camera dataset: **7 geometry-adaptive routes × 30 configurable frames per route (~210 frames)**. `frames_per_drone` must be a visible node property and changing it must not require workflow edits. More frames are not assumed better; later useful-view selection/subsampling may reduce the reconstruction set.
 11.4 Route-family refinement: lateral, elevated, diagonal, center-orbit, far-orbit and reverse passes selected only when they add coverage.
 11.5 Coverage-aware stopping rule and route ranking using marginal new-visible-area / hole-discovery gain.
-11.6 REQUIRED HiRes Composite source-authority pass. Logical insertion point is after Gate 5 WAN generation and before Gate 6 reconstruction input collection. Reproject full-resolution authoritative source pixels through P9/P10 geometry; use WAN only where geometry/source authority has no answer. Default mode must be geometry-first, not WAN-first. Preserve per-frame coverage/gate masks and visual diagnostics.
-11.7 REQUIRED HiRes Views / dataset augmentation. Logical insertion point is between Gate 6.1 camera authority and Gate 6.3 feature extraction. Render selected high-resolution PINHOLE views from authoritative geometry/source texture, register them as additional known-camera views without moving existing P9/P10 cameras, and optionally retriangulate so they contribute sparse/dense evidence. Reuse the same views later for Gate 8 texture recovery.
-11.8 Final A/B regression: base end-to-end vs HiRes-enhanced end-to-end, including panorama/drone paths, WAN holes, source coverage, sparse/dense reconstruction, mesh quality, texture fidelity, runtime and disk cost.
+11.6 REQUIRED HiRes Composite source-authority pass. Logical insertion point is after Gate 5 WAN generation and before Gate 6 reconstruction input collection. Presets: **4K DEFAULT / 6K / 8K**. Reproject full-resolution authoritative source pixels through P9/P10 geometry; use WAN only where geometry/source authority has no answer. Geometry/source-authority mode is primary and must not require RAFT. Preserve per-frame coverage/gate masks and visual diagnostics.
+11.7 REQUIRED HiRes Views / dataset augmentation. Logical insertion point is between Gate 6.1 camera authority and Gate 6.3 feature extraction. Render only useful additional high-resolution PINHOLE views from authoritative geometry/source texture, register them as additional known-camera observations without moving existing P9/P10 cameras, respect the shared TEMP workspace lifecycle, optionally retriangulate, and retain selected views for Gate 8 texture recovery.
+11.8 Final A/B regression: base end-to-end vs HiRes-enhanced end-to-end, including panorama/drone paths, WAN holes, source coverage, sparse/dense reconstruction, mesh quality, texture fidelity, runtime, TEMP workspace peak size and cleanup result.
 
 Acceptance policy: Gate 11 remains non-blocking until Gates 4–10 produce a complete end-to-end Refined result. Once activated, 11.6 and 11.7 are REQUIRED final-quality work, not optional experiments.
 
@@ -235,10 +235,10 @@ GitHub Actions run 35749126222 SUCCESS across Windows Python 3.12, Windows Pytho
 This gate standardizes visual and machine-readable diagnostics across the full Refined pipeline without changing the functional architecture.
 
 12.1 Stage evidence inventory: enumerate every major P9/P10 stage and classify whether a visual proxy, numeric diagnostic, log, or all three are meaningful.
-12.2 Unified evidence folder contract per run/stage with stable filenames, manifests and provenance.
+12.2 Unified evidence + TEMP workspace contract per run/stage with stable filenames, manifests, provenance, visible `temp_workspace_path`, lifecycle state and measured/estimated storage.
 12.3 Visual branches for panorama, camera paths, holes/masks, WAN raw/composite, sparse cloud, dense cloud, registration/fusion, cleanup/texture and final reprojection where applicable.
-12.4 Machine-readable health metrics and threshold summaries for each stage, including explicit PASS/WARN/FAIL reasons.
-12.5 Consolidated diagnostic bundle + HTML/JSON index linking visuals, logs, metrics and source artifacts.
+12.4 Machine-readable health metrics and threshold summaries for each stage, including explicit PASS/WARN/FAIL reasons plus workspace state (`CLEAN`, `ACTIVE`, `FAILED_RETAINED`, `CLEANUP_PENDING`).
+12.5 Consolidated retained diagnostic package + HTML/JSON index linking visuals, summarized logs, metrics and removed-artifact inventory. Target **<=200 MB**, preferably substantially smaller; never retain full 4K/6K/8K frame sequences or complete dense/cache intermediates in this permanent package.
 12.6 Regression/acceptance audit ensuring a stage can be isolated and diagnosed without rerunning unrelated upstream stages when checkpoints are valid.
 
 Cross-cutting rule effective immediately: new stages should emit useful logs/manifests and a lightweight visual proxy whenever practical, but Gate 12 remains non-blocking until the first complete end-to-end result exists.
@@ -388,3 +388,21 @@ The real Gate 5/6 runtime blocker was fixed and repackaged.
 - Integrated Gate 6 workflow ships under the new filename `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_PREVIEW_r2.json`, avoiding reuse of stale r1 workflow-tab state.
 
 Runtime acceptance remains pending. User should discard r1 and use Gate 6 r2. The same r2 package fixes Gate 5 because Gate 6 installs/verifies the complete Gate 5 stack before applying the Gate 6 overlay.
+
+### P10 Quality Refinement Policy — official defaults
+
+The detailed approved policy is stored in `docs/10_P10_QUALITY_REFINEMENT_POLICY.md`.
+
+Release-target defaults:
+- `drones = 7`
+- `frames_per_drone = 30`
+- `HiRes Composite = ON`
+- `HiRes Views = ON`
+- `hires_resolution = 4K` with 6K/8K optional presets
+- `auto_clean = ON`
+- `preserve_on_failure = ON`
+- `debug_heavy = OFF`
+- `diagnostic_package = ON`
+- `diagnostic_package_max = 200 MB`
+
+Heavy per-run data belongs under `<ComfyUI output>/conceptghost/_temp/<run_id>/`, with the absolute `temp_workspace_path` visible in the UI and manifests. Heavy intermediates are removed only after their downstream dependencies and final deliverables validate successfully. Crash/failure/cancel retains the workspace for diagnosis. Final success emits `cleanup_manifest.json` before cleanup and preserves only final deliverables plus the compact diagnostic package.
