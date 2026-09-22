@@ -526,8 +526,7 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
             raise ContractError(f"dataset_manifest frame {name} contains non-finite pose")
         pose_text = " ".join(f"{v:.17g}" for v in pose)
         image_lines.append(
-            f"{db_image_id} {pose_text} {db_camera_id} {name}
-"
+            f"{db_image_id} {pose_text} {db_camera_id} {name}\n"
         )
         frame_lines.append(
             f"{db_frame_id} {db_rig_id} {pose_text} "
@@ -535,65 +534,42 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
         )
 
     (text_root / "cameras.txt").write_text(
-        "# Camera list with one line of data per camera:
-"
-        "#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]
-"
-        f"# Number of cameras: {len(camera_lines)}
-"
-        + "
-".join(camera_lines)
-        + "
-",
+        "# Camera list with one line of data per camera:\n"
+        "#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n"
+        f"# Number of cameras: {len(camera_lines)}\n"
+        + "\n".join(camera_lines)
+        + "\n",
         encoding="utf-8",
     )
     (text_root / "images.txt").write_text(
-        "# Image list with two lines of data per image:
-"
-        "#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME
-"
-        "#   POINTS2D[] as (X, Y, POINT3D_ID)
-"
-        f"# Number of images: {len(image_lines)}
-"
-        + "".join(line + "
-" for line in image_lines),
+        "# Image list with two lines of data per image:\n"
+        "#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n"
+        "#   POINTS2D[] as (X, Y, POINT3D_ID)\n"
+        f"# Number of images: {len(image_lines)}\n"
+        + "".join(line + "\n" for line in image_lines),
         encoding="utf-8",
     )
     (text_root / "points3D.txt").write_text(
-        "# 3D point list with one line of data per point:
-"
-        "#   POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[]
-"
-        "# Number of points: 0
-",
+        "# 3D point list with one line of data per point:\n"
+        "#   POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[]\n"
+        "# Number of points: 0\n",
         encoding="utf-8",
     )
     (text_root / "rigs.txt").write_text(
-        "# Rig calib list with one line of data per calib:
-"
-        "#   RIG_ID, NUM_SENSORS, REF_SENSOR_TYPE, REF_SENSOR_ID, SENSORS[]
-"
-        f"# Number of rigs: {len(rig_lines)}
-"
-        + "
-".join(rig_lines)
-        + "
-",
+        "# Rig calib list with one line of data per calib:\n"
+        "#   RIG_ID, NUM_SENSORS, REF_SENSOR_TYPE, REF_SENSOR_ID, SENSORS[]\n"
+        f"# Number of rigs: {len(rig_lines)}\n"
+        + "\n".join(rig_lines)
+        + "\n",
         encoding="utf-8",
     )
     (text_root / "frames.txt").write_text(
-        "# Frame list with one line of data per frame:
-"
+        "# Frame list with one line of data per frame:\n"
         "#   FRAME_ID, RIG_ID, RIG_FROM_WORLD[QW,QX,QY,QZ,TX,TY,TZ], "
-        "NUM_DATA_IDS, DATA_IDS[]
-"
-        f"# Number of frames: {len(frame_lines)}
-"
-        + "
-".join(frame_lines)
-        + "
-",
+        "NUM_DATA_IDS, DATA_IDS[]\n"
+        f"# Number of frames: {len(frame_lines)}\n"
+        + "\n".join(frame_lines)
+        + "\n",
         encoding="utf-8",
     )
 
