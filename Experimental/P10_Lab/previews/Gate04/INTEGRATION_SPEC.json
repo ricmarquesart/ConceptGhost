@@ -1,0 +1,22 @@
+{
+  "schema": "ConceptGhost.P10Gate04IntegratedPreview.v0.1",
+  "base_workflow": "ConceptGhost_Master_v1.53.0.json",
+  "base_source": "proven v1.53 COMPLETE_INSTALLER bundle",
+  "patch_function": "p10_lab.workflow_integration.integrate_gate4_refined_preview",
+  "baseline_branch": "unchanged",
+  "refined_export_node_id": 1015,
+  "p10_evidence_node_id": 2100,
+  "p10_evidence_node_type": "ConceptGhostP10RefinedEvidencePreview",
+  "required_link": "Refined ConceptGhostExportBundle.run_dir -> P10 Refined Evidence run_dir",
+  "user_outputs": [
+    "p9_3d_partial_erp",
+    "source_authority_erp",
+    "source_lock_mask",
+    "flight_views",
+    "hole_masks",
+    "trajectory_map",
+    "flight_gif_path",
+    "diagnostics_json"
+  ],
+  "runtime_acceptance": "must be selected through existing Refined / P9 Clone Run Mode"
+}
