@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -254,7 +255,7 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
     if not plan.database_path.is_file():
         raise ContractError(f"COLMAP database does not exist: {plan.database_path}")
 
-    with sqlite3.connect(str(plan.database_path)) as connection:
+    with closing(sqlite3.connect(str(plan.database_path))) as connection:
         db_images_rows = connection.execute(
             "SELECT image_id, name, camera_id FROM images"
         ).fetchall()
