@@ -13,6 +13,7 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
 
         wan = {
             "run_id": "run1",
+            "effective_dimensions": {"width": 832, "height": 480, "mode": "UNCHANGED"},
             "windows": [{
                 "window_index": 0,
                 "name": "a",
@@ -111,7 +112,15 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
             self.assertTrue((out / "reconstruction_inputs.json").is_file())
 
             cameras_txt = (out / "sparse" / "known" / "cameras.txt").read_text(encoding="utf-8")
-            self.assertIn("1 PINHOLE 640 360 700", cameras_txt)
+            self.assertIn("1 PINHOLE 832 480", cameras_txt)
+            self.assertEqual(
+                result["camera_image_mapping_policy"],
+                "COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
+            )
+            self.assertEqual(result["schema"], "ConceptGhost.P10KnownCameraColmapDataset.v0.2")
+            self.assertEqual(result["composite_dimensions"], {"width": 832, "height": 480})
+            self.assertIn("wan_manifest_sha256", result["source_inputs"])
+            self.assertIn("camera_manifest_sha256", result["source_inputs"])
 
             images_txt = (out / "sparse" / "known" / "images.txt").read_text(encoding="utf-8")
             self.assertIn("frame_000000.png", images_txt)
