@@ -349,19 +349,26 @@ Upstream technical references:
 - https://github.com/mickmumpitz/ComfyUI-SplatKit
 - https://github.com/mickmumpitz/ComfyUI-SplatKit/blob/main/docs/HIRES_COMPOSITE.md
 
-### Gate 5/6 runtime blocker — WAN dimension normalization
+### Gate 5/6 runtime blocker — ComfyUI WAN widget serialization
 
-Real user runtime on 2026-09-22 reached node 2207 (`ConceptGhostP10WanSequentialSampler`) after P9 export, but aborted before WAN sampling because the live widget state supplied width/height values that were not valid multiples of 16. The packaged workflow declares 832×480, but the live ComfyUI node showed a stale/corrupted dimension state. This is a Gate 5 blocker and therefore also blocks Gate 6 downstream execution.
+Real user runtime on 2026-09-22 exposed two layers of the same Gate 5/6 blocker.
 
-Hotfix policy:
-- do not require the user to manually repair stale slider values;
-- widget minimum is raised to 256;
-- valid 16-aligned dimensions pass unchanged;
-- normal invalid dimensions in the supported range snap to the nearest multiple of 16;
-- obviously corrupt/small/out-of-range values fall back to the proven 832×480 RTX 2080 Ti profile;
-- record requested dimensions, effective dimensions and normalization mode in `wan_manifest.json` and diagnostics;
-- Gate 6 resumes automatically after Gate 5 produces a valid WAN manifest.
+First failure: node 2207 (`ConceptGhostP10WanSequentialSampler`) executed and rejected invalid width/height values. Runtime normalization hotfix `fa6d0b9...` made the sampler robust when invalid dimensions reach Python.
 
+Second failure (r2): ComfyUI blocked the prompt *before node execution*. The live node showed `seed=0, width=480, height=33, max_window_length=4, steps=1, cfg=1.0`. Root cause: the serialized `widgets_values` omitted ComfyUI's auxiliary seed control widget (`control_after_generate`). The frontend therefore consumed `832` as that hidden seed-control value and shifted every subsequent widget left. The optional `clip_vision_output` socket was also omitted from the serialized input list and is now emitted explicitly.
+
+Definitive workflow serialization policy:
+- input tail is explicitly `clip_vision_output, seed, width, height, max_window_length, steps, cfg`;
+- widget values are explicitly `[0, "fixed", 832, 480, 33, 4, 1.0]`;
+- runtime dimension normalization remains as a second safety layer;
+- installer verifier and bundle test reject any Gate 6 workflow that does not preserve this exact modern-Comfy serialization contract.
+
+GitHub workflow serialization fix: `168a4a5879505fb8116ad56de25ebe4dfa2e1cd4`.
+Regression-contract commit: `88a0b1604c3b1a9c1163e653238e02171a8dc6b3`.
+GitHub Actions run `35760003619`: SUCCESS.
+
+Replacement user-test artifact: `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r3.zip`.
+r2 is superseded and must not be used for further runtime acceptance.
 ### Gate 6 r2 WAN-dimension hotfix package
 
 The real Gate 5/6 runtime blocker was fixed and repackaged.
