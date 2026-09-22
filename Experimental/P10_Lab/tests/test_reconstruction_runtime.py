@@ -1,3 +1,4 @@
+import hashlib
 import json
 import tempfile
 import unittest
@@ -11,7 +12,7 @@ class ReconstructionRuntimeTests(unittest.TestCase):
         cam=root/"p10_gate4"/"run1"/"control_sequence"/"camera_manifest.json"
         wan.parent.mkdir(parents=True)
         cam.parent.mkdir(parents=True)
-        wan.write_text(json.dumps({"run_id":"run1","windows":[{"window_index":0,"name":"a","source_start":0,"source_end":1,"decoded_frame_count":1,"composite_dir":str(root/"comp")}]}),encoding="utf-8")
+        wan.write_text(json.dumps({"run_id":"run1","effective_dimensions":{"width":832,"height":480,"mode":"UNCHANGED"},"windows":[{"window_index":0,"name":"a","source_start":0,"source_end":1,"decoded_frame_count":1,"composite_dir":str(root/"comp")}]}),encoding="utf-8")
         cam.write_text(json.dumps({"scene_contract_id":"scene1","frames":[{"global_frame_index":0,"path_name":"a","path_frame_index":0,"camera":{"model":"PINHOLE","width":640,"height":360,"fx":700,"fy":700,"cx":320,"cy":180,"world_matrix":[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]}}]}),encoding="utf-8")
         return wan,cam
 
@@ -31,7 +32,16 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             out.mkdir()
             dataset=out/"dataset"
             dataset.mkdir()
-            (dataset/"dataset_manifest.json").write_text(json.dumps({"frame_count":1}),encoding="utf-8")
+            dataset_manifest={
+                "schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.2",
+                "frame_count":1,
+                "camera_image_mapping_policy":"COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
+                "source_inputs":{
+                    "wan_manifest_sha256":hashlib.sha256(wan.read_bytes()).hexdigest(),
+                    "camera_manifest_sha256":hashlib.sha256(cam.read_bytes()).hexdigest(),
+                },
+            }
+            (dataset/"dataset_manifest.json").write_text(json.dumps(dataset_manifest),encoding="utf-8")
             for name in ("sparse_triangulation_manifest.json","dense_reconstruction_manifest.json","prefusion_mesh_manifest.json"):
                 (dataset/name).write_text(json.dumps({"status":"PASS"}),encoding="utf-8")
             sparse=dataset/"sparse"/"triangulated"
@@ -53,6 +63,48 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             self.assertFalse(d.called)
             self.assertEqual(result["stages"]["dataset"]["state"],"REUSED")
             self.assertEqual(result["stages"]["mesh"]["state"],"REUSED")
+
+    def test_resume_rebuilds_stale_dataset_context(self):
+        from p10_lab.reconstruction_runtime import run_reconstruction_pipeline
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            wan,cam=self._manifests(root)
+            out=root/"gate6"
+            dataset=out/"dataset"
+            dataset.mkdir(parents=True)
+            (dataset/"dataset_manifest.json").write_text(
+                json.dumps({"schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.1","frame_count":1}),
+                encoding="utf-8",
+            )
+            (dataset/"database.db").write_bytes(b"stale")
+            with patch("p10_lab.reconstruction_runtime.prepare_known_camera_colmap_dataset") as prepare, \
+                 patch("p10_lab.reconstruction_runtime.run_sparse_triangulation") as sparse, \
+                 patch("p10_lab.reconstruction_runtime.run_dense_reconstruction") as dense, \
+                 patch("p10_lab.reconstruction_runtime.run_prefusion_meshing") as mesh:
+                def rebuild(_wan,_cam,target,overwrite=False):
+                    self.assertTrue(overwrite)
+                    target=Path(target)
+                    for child in list(target.iterdir()):
+                        if child.is_file():
+                            child.unlink()
+                    payload={
+                        "schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.2",
+                        "frame_count":1,
+                        "camera_image_mapping_policy":"COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
+                        "source_inputs":{
+                            "wan_manifest_sha256":hashlib.sha256(Path(_wan).read_bytes()).hexdigest(),
+                            "camera_manifest_sha256":hashlib.sha256(Path(_cam).read_bytes()).hexdigest(),
+                        },
+                    }
+                    (target/"dataset_manifest.json").write_text(json.dumps(payload),encoding="utf-8")
+                    return payload
+                prepare.side_effect=rebuild
+                sparse.side_effect=RuntimeError("stop after dataset rebuild")
+                with self.assertRaises(RuntimeError):
+                    run_reconstruction_pipeline(wan,cam,out,colmap_executable="colmap",resume=True)
+            self.assertTrue(prepare.called)
+            self.assertTrue(sparse.called)
+            self.assertFalse((dataset/"database.db").exists())
 
     def test_nonresume_refuses_existing_output(self):
         from p10_lab.reconstruction_runtime import run_reconstruction_pipeline
