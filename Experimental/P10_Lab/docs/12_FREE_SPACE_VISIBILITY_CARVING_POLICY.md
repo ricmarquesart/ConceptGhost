@@ -118,6 +118,12 @@ Gate 4/6 already provide:
 
 No new generative model is required for first implementation.
 
+## Camera/image calibration invariant
+
+Free-space carving is only valid when every depth pixel and every camera ray refer to the exact same saved image viewport. Gate 5 may center-crop and resize a Gate 4 control view before saving the WAN/source-preserved composite. Therefore Gate 6 must first map the authoritative P9-derived intrinsics into that saved-composite viewport using the exact ComfyUI center-crop + resize transform.
+
+A width/height/intrinsics mismatch is a hard calibration failure: do not triangulate, do not carve FREE space, and do not reinterpret the mismatch as uncertainty. Dataset manifests must retain the camera-image transform and source-manifest digests so stale calibration checkpoints are rejected on resume.
+
 ## Two-layer implementation
 
 ### Layer A — COLMAP visibility-aware meshing branch
