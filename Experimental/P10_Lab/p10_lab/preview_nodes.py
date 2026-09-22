@@ -273,6 +273,7 @@ class ConceptGhostP10RefinedEvidencePreview:
                 evidence.hole_masks,
                 evidence.trajectory_map,
                 evidence.gif_path,
+                evidence.control_manifest_path,
                 rendered,
             ),
         }
