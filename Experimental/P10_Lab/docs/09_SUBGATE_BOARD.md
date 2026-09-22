@@ -406,3 +406,36 @@ Release-target defaults:
 - `diagnostic_package_max = 200 MB`
 
 Heavy per-run data belongs under `<ComfyUI output>/conceptghost/_temp/<run_id>/`, with the absolute `temp_workspace_path` visible in the UI and manifests. Heavy intermediates are removed only after their downstream dependencies and final deliverables validate successfully. Crash/failure/cancel retains the workspace for diagnosis. Final success emits `cleanup_manifest.json` before cleanup and preserves only final deliverables plus the compact diagnostic package.
+
+
+### Gate 6 r4 layout-only preview
+
+The Gate 6 r4 package is functionally equivalent to r3 for execution/runtime behavior, but reorganizes all current P10 Gate 4/5/6 nodes into a dedicated visual lane below the proven Refined/P9 graph.
+
+Layout policy:
+- Gate 4 evidence and visual diagnostics occupy the left side of the P10 lane.
+- Gate 5 WAN loaders/conditioning/sampler/composite occupy the center.
+- Gate 6 reconstruction runtime and mesh preview occupy the right.
+- Baseline/P9 and existing Refined/P9 node positions are untouched.
+- Automated rectangle-overlap regression test is release-blocking for the current known P10 nodes.
+
+Validation:
+- complete packaged workflow node-overlap count: **0**;
+- Gate 6 bundle structure PASS;
+- Project Control single canonical Master PASS;
+- installer argument forwarding PASS;
+- non-destructive installer PASS;
+- node 2207 modern-Comfy serialization remains `[0, "fixed", 832, 480, 33, 4, 1.0]`.
+
+Artifact:
+- `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r4.zip`
+- size: 12,119,673 bytes
+- ZIP members: 163
+- SHA-256: `dbc8e1d8acd49ca94fe3b4209db4b9936ad76f823c64b828fda8edf4bbb4af69`
+- Evaluation_Builds Drive ID: `1BHqrJJrH4XCJU8a4UL-9dDHKpxSivqLf`
+- P10 recovery mirror Drive ID: `1AytMTn5AVbGUGHBUvtmr8vFwERH_4EY5`
+- layout implementation commit: `94f82dd3baa5b773de00047708ff5b84c19afc56`
+- layout regression test commit: `8b7e08c7c59724d54022672b390ef985e174240f`
+- GitHub Actions run `35762253447`: SUCCESS.
+
+r4 changes layout only. If the user is already running r3, that test remains valid; installing r4 is only necessary to obtain the reorganized workflow surface.
