@@ -25,7 +25,7 @@ class ConceptGhostP10CompletionBundleBuilder:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "run_dir": ("STRING", {"forceInput": True}),
+                "run_dir": ("STRING", {"default": ""}),
                 "output_zip": ("STRING", {"default": "ConceptGhost_P9_CompletionBundle.zip"}),
             }
         }
@@ -225,7 +225,7 @@ class ConceptGhostP10RefinedEvidencePreview:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "run_dir": ("STRING", {"default": ""}),
+                "run_dir": ("STRING", {"forceInput": True}),
                 "panorama_width": ("INT", {"default": 1024, "min": 512, "max": 4096, "step": 2}),
                 "view_width": ("INT", {"default": 640, "min": 320, "max": 1280, "step": 16}),
                 "steps_per_segment": ("INT", {"default": 4, "min": 1, "max": 12, "step": 1}),
