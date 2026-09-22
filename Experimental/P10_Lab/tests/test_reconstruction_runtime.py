@@ -78,6 +78,7 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             )
             (dataset/"database.db").write_bytes(b"stale")
             with patch("p10_lab.reconstruction_runtime.prepare_known_camera_colmap_dataset") as prepare, \
+                 patch("p10_lab.reconstruction_runtime.resolve_colmap_executable", return_value="colmap"), \
                  patch("p10_lab.reconstruction_runtime.run_sparse_triangulation") as sparse, \
                  patch("p10_lab.reconstruction_runtime.run_dense_reconstruction") as dense, \
                  patch("p10_lab.reconstruction_runtime.run_prefusion_meshing") as mesh:
