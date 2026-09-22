@@ -24,6 +24,20 @@ class WanSequentialSamplerTests(unittest.TestCase):
                 self.shape = tuple(shape)
 
             def reshape(self, *shape):
+                if shape.count(-1) > 1:
+                    raise ValueError("only one inferred dimension is supported")
+                if -1 in shape:
+                    source_size = 1
+                    for value in self.shape:
+                        source_size *= value
+                    known_size = 1
+                    for value in shape:
+                        if value != -1:
+                            known_size *= value
+                    shape = tuple(
+                        source_size // known_size if value == -1 else value
+                        for value in shape
+                    )
                 return TensorLike(shape)
 
         decoded = TensorLike((2, 3, 480, 832, 3))
