@@ -16,7 +16,7 @@ to bypass missing runtime evidence.
 | 1. Foundation contracts and visible checkpoints | 4 | COMPLETED |
 | 2. Completion Bundle and P9 identity boundary | 5 | 4 completed + 1 runtime confirmation pending |
 | 3. Temporary panorama and completion envelope | 5 | 3.1-3.4 COMPLETED; 3.5 IMPLEMENTATION READY / RUNTIME PENDING |
-| 4. Automatic paths, collision, raw controls and masks | 6 | PLANNED |
+| 4. Automatic paths, collision, raw controls and masks | 6 | 4.1 PREVIEW READY / USER RUNTIME PENDING; 4.2 IMPLEMENTED / CI GREEN |
 | 5. WAN completion and source-preserving composite | 5 | PLANNED |
 | 6. SphereSfM and COLMAP reconstruction | 6 | PLANNED |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
@@ -56,8 +56,7 @@ pending, but Gate 3 cannot be promoted/closed until Gate 2 closes.
 
 ## Gate 4 — 6 subgates
 
-4.1 Convert scene-relative flight definitions into authoritative world cameras.
-4.2 Collision/clearance query contract and safe path adaptation.
+4.1 Convert scene-relative flight definitions into authoritative world cameras — PREVIEW READY / USER RUNTIME PENDING. Geometry-aware planning measures the current PrimaryMesh footprint at runtime and produces entry/center micro-orbit 360 paths plus outbound/return full-scene traversals. The integrated Refined node generates ERP, source lock, flight views, raw holes, trajectory map and GIF during the same execution. Real v1.53 runtime smoke: PASS; adaptive per-pose renderer CI run 35690559474 SUCCESS. Complete Installer: ConceptGhost_v1.54_P10_Gate04_REFINED_COMPLETE_INSTALLER_r1.zip.\n4.2 Collision/clearance query contract and safe path adaptation — IMPLEMENTED / CI GREEN, runtime integration acceptance pending. GitHub Actions run 35688972654 SUCCESS.
 4.3 P10-only raw-hole geometry derivative.
 4.4 Geometry-control frame renderer.
 4.5 Disocclusion/unsupported-region mask generator.
