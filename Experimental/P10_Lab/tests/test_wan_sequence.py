@@ -16,6 +16,44 @@ class WanSequentialSamplerTests(unittest.TestCase):
             "sample() still loads the removed legacy seed parameter",
         )
 
+    def test_decoded_video_batch_is_flattened_before_frame_save(self):
+        from p10_lab.wan_sequence import normalize_decoded_wan_images
+
+        class TensorLike:
+            def __init__(self, shape):
+                self.shape = tuple(shape)
+
+            def reshape(self, *shape):
+                return TensorLike(shape)
+
+        decoded = TensorLike((2, 3, 480, 832, 3))
+        normalized = normalize_decoded_wan_images(decoded)
+        self.assertEqual(normalized.shape, (6, 480, 832, 3))
+
+    def test_decoded_image_batch_is_left_unchanged(self):
+        from p10_lab.wan_sequence import normalize_decoded_wan_images
+
+        class TensorLike:
+            def __init__(self, shape):
+                self.shape = tuple(shape)
+
+            def reshape(self, *shape):
+                raise AssertionError("4D IMAGE batch must not be reshaped")
+
+        decoded = TensorLike((4, 480, 832, 3))
+        normalized = normalize_decoded_wan_images(decoded)
+        self.assertIs(normalized, decoded)
+
+    def test_invalid_decoded_rank_fails_closed(self):
+        from p10_lab.wan_sequence import normalize_decoded_wan_images
+
+        class TensorLike:
+            def __init__(self, shape):
+                self.shape = tuple(shape)
+
+        with self.assertRaises(ValueError):
+            normalize_decoded_wan_images(TensorLike((480, 832, 3)))
+
     def test_node_is_registered(self):
         import p10_lab
         self.assertIn(
