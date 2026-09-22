@@ -194,10 +194,15 @@ Full specification: `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md`.
 ## Gate 8 — 5 subgates
 
 8.1 Defect analysis and bounded repair regions.
-8.2 Local remesh/cleanup.
+8.2 Local remesh / cleanup / optional hard-surface structural regularization.
+   - **Structural Analysis + Preview is ON by default; geometry application is OFF by default.** The pipeline detects planar/sharp/parallel/orthogonal/coplanar/repeated-offset and soft-symmetry candidates, shows an always-available ComfyUI 3D impact map, and may build a regularized candidate without changing official geometry.
+   - Artist switch: `Apply Structural Regularization = OFF / ON`. OFF passes the standard Gate 8 mesh downstream unchanged; ON promotes only safety-approved local edits.
+   - Safety inputs: original-source camera/reprojection, Gate 7.2C confidence, Gate 7.3 CONFIRMED_FREE/UNKNOWN/CONFLICT, Gate 8.1 defect regions, provenance and multi-view geometry support.
+   - Tooling plan: isolated Open3D-based planar analysis + native ConceptGhost bounded constraint solver; optional OpenCV source-line evidence; CGAL remains an optional validation/reference path rather than a required first-pass dependency.
+   - Full policy and HS-1..HS-13 internal steps: `docs/13_HARD_SURFACE_STRUCTURAL_REGULARIZATION_POLICY.md`.
 8.3 UV preservation/recovery.
 8.4 Texture recovery with texel provenance.
-8.5 Cleanup/texture Preview and runtime validation.
+8.5 Cleanup/texture Preview and runtime validation. A/B evidence must report standard vs structural candidate when the Gate 8.2 feature is evaluated.
 
 ## Gate 9 — 5 subgates
 
@@ -215,6 +220,24 @@ Full specification: `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md`.
 10.4 RTX 2080 Ti 11 GB compliance run.
 10.5 Refined topology integration: P9 (= Baseline) → P10.
 10.6 Complete v1.54 release candidate, end-to-end validation, safe auto-clean and recovery bundle. Confirm final `.ma`/mesh/textures before deleting heavy intermediates, emit `cleanup_manifest.json`, preserve failed-run workspaces, and retain the compact diagnostic package.
+
+## Cross-cutting workflow Notes contract
+
+Every meaningful P10 node or visual node group in the shipped Refined workflow must include a visible explanatory note. Notes are part of the operator UX and must not exist only in source-code comments.
+
+Minimum note content:
+- Purpose;
+- Inputs;
+- What it does;
+- Outputs;
+- Authority level (diagnostic / candidate / official);
+- Whether geometry is modified;
+- Default switch state where applicable;
+- Failure/fallback behavior;
+- TEMP/retention behavior;
+- Next downstream stage.
+
+Group titles should include the Gate/Subgate identifier. Existing P10 lanes are backfilled during Gate 12 observability cleanup; every new group added from this point forward must ship with its note immediately.
 
 ## Integration-first preview rule
 
