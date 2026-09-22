@@ -18,7 +18,7 @@ to bypass missing runtime evidence.
 | 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
 | 4. Automatic paths, collision, raw controls and masks | 6 | COMPLETED FUNCTIONALLY; route-quality refinements deferred to Gate 11 |
 | 5. WAN completion and source-preserving composite | 5 | 5.1-5.4 COMPLETED; 5.5 PREVIEW READY / USER RUNTIME PENDING |
-| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.3 COMPLETED; 6.4 NEXT |
+| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.4 COMPLETED; 6.5 NEXT |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
@@ -74,7 +74,7 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 6.1 Generated-view collection and camera manifest — COMPLETED. The Refined evidence stage now persists a Scene-Contract-bound per-frame PINHOLE camera manifest, and Gate 6 pairs every source-preserved Gate 5 composite with the exact planned P9-world camera using global frame index as the join key. GitHub Actions run 35746991214 SUCCESS.
 6.2 Reconstruction dataset adapter — COMPLETED. The primary path is now known-camera COLMAP because ConceptGhost already owns authoritative P9-derived drone poses. The adapter materializes source-preserved Gate 5 composites into `images/`, writes a deterministic `sparse/known/` COLMAP text model, preserves Scene Contract/provenance, deduplicates identical intrinsics, and explicitly converts ConceptGhost/Maya camera axes (+X right, +Y up, -Z forward) into COLMAP axes (+X right, +Y down, +Z forward). SphereSfM remains optional ERP validation/fallback rather than the primary pose solver for perspective P10 composites. GitHub Actions run 35748183037 SUCCESS.
 6.3 Known-camera feature matching + sparse point triangulation (with SphereSfM optional validation path) — COMPLETED. Gate 6.3 now performs per-intrinsics feature extraction, adaptive matching (exhaustive for <=120 frames, sequential overlap 12 above that), fixed-pose point triangulation, and text conversion for sparse-cloud inspection. COLMAP's native `clear_points=1` filename transcription is used to synchronize database image IDs, while `fix_existing_frames=true` is enforced internally by `point_triangulator`; `refine_intrinsics=0` keeps P9-derived intrinsics authoritative. GitHub Actions run 35749126222 SUCCESS.
-6.4 COLMAP dense stereo/fusion.
+6.4 COLMAP dense stereo/fusion — COMPLETED. The first-pass RTX 2080 Ti profile uses 832 max image size, 4 GB PatchMatch/Fusion caches, 3 PatchMatch iterations, geometric consistency, single GPU 0 and fusion min_num_pixels=2. The runner emits per-command logs, dense_reconstruction_manifest.json, fused.ply, exact fused vertex count from the PLY header, sampled bounds/shape diagnostics and dense_fused_preview.svg with TOP XZ / FRONT XY / SIDE ZY projections. Completed fused clouds fail closed instead of being silently overwritten. GitHub Actions run 35750107834 SUCCESS.
 6.5 Dense cloud → pre-fusion triangle mesh + health checks.
 6.6 Reconstruction Preview and runtime validation.
 
@@ -241,3 +241,25 @@ This gate standardizes visual and machine-readable diagnostics across the full R
 12.6 Regression/acceptance audit ensuring a stage can be isolated and diagnosed without rerunning unrelated upstream stages when checkpoints are valid.
 
 Cross-cutting rule effective immediately: new stages should emit useful logs/manifests and a lightweight visual proxy whenever practical, but Gate 12 remains non-blocking until the first complete end-to-end result exists.
+
+
+### Gate 6.4 dense fusion + visual diagnostics checkpoint
+
+Gate 6.4 is complete. Dense reconstruction now has both machine-readable and visual evidence rather than only a final point cloud.
+
+Runtime sequence:
+- `image_undistorter` from `sparse/triangulated` into the COLMAP dense workspace;
+- `patch_match_stereo` with geometric consistency, GPU 0, max image size 832, 4 GB cache and 3 iterations;
+- `stereo_fusion` with geometric input, max image size 832, 4 GB cache and `min_num_pixels=2`;
+- PLY health analysis and lightweight three-view SVG rendering.
+
+Artifacts:
+- `dense/fused.ply`
+- `dense/fused.ply.vis` when produced by COLMAP
+- `dense/dense_fused_preview.svg`
+- `dense_reconstruction_manifest.json`
+- `logs/gate6_4/00_image_undistorter.log`
+- `logs/gate6_4/01_patch_match_stereo.log`
+- `logs/gate6_4/02_stereo_fusion.log`
+
+The visual preview samples the fused PLY deterministically and renders TOP XZ, FRONT XY and SIDE ZY projections with point colors, count and sampled bounds. This provides a quick way to detect collapsed/flattened/displaced dense geometry without opening a 3D package. GitHub Actions run 35750107834 SUCCESS across Windows Python 3.12, Windows Python 3.14 and Ubuntu Python 3.12. Next subgate: 6.5 dense cloud → pre-fusion triangle mesh + health checks.
