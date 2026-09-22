@@ -1,0 +1,71 @@
+{
+  "last_node_id": 3,
+  "last_link_id": 2,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "ConceptGhostP10CompletionBundleBuilder",
+      "pos": [80, 160],
+      "size": [430, 150],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "completion_bundle", "type": "STRING", "links": [1, 2], "slot_index": 0},
+        {"name": "diagnostics_json", "type": "STRING", "links": null, "slot_index": 1}
+      ],
+      "properties": {"Node name for S&R": "ConceptGhostP10CompletionBundleBuilder"},
+      "widgets_values": ["", "ConceptGhost_P9_CompletionBundle.zip"]
+    },
+    {
+      "id": 2,
+      "type": "ConceptGhostP10BundleLoader",
+      "pos": [590, 80],
+      "size": [430, 220],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "bundle_path", "type": "STRING", "link": 1}
+      ],
+      "outputs": [
+        {"name": "bundle_root", "type": "STRING", "links": null, "slot_index": 0},
+        {"name": "source_image", "type": "STRING", "links": null, "slot_index": 1},
+        {"name": "camera_json", "type": "STRING", "links": null, "slot_index": 2},
+        {"name": "primary_mesh", "type": "STRING", "links": null, "slot_index": 3},
+        {"name": "diagnostics_json", "type": "STRING", "links": null, "slot_index": 4}
+      ],
+      "properties": {"Node name for S&R": "ConceptGhostP10BundleLoader"},
+      "widgets_values": [""]
+    },
+    {
+      "id": 3,
+      "type": "ConceptGhostP10PanoramaPreview",
+      "pos": [590, 360],
+      "size": [520, 440],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {"name": "bundle_path", "type": "STRING", "link": 2}
+      ],
+      "outputs": [
+        {"name": "temporary_panorama", "type": "IMAGE", "links": null, "slot_index": 0},
+        {"name": "source_lock_mask", "type": "MASK", "links": null, "slot_index": 1},
+        {"name": "generation_candidate_mask", "type": "MASK", "links": null, "slot_index": 2},
+        {"name": "diagnostics_json", "type": "STRING", "links": null, "slot_index": 3}
+      ],
+      "properties": {"Node name for S&R": "ConceptGhostP10PanoramaPreview"},
+      "widgets_values": [2048, ""]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "STRING"],
+    [2, 1, 0, 3, 0, "STRING"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {"ds": {"scale": 0.9, "offset": [0, 0]}},
+  "version": 0.4
+}
