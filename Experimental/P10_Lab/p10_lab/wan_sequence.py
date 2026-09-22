@@ -28,6 +28,53 @@ class MissionRange:
         return self.end - self.start
 
 
+@dataclass(frozen=True)
+class WanDimensions:
+    requested_width: int
+    requested_height: int
+    width: int
+    height: int
+    mode: str
+
+
+def normalize_wan_dimensions(width: int, height: int) -> WanDimensions:
+    """Make WAN dimensions safe instead of hard-failing on stale/corrupt widgets.
+
+    The Gate 5/6 first-pass authority profile is 832x480. Very small/out-of-range
+    dimensions are treated as a stale workflow/widget state and fall back to that
+    known-safe profile. Otherwise values are snapped to the nearest multiple of 16.
+    """
+    if type(width) is not int or type(height) is not int:
+        raise ContractError("WAN width/height must be integers")
+    requested_width, requested_height = width, height
+    if width < 256 or height < 256 or width > 2048 or height > 2048:
+        return WanDimensions(
+            requested_width=requested_width,
+            requested_height=requested_height,
+            width=832,
+            height=480,
+            mode="SAFE_PROFILE_FALLBACK",
+        )
+
+    def snap(value: int) -> int:
+        return max(256, min(2048, int(round(value / 16.0)) * 16))
+
+    effective_width = snap(width)
+    effective_height = snap(height)
+    mode = (
+        "UNCHANGED"
+        if effective_width == width and effective_height == height
+        else "ALIGN_TO_16"
+    )
+    return WanDimensions(
+        requested_width=requested_width,
+        requested_height=requested_height,
+        width=effective_width,
+        height=effective_height,
+        mode=mode,
+    )
+
+
 def mission_ranges_from_payload(payload: dict) -> tuple[MissionRange, ...]:
     frames = payload.get("frames")
     if not isinstance(frames, list) or not frames:
@@ -119,8 +166,8 @@ class ConceptGhostP10WanSequentialSampler:
                 "hole_mask": ("MASK",),
                 "control_manifest_path": ("STRING", {"forceInput": True}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
-                "width": ("INT", {"default": 832, "min": 16, "max": 2048, "step": 16}),
-                "height": ("INT", {"default": 480, "min": 16, "max": 2048, "step": 16}),
+                "width": ("INT", {"default": 832, "min": 256, "max": 2048, "step": 16}),
+                "height": ("INT", {"default": 480, "min": 256, "max": 2048, "step": 16}),
                 "max_window_length": ("INT", {"default": 33, "min": 1, "max": 129, "step": 4}),
                 "steps": ("INT", {"default": 4, "min": 1, "max": 20}),
                 "cfg": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1}),
@@ -158,8 +205,16 @@ class ConceptGhostP10WanSequentialSampler:
         cfg,
         clip_vision_output=None,
     ):
-        if width % 16 or height % 16:
-            raise ContractError("WAN width/height must be multiples of 16")
+        dimensions = normalize_wan_dimensions(int(width), int(height))
+        effective_width = dimensions.width
+        effective_height = dimensions.height
+        if dimensions.mode != "UNCHANGED":
+            print(
+                "[ConceptGhost P10 WAN] normalized dimensions "
+                f"{dimensions.requested_width}x{dimensions.requested_height} -> "
+                f"{effective_width}x{effective_height} ({dimensions.mode})",
+                flush=True,
+            )
 
         try:
             import torch
@@ -228,8 +283,8 @@ class ConceptGhostP10WanSequentialSampler:
                 vae,
                 control_condition,
                 mask_condition,
-                int(width),
-                int(height),
+                effective_width,
+                effective_height,
                 conditioning_length,
                 clip_vision_output=clip_vision_output,
                 hole_fill="black",
@@ -251,15 +306,15 @@ class ConceptGhostP10WanSequentialSampler:
 
             control_resized = comfy.utils.common_upscale(
                 control_slice.movedim(-1, 1),
-                int(width),
-                int(height),
+                effective_width,
+                effective_height,
                 "bilinear",
                 "center",
             ).movedim(1, -1)
             mask_resized = comfy.utils.common_upscale(
                 mask_slice.unsqueeze(1).float(),
-                int(width),
-                int(height),
+                effective_width,
+                effective_height,
                 "bilinear",
                 "center",
             ).squeeze(1)
@@ -315,8 +370,8 @@ class ConceptGhostP10WanSequentialSampler:
                 preview = composite[preview_index:preview_index + 1]
                 preview_small = comfy.utils.common_upscale(
                     preview.movedim(-1, 1),
-                    min(480, int(width)),
-                    max(16, round(min(480, int(width)) * int(height) / int(width))),
+                    min(480, effective_width),
+                    max(16, round(min(480, effective_width) * effective_height / effective_width)),
                     "bilinear",
                     "center",
                 ).movedim(1, -1)
@@ -353,8 +408,8 @@ class ConceptGhostP10WanSequentialSampler:
             "schema": "ConceptGhost.P10WanSequential.v0.1",
             "run_id": run_id,
             "policy": WanRuntimeProfile(
-                width=int(width),
-                height=int(height),
+                width=effective_width,
+                height=effective_height,
                 length=int(max_window_length),
                 steps=int(steps),
                 cfg=float(cfg),
@@ -364,6 +419,15 @@ class ConceptGhostP10WanSequentialSampler:
             ).manifest(),
             "mission_count": len(missions),
             "window_count": len(windows),
+            "requested_dimensions": {
+                "width": dimensions.requested_width,
+                "height": dimensions.requested_height,
+            },
+            "effective_dimensions": {
+                "width": effective_width,
+                "height": effective_height,
+                "mode": dimensions.mode,
+            },
             "windows": records,
             "known_pixel_policy": "CONTROL_VIDEO_PRESERVED_WHERE_HOLE_MASK_IS_BLACK",
             "generated_pixel_policy": "WAN_USED_ONLY_WHERE_HOLE_MASK_IS_WHITE",
@@ -386,6 +450,15 @@ class ConceptGhostP10WanSequentialSampler:
             "run_id": run_id,
             "mission_count": len(missions),
             "window_count": len(windows),
+            "requested_dimensions": {
+                "width": dimensions.requested_width,
+                "height": dimensions.requested_height,
+            },
+            "effective_dimensions": {
+                "width": effective_width,
+                "height": effective_height,
+                "mode": dimensions.mode,
+            },
             "generated_dir": str(output_root),
             "wan_manifest_path": str(wan_manifest_path),
             "known_pixels_replaced_by_wan": False,
