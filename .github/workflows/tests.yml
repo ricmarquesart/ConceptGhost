@@ -45,6 +45,10 @@ jobs:
       - name: Validate upstream reference lock contract
         run: python -m unittest tests.test_reference_sources -v
 
+      - name: Validate P10 complete-release integrity regressions
+        run: python -m unittest tests.test_release_integrity -v
+        working-directory: Experimental/P10_Lab
+
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
