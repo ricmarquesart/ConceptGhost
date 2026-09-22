@@ -104,3 +104,32 @@ Authority order is:
 
 The original-camera regression gate rejects a fused result that changes a
 strongly observed region beyond the approved tolerance.
+
+
+## Authoritative Gate 6+ architecture refinement — 2026-09-22
+
+The earlier conceptual node list above predates the real Gate 6 implementation. From Gate 6 onward, the authoritative architecture is:
+
+12. **P10 Known-Camera COLMAP Reconstruction** — primary perspective reconstruction path using the exact P9-derived virtual cameras. SphereSfM remains optional ERP validation/fallback, not the primary pose authority.
+13. **P10 Dense Reconstruction / Evidence Producer** — COLMAP undistortion, geometric PatchMatch and stereo fusion; retain geometric depth maps, normals and consistency graphs for later visibility/free-space evidence.
+14. **P10 Pre-Fusion Geometry Quality** — current Poisson candidate plus the planned Delaunay visibility-aware candidate. The dual-mesh extension is activated with Gate 7 and does not reopen Gate 6 as a blocker.
+15. **P10 P9/Baseline Registration** — register reconstructed P10 geometry into canonical P9 coordinates.
+16. **P10 Geometry Confidence + Known/Generated Fusion** — authority-aware fusion with confidence diagnostics; confidence refinement remains OFF by default.
+17. **P10 Free-Space-Aware Transition Handling** — consume OCCUPIED / CONFIRMED_FREE / UNKNOWN / CONFLICT evidence; CONFIRMED_FREE is a no-fill/no-bridge constraint.
+18. **P10 Local Remesh / Defect Repair** — distinguish VALID_OPENING, MISSING_SURFACE_UNKNOWN, FALSE_SURFACE_IN_CONFIRMED_FREE and CONFLICT_REGION before bounded repair.
+19. **P10 Texture Recovery + Original-View Regression**.
+20. **P10 Maya Export**.
+
+### Camera/image contract for Gate 6
+
+The authoritative pose remains P9-derived, but intrinsics must be expressed in the actual saved reconstruction image viewport. Gate 5 applies ComfyUI center-crop + resize before saving the WAN/source-preserved composite. Gate 6 therefore stores a deterministic camera-image transform and uses those transformed intrinsics for COLMAP. Reusing pre-WAN intrinsics against a resized composite is invalid and must fail closed.
+
+### Free-space modules
+
+Planned native modules:
+- `colmap_dense_io.py` — dense geometric evidence reader;
+- `free_space_evidence.py` — sparse ray-carving accumulator;
+- `free_space_constraints.py` — FREE/OCCUPIED/UNKNOWN/CONFLICT classification and no-fill constraints;
+- `free_space_preview.py` — ComfyUI-only 3D diagnostics.
+
+See `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md` for the full contract.
