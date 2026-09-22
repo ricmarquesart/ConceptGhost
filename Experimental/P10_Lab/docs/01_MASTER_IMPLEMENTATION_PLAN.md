@@ -39,6 +39,21 @@ P9 is intentionally a functionally identical copy of Baseline. It has no separat
 15. Spend configurable adaptive path budget only where important defects remain.
 16. Refined-branch integration as P9 (= Baseline) + P10.
 
+## Authoritative reconstruction refinement — 2026-09-22
+
+The ordered implementation list above records the original plan, but the implemented Gate 6 architecture has been refined:
+
+- **Known-camera COLMAP is the primary P10 reconstruction path** because every virtual P10 perspective camera is already derived from P9 authority.
+- **SphereSfM is optional validation/fallback**, especially for ERP/spherical experiments; it does not replace known P9 camera authority in the current perspective path.
+- Gate 6.4 retains geometric depth maps, normal maps and consistency graphs as downstream evidence.
+- Gate 6.5 keeps Poisson and gains a planned Delaunay visibility-aware candidate when Gate 7 implementation begins.
+- Gate 7.2C consumes geometry confidence plus free-space conflict evidence.
+- Gate 7.3 owns explicit free-space/no-fill fusion constraints.
+- Gate 8 distinguishes valid openings, unknown missing surfaces, false surfaces inside confirmed free space and conflict regions.
+- Gate 12 owns the standardized Free-Space 3D diagnostic surface.
+
+This refinement preserves the official topology `P9 (= Baseline) → P10` and does not reopen completed Gate 6.4/6.5 first-pass work as a blocker.
+
 ## Promotion gates
 
 - Baseline protection.
