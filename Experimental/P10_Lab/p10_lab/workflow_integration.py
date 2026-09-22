@@ -363,3 +363,121 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
             )
 
     return patched
+
+
+
+def integrate_gate6_refined_preview(workflow: dict) -> dict:
+    """Extend the full Refined Gate 5 graph with known-camera reconstruction.
+
+    The reconstruction node consumes only Gate 5's WAN manifest plus Gate 4/6.1
+    camera manifest. Baseline remains untouched. One PreviewImage exposes the
+    pre-fusion mesh reconstruction visually inside the same Master workflow.
+    """
+
+    patched = integrate_gate5_refined_preview(workflow)
+    nodes = patched["nodes"]
+    links = patched["links"]
+    by_id = {node.get("id"): node for node in nodes}
+
+    if 2300 in by_id or 2301 in by_id:
+        raise ContractError("Gate 6 reserved node ids already exist")
+    if _EVIDENCE_NODE_ID not in by_id or 2207 not in by_id:
+        raise ContractError("Gate 6 requires Gate 4 evidence and Gate 5 WAN sampler")
+
+    next_link = max(
+        int(patched.get("last_link_id") or 0) + 1,
+        max((int(link[0]) for link in links if isinstance(link, list) and link), default=0) + 1,
+    )
+
+    def ensure_output_links(node, slot):
+        output = node["outputs"][slot]
+        if output.get("links") is None:
+            output["links"] = []
+        return output["links"]
+
+    def connect(source_id, source_slot, target_id, target_slot, type_name):
+        nonlocal next_link
+        link_id = next_link
+        next_link += 1
+        links.append([link_id, source_id, source_slot, target_id, target_slot, type_name])
+        ensure_output_links(by_id[source_id], source_slot).append(link_id)
+        by_id[target_id]["inputs"][target_slot]["link"] = link_id
+        return link_id
+
+    order = max((int(node.get("order") or 0) for node in nodes), default=0)
+
+    reconstruction = {
+        "id": 2300,
+        "type": "ConceptGhostP10ReconstructionRuntime",
+        "pos": [12400, 8260],
+        "size": [680, 390],
+        "flags": {},
+        "order": order + 1,
+        "mode": 0,
+        "inputs": [
+            {"name": "wan_manifest_path", "type": "STRING", "link": None},
+            {"name": "camera_manifest_path", "type": "STRING", "link": None},
+            {
+                "name": "resume_existing",
+                "type": "BOOLEAN",
+                "widget": {"name": "resume_existing"},
+                "link": None,
+            },
+            {
+                "name": "colmap_executable",
+                "type": "STRING",
+                "widget": {"name": "colmap_executable"},
+                "link": None,
+            },
+        ],
+        "outputs": [
+            {"name": "mesh_preview", "type": "IMAGE", "links": None, "slot_index": 0},
+            {"name": "pre_fusion_mesh", "type": "STRING", "links": None, "slot_index": 1},
+            {"name": "gate6_output_root", "type": "STRING", "links": None, "slot_index": 2},
+            {"name": "runtime_manifest_path", "type": "STRING", "links": None, "slot_index": 3},
+            {"name": "diagnostics_json", "type": "STRING", "links": None, "slot_index": 4},
+        ],
+        "properties": {"Node name for S&R": "ConceptGhostP10ReconstructionRuntime"},
+        "widgets_values": [True, ""],
+        "title": "REFINED/P10 · 10 · KNOWN-CAMERA RECONSTRUCTION · SPARSE + DENSE + MESH",
+    }
+
+    preview = {
+        "id": 2301,
+        "type": "PreviewImage",
+        "pos": [13120, 8260],
+        "size": [560, 430],
+        "flags": {},
+        "order": order + 2,
+        "mode": 0,
+        "inputs": [{"name": "images", "type": "IMAGE", "link": None}],
+        "outputs": [],
+        "properties": {"Node name for S&R": "PreviewImage"},
+        "widgets_values": [],
+        "title": "P10 LIVE · RECONSTRUCTED PRE-FUSION MESH",
+    }
+
+    nodes.extend((reconstruction, preview))
+    by_id[2300] = reconstruction
+    by_id[2301] = preview
+
+    connect(2207, 2, 2300, 0, "STRING")
+    connect(_EVIDENCE_NODE_ID, 8, 2300, 1, "STRING")
+    connect(2300, 0, 2301, 0, "IMAGE")
+
+    patched["last_node_id"] = 2301
+    patched["last_link_id"] = next_link - 1
+
+    for item in nodes:
+        if item.get("id") == 68:
+            item["title"] = (
+                "01 · RUN MODE · v1.54 P10 GATE6 · "
+                "Baseline/P9 · Refined/P9+P10 WAN+RECONSTRUCTION"
+            )
+        elif item.get("id") == 2:
+            item["title"] = (
+                "01 · MASTER CONTROLS · v1.54 P10 GATE6 · "
+                "BASELINE + REFINED WAN + KNOWN-CAMERA 3D"
+            )
+
+    return patched
