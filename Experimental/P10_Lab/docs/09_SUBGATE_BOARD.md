@@ -16,7 +16,7 @@ to bypass missing runtime evidence.
 | 1. Foundation contracts and visible checkpoints | 4 | COMPLETED |
 | 2. Completion Bundle and P9 identity boundary | 5 | 4 completed + 1 runtime confirmation pending |
 | 3. Temporary panorama and completion envelope | 5 | 3.1-3.4 COMPLETED; 3.5 IMPLEMENTATION READY / RUNTIME PENDING |
-| 4. Automatic paths, collision, raw controls and masks | 6 | 4.1 PREVIEW READY / USER RUNTIME PENDING; 4.2 IMPLEMENTED / CI GREEN |
+| 4. Automatic paths, collision, raw controls and masks | 6 | 4.1 RUNTIME PASS / VISUAL REVIEW PENDING; 4.2 IMPLEMENTED / CI GREEN |
 | 5. WAN completion and source-preserving composite | 5 | PLANNED |
 | 6. SphereSfM and COLMAP reconstruction | 6 | PLANNED |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
@@ -156,3 +156,15 @@ Every subgate report states:
 ### Gate 4.1 runtime hotfix r5
 
 User runtime of r4 reached the integrated P10 evidence node and failed at the far-end turnaround with `Waypoint look vector cannot have zero length`. The failure was caused by linear interpolation between antipodal look directions (+forward to -forward), whose midpoint is exactly (0,0,0). r5 replaces vector lerp for look direction with deterministic angular yaw/pitch interpolation; exact 180-degree turns rotate through camera-local +right. Three-mission stabilization remains unchanged: `entry_micro_orbit_360`, `center_micro_orbit_360`, `scene_round_trip`. GitHub Actions run 35699515076 SUCCESS. Installer self-test and real Refined smoke both PASS. Current artifact: `ConceptGhost_v1.54_P10_Gate04_REFINED_COMPLETE_INSTALLER_r5.zip`.
+
+
+### Gate 4.1 user runtime r5 PASS
+
+User confirmed the r5 integrated Refined preview executed successfully in real ComfyUI Desktop. This closes the execution blocker for the three-mission adaptive planner and validates that the P10 node can run after the full Refined/P9 export. Visual-quality review remains pending the user's evidence package/screenshots before Gate 4.1 is marked fully accepted.
+
+Current stabilization missions:
+- entry_micro_orbit_360
+- center_micro_orbit_360
+- scene_round_trip
+
+Do not start Gate 4.2 visual promotion until the Gate 4.1 runtime evidence is reviewed.
