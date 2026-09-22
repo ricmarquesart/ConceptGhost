@@ -117,9 +117,9 @@ class ClearanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Config(min_clearance=0.0)
         with self.assertRaises(ValueError):
-            Config(samples_per_segment=0)
+            Config(min_clearance=1.0, samples_per_segment=0)
         with self.assertRaises(ValueError):
-            Config(shrink_factor=1.0)
+            Config(min_clearance=1.0, shrink_factor=1.0)
         with self.assertRaises(ValueError):
             Config(min_clearance=float("nan"))
 
