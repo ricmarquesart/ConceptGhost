@@ -5,6 +5,31 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-22 r7
+
+This section supersedes the stale Gate 2 summary below. Historical Gate 2 details are intentionally retained for audit.
+
+- Current active development boundary: **Gate 6.6 — integrated reconstruction preview/runtime validation**.
+- Gates 1–4: **FUNCTIONALLY COMPLETED** for first end-to-end development.
+- Gate 5: **5.1–5.4 COMPLETED; 5.5 runtime acceptance is exercised through the integrated Gate 6 preview**.
+- Gate 6: **6.1–6.5 COMPLETED; 6.6 PREVIEW READY / USER RUNTIME PENDING**.
+- Gate 7: next required development gate after Gate 6 runtime acceptance.
+- Gates 11–12 remain deferred until the first complete Gates 4–10 end-to-end result, except their cross-cutting policies already recorded.
+- Required roadmap size: **66 bounded subgates**, plus optional non-blocking Gate **7.2C** geometry-confidence refinement.
+- Current Gate 7.2C policy: confidence analysis **ON**, dedicated ComfyUI 3D confidence preview **ON/available**, geometry refinement **OFF** by default; confidence visualization is diagnostic-only and must not alter Maya deliverables.
+- Current Gate 11 final-quality defaults: **7 geometry-adaptive routes × 30 configurable frames**, HiRes Composite **ON**, HiRes Views **ON**, **4K default** with 6K/8K presets.
+- Current release test artifact: `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r7.zip`.
+- r7 supersedes r6 and fixes the real WAN VAE decode/Pillow shape failure by normalizing 5D decoded video to a 4D IMAGE batch before frame accounting, composite and save.
+- r7 implementation commit: `a5c9383990f5e3f4ad55f7ec1b2474be2a505a3a`.
+- r7 regression commit: `87c56a0644cb1983882264062268596d7e0f97c4`.
+- GitHub Actions for the r7 regression head: run `35771754630` — SUCCESS.
+- Current branch head after confidence-policy documentation: `81d2716285d0719fb4496b2a29c2fc43583e6ced`; Actions run `35772121481` — SUCCESS.
+- r7 ZIP: **12,102,618 bytes**, SHA-256 `c921fd235ca54b61ab807cf6e94764073b7a818b8079f7c537331c9723f8325c`.
+- Evaluation_Builds Drive ZIP ID: `18VJ3Kn5LU1wPJ4dJsF_DZvxIHVutEBE5`.
+- P10 recovery mirror ZIP ID: `1VMxkp9ohh4tLe9-6j5TmsHGeDQBpalx-`.
+- Expanded Evaluation_Builds r7 folder ID: `1RYy_gkp83lcIFHHGgwG00t1DpEPXf4PU`; verified complete at **155 files** with the expected `Installer`, `Payload` and `Runtime` structure.
+
+
 ## Current summary
 
 - Current gate: **Gate 2 — Completion Bundle and P9 identity boundary**
