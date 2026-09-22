@@ -139,6 +139,7 @@ class ConceptGhostP10PanoramaPreview:
         from .panorama_runtime import (
             derive_scene_scale_from_primary_mesh,
             render_temporary_panorama,
+            save_comfyui_preview_images,
         )
 
         panorama_height = self._panorama_height(panorama_width)
@@ -202,8 +203,19 @@ class ConceptGhostP10PanoramaPreview:
             },
         }
         rendered = _pretty(diagnostics)
+        ui = {"text": [rendered]}
+        ui_images = save_comfyui_preview_images(
+            panorama,
+            source_lock,
+            candidate_mask,
+            scene_contract_id=bundle.scene_contract_id,
+            panorama_width=panorama_width,
+        )
+        if ui_images:
+            ui["images"] = ui_images
+
         return {
-            "ui": {"text": [rendered]},
+            "ui": ui,
             "result": (panorama, source_lock, candidate_mask, rendered),
         }
 
