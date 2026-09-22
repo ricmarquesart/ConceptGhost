@@ -22,6 +22,7 @@ class RefinedEvidencePreviewTests(unittest.TestCase):
                 "trajectory_map",
                 "flight_gif_path",
                 "control_manifest_path",
+                "camera_manifest_path",
                 "diagnostics_json",
             ),
         )
