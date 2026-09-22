@@ -7,6 +7,26 @@ node is allowed on the standalone Baseline branch. P10 receives the versioned
 completion bundle and treats its camera, scale and observed evidence as locked
 authorities.
 
+Gate 2 now implements this boundary against the real v1.53 official run pack.
+It consumes the existing authoritative PrimaryMesh NPZ instead of inventing a
+parallel P9 mesh format.
+
+## Implemented Gate 2 boundary components
+
+`p10_lab/p9_boundary.py` owns official-run validation, Completion Bundle
+creation/loading, safe ZIP extraction and Baseline-vs-P9 identity comparison.
+
+`p10_lab/contracts.py` owns Completion Bundle v0.3 validation, artifact hashes,
+camera identity and normalized run metadata.
+
+`p10_lab/preview_nodes.py` exposes two dependency-free ComfyUI preview nodes:
+
+1. `P10 P9 Completion Bundle Builder`
+2. `P10 P9 Bundle Loader / Validator`
+
+These nodes are inspection/validation surfaces. They do not mutate P9 or start
+any later P10 generation stage.
+
 ## Planned node sequence
 
 1. P10 P9 Bundle Loader
@@ -29,6 +49,19 @@ authorities.
 18. P10 Texture Recovery
 19. P10 Original View Regression Gate
 20. P10 Maya Export
+
+## Gate 2 identity behavior
+
+The official source branch is inferred only from the production branch-mode
+authority:
+
+- `Baseline / P9` → laboratory `source_stage=baseline`;
+- `Refined / P9 Clone` → integrated `source_stage=p9`.
+
+Both require `source_equivalent_to=baseline`. The adapter also provides an
+explicit identity comparator for a matched Baseline/P9 run pair. A mismatch in
+source image, canonical camera, PrimaryMesh, scene identity, geometry profile,
+coordinate convention or relevant scale authority fails the comparison.
 
 ## Reusable flight runner
 
