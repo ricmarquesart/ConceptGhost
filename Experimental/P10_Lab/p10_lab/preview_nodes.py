@@ -234,7 +234,7 @@ class ConceptGhostP10RefinedEvidencePreview:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "IMAGE", "MASK", "IMAGE", "MASK", "IMAGE", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "MASK", "IMAGE", "MASK", "IMAGE", "STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
         "p9_3d_partial_erp",
         "source_authority_erp",
@@ -244,6 +244,7 @@ class ConceptGhostP10RefinedEvidencePreview:
         "trajectory_map",
         "flight_gif_path",
         "control_manifest_path",
+        "camera_manifest_path",
         "diagnostics_json",
     )
     FUNCTION = "preview"
@@ -274,6 +275,7 @@ class ConceptGhostP10RefinedEvidencePreview:
                 evidence.trajectory_map,
                 evidence.gif_path,
                 evidence.control_manifest_path,
+                evidence.camera_manifest_path,
                 rendered,
             ),
         }
