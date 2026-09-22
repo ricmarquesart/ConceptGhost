@@ -116,9 +116,12 @@ class CompletionEnvelopeTests(unittest.TestCase):
         )
 
         mask = candidates.mask_bytes()
-        self.assertEqual(len(mask), 256 * 128)
+        self.assertEqual(len(mask), spec.width * spec.height)
         self.assertTrue(set(mask).issubset({0, 255}))
-        self.assertEqual(mask[128 * 64 + 128], 0)
+        center_x = spec.width // 2
+        center_y = spec.height // 2
+        self.assertFalse(candidates.is_candidate(center_x, center_y))
+        self.assertEqual(mask[center_y * spec.width + center_x], 0)
 
     def test_invalid_envelope_configuration_fails_closed(self):
         CompletionEnvelopeConfig, _, _ = self._api()
