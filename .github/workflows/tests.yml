@@ -2,7 +2,10 @@ name: ConceptGhost Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'work/**'
+      - 'lab/**'
   pull_request:
   workflow_dispatch:
 
@@ -35,14 +38,23 @@ jobs:
       - name: Compile all project scripts
         run: python -m compileall -q scripts
 
+      - name: Compile P10 laboratory
+        run: python -m compileall -q p10_lab tests
+        working-directory: Experimental/P10_Lab
+
       - name: Validate upstream reference lock contract
         run: python -m unittest tests.test_reference_sources -v
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
+      - name: Run P10 laboratory tests
+        run: python -m unittest discover -s tests -v
+        working-directory: Experimental/P10_Lab
+
   release-package:
     name: Stage 4S v0.4.6 package
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     needs: unit-tests
     runs-on: windows-latest
     steps:
