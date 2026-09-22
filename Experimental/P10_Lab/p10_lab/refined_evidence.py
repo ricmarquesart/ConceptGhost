@@ -27,6 +27,7 @@ class RefinedEvidenceResult:
     hole_masks: Any
     trajectory_map: Any
     gif_path: str
+    control_manifest_path: str
     diagnostics: dict[str, Any]
     ui_images: tuple[dict[str, str], ...]
 
@@ -642,6 +643,7 @@ def build_refined_evidence(
         hole_masks=torch.from_numpy(np.stack(hole_masks).astype(np.float32)),
         trajectory_map=image_tensor(trajectory),
         gif_path=gif_path,
+        control_manifest_path=control_manifest_path,
         diagnostics=diagnostics,
         ui_images=ui_images,
     )
