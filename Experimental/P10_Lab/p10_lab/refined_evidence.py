@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import ContractError
-from .flight_scale import derive_flight_scale_from_primary_mesh
+from .scene_coverage import derive_scene_footprint_from_primary_mesh, plan_geometry_aware_flights
 from .p9_boundary import validate_official_run
 from .panorama import CameraAuthority, PanoramaSpec
 from .path_planner import RelativeWaypoint, plan_flights
@@ -116,13 +116,15 @@ def _render_perspective(
     vertices,
     colors,
     camera: CameraAuthority,
-    camera_center,
+    pose,
     *,
     width: int,
     height: int,
     np,
 ):
-    rotation = np.asarray(camera.world_matrix, dtype=np.float64)[:3, :3]
+    pose_world = np.asarray(pose.world_matrix, dtype=np.float64)
+    rotation = pose_world[:3, :3]
+    camera_center = pose_world[:3, 3]
     camera_points = (vertices - camera_center[None, :]) @ rotation
     depth = -camera_points[:, 2]
     valid = depth > 0.05
@@ -369,8 +371,11 @@ def build_refined_evidence(
     p9_erp, p9_erp_coverage = _render_mesh_erp(vertices, colors, camera, panorama_spec, np)
     source_erp, source_lock = _render_source_erp(source, camera, panorama_spec, np)
 
-    flight_scale, flight_scale_evidence = derive_flight_scale_from_primary_mesh(boundary.primary_mesh)
-    flight_plan = plan_flights(flight_scale)
+    scene_footprint, footprint_evidence = derive_scene_footprint_from_primary_mesh(
+        boundary.primary_mesh,
+        camera,
+    )
+    flight_plan = plan_geometry_aware_flights(scene_footprint)
 
     resolved_paths = []
     flight_frames = []
@@ -379,18 +384,17 @@ def build_refined_evidence(
     coverage_by_path: dict[str, list[float]] = {}
     view_height = int(round(view_width * camera.height / camera.width))
 
-    for path in flight_plan.initial_paths:
+    for path in flight_plan.paths:
         waypoints = _interpolated_waypoints(path, steps_per_segment)
         poses = tuple(resolve_world_camera(camera, waypoint, frame_index=index) for index, waypoint in enumerate(waypoints))
         resolved_paths.append((path.name, poses))
         coverage_by_path[path.name] = []
         for index, pose in enumerate(poses):
-            center = np.asarray(pose.position, dtype=np.float64)
             frame, coverage = _render_perspective(
                 vertices,
                 colors,
                 camera,
-                center,
+                pose,
                 width=view_width,
                 height=view_height,
                 np=np,
@@ -447,7 +451,8 @@ def build_refined_evidence(
             "is_full_generated_panorama": False,
             "unknown_region_policy": "BLACK / UNGENERATED",
         },
-        "flight_scale": flight_scale_evidence.manifest(),
+        "scene_footprint": footprint_evidence,
+        "flight_plan": flight_plan.manifest(),
         "paths": {
             name: {
                 "frame_count": len(values),
