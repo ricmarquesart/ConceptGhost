@@ -17,7 +17,7 @@ to bypass missing runtime evidence.
 | 2. Completion Bundle and P9 identity boundary | 5 | COMPLETED |
 | 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
 | 4. Automatic paths, collision, raw controls and masks | 6 | COMPLETED FUNCTIONALLY; route-quality refinements deferred to Gate 11 |
-| 5. WAN completion and source-preserving composite | 5 | 5.1 IN PROGRESS |
+| 5. WAN completion and source-preserving composite | 5 | 5.1-5.4 COMPLETED; 5.5 PREVIEW READY / USER RUNTIME PENDING |
 | 6. SphereSfM and COLMAP reconstruction | 6 | PLANNED |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
@@ -62,11 +62,11 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 
 ## Gate 5 — 5 subgates
 
-5.1 11 GB WAN runtime/resource policy.
-5.2 Masked-video conditioning adapter.
-5.3 Sequential per-flight WAN completion + checkpoints.
-5.4 Source-preserving high-resolution composite.
-5.5 Generated/composite Preview and runtime validation.
+5.1 11 GB WAN runtime/resource policy — COMPLETED. Conservative first-pass profile: 832×480, max 33-frame WAN window, 4 steps, CFG 1.0, FP8 UNet, one window at a time, model/cache offload between windows. GitHub Actions run 35702692128 SUCCESS.
+5.2 Masked-video conditioning adapter — COMPLETED. ConceptGhost-native WAN I2V masked-video conditioning uses the full geometry control sequence; white mask means generate/hole and black means known/P9. GitHub Actions run 35702777990 SUCCESS.
+5.3 Sequential per-flight WAN completion + checkpoints — COMPLETED. A single data-driven sampler groups frames by mission, splits into sequential windows, pads temporal lengths to WAN's 4k+1 convention (for example 31→33) without changing the real route, saves raw WAN outputs, and unloads between windows. GitHub Actions run 35703621997 SUCCESS.
+5.4 Source-preserving high-resolution composite — COMPLETED FOR FIRST END-TO-END PASS. Known control/P9 pixels are restored exactly after WAN sampling; WAN contributes only where the binary hole mask is white. A heavier SplatKit-style high-resolution coordinate-field composite remains eligible for later texture-quality refinement, but does not block end-to-end development.
+5.5 Generated/composite Preview and runtime validation — PREVIEW READY / USER RUNTIME PENDING. Full ConceptGhost Master Refined workflow patch is implemented and CI-green (run 35703771287). WAN model asset manifest/hashes are locked and CI-green (run 35703927155). User-test artifact: ConceptGhost_v1.54_P10_Gate05_REFINED_WAN_COMPLETE_INSTALLER_r1.zip. The installer automatically verifies/downloads the four required WAN assets (~24 GB total) instead of bundling them in the ZIP.
 
 ## Gate 6 — 6 subgates
 
@@ -180,3 +180,16 @@ This gate exists deliberately so current end-to-end development does not stall o
 11.6 Final visual regression of panorama, drone paths, masks and runtime cost before release hardening.
 
 Acceptance policy: Gate 11 is intentionally non-blocking until Gates 4–10 produce a complete end-to-end Refined result.
+
+
+### Gate 5 Preview r1 recovery checkpoint
+
+Gate 5 code reached the user-facing runtime boundary. Subgates 5.1–5.4 are implemented and CI-green; 5.5 is awaiting real ComfyUI runtime validation.
+
+Artifact:
+- `ConceptGhost_v1.54_P10_Gate05_REFINED_WAN_COMPLETE_INSTALLER_r1.zip`
+- SHA-256: `dcdd3e6489eda41492e6e771cb4e1b2b4036056176023092f102921b302c25bb`
+- Evaluation_Builds Drive ID: `1-5LulMqtamRAfQm7J_oMbI8MEy3wLlov`
+- P10 recovery mirror Drive ID: `1nrTSZ6vM-HPYBBGdxYJdYsSKnFOp66jA`
+
+Runtime installation path remains `03_INSTALL_ALL.bat → 04_VERIFY_INSTALL.bat → 05_RUN_CONCEPTGHOST.bat`. The installer validates or downloads the four hashed WAN assets (~24 GB) and reuses any matching files already present. The full preview workflow is `ConceptGhost_v1.54_P10_Gate05_REFINED_WAN_PREVIEW_r1.json`. Gate 5 remains open until the user confirms WAN hole filling + source-preserving composite in the real Refined workflow.
