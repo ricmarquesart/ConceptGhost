@@ -45,6 +45,7 @@ Evidence may include:
 - P9 solver confidence/evidence where available;
 - registered P10 multiview support count and view-angle diversity;
 - P10 reprojection/depth agreement across independent cameras;
+- Gate 6/7 free-space state: a face occupying CONFIRMED_FREE receives a strong negative confidence contribution; UNKNOWN alone contributes no penalty; CONFLICT is retained as diagnostic/repair evidence rather than an automatic deletion command;
 - semantic/instance boundary evidence as a weak hint only, never sole authority.
 
 Source-facing observed geometry gets a positive confidence prior. Side/back continuation that is weakly observed, boundary-adjacent, stretched or contradicted by P10 multiview evidence is reduced.
