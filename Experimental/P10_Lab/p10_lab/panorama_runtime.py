@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
 
 from .contracts import ContractError, SceneScale
 from .observation_map import ObservationMap
@@ -32,13 +33,7 @@ class SceneScaleEvidence:
 def derive_scene_scale_from_primary_mesh(
     primary_mesh: str | Path,
 ) -> tuple[SceneScale, SceneScaleEvidence]:
-    """Derive a characteristic scene radius without changing canonical scale.
-
-    The PrimaryMesh is already in authoritative P9/Baseline world units. This
-    function measures those existing coordinates; it never rescales geometry.
-    Heavy NumPy import is intentionally lazy so the custom node can register in
-    ComfyUI before any preview execution.
-    """
+    """Measure a characteristic radius without changing canonical P9 scale."""
 
     try:
         import numpy as np
@@ -89,12 +84,7 @@ def render_temporary_panorama(
     observation: ObservationMap,
     candidates: GenerationCandidateMap,
 ):
-    """Render the source-preserving temporary ERP plus its two authority masks.
-
-    Returns ComfyUI-native tensors:
-    IMAGE [1,H,W,3], source-lock MASK [1,H,W], candidate MASK [1,H,W].
-    Torch/Pillow/NumPy imports are lazy to keep node discovery lightweight.
-    """
+    """Render source-only ERP and authority masks as ComfyUI tensors."""
 
     try:
         import numpy as np
@@ -138,8 +128,7 @@ def render_temporary_panorama(
     ray_y = torch.sin(latitude).expand(height, width)
     ray_z = -torch.cos(longitude) * cos_latitude
 
-    forward = -ray_z
-    safe_forward = torch.clamp(forward, min=1.0e-8)
+    safe_forward = torch.clamp(-ray_z, min=1.0e-8)
     source_x = camera.cx + camera.fx * (ray_x / safe_forward)
     source_y = camera.cy - camera.fy * (ray_y / safe_forward)
 
@@ -174,5 +163,48 @@ def render_temporary_panorama(
 
     panorama = sampled * source_lock.unsqueeze(-1)
     panorama = torch.clamp(panorama, 0.0, 1.0).contiguous()
-
     return panorama, source_lock.contiguous(), candidate_mask.contiguous()
+
+
+def save_comfyui_preview_images(
+    panorama,
+    source_lock,
+    candidate_mask,
+    *,
+    scene_contract_id: str,
+    panorama_width: int,
+) -> list[dict[str, str]]:
+    """Save the three Gate 3 previews into ComfyUI's temp folder when available."""
+
+    try:
+        import folder_paths
+        import numpy as np
+        from PIL import Image
+    except ImportError:
+        return []
+
+    temp_dir = Path(folder_paths.get_temp_directory())
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    safe_scene = re.sub(r"[^A-Za-z0-9_.-]+", "_", scene_contract_id)[:64]
+    prefix = f"ConceptGhost_P10_Gate3_{safe_scene}_{panorama_width}"
+
+    panorama_array = (
+        panorama[0].detach().cpu().clamp(0.0, 1.0).numpy() * 255.0
+    ).round().astype(np.uint8)
+    source_lock_array = (
+        source_lock[0].detach().cpu().clamp(0.0, 1.0).numpy() * 255.0
+    ).round().astype(np.uint8)
+    candidate_array = (
+        candidate_mask[0].detach().cpu().clamp(0.0, 1.0).numpy() * 255.0
+    ).round().astype(np.uint8)
+
+    outputs = (
+        (f"{prefix}_temporary_panorama.png", panorama_array, "RGB"),
+        (f"{prefix}_source_lock.png", source_lock_array, "L"),
+        (f"{prefix}_generation_candidates.png", candidate_array, "L"),
+    )
+    ui_images: list[dict[str, str]] = []
+    for filename, array, mode in outputs:
+        Image.fromarray(array, mode=mode).save(temp_dir / filename)
+        ui_images.append({"filename": filename, "subfolder": "", "type": "temp"})
+    return ui_images
