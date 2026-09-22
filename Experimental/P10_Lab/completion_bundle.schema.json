@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConceptGhost P9 Completion Bundle (P9 = Baseline)",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "source_stage",
+    "source_equivalent_to",
+    "source_run_id",
+    "source_image",
+    "camera",
+    "primary_mesh",
+    "run_metadata"
+  ],
+  "properties": {
+    "contract_version": {"const": "p10-p9-baseline-equivalent/0.2"},
+    "source_stage": {"enum": ["p9", "baseline"]},
+    "source_equivalent_to": {"const": "baseline"},
+    "source_run_id": {"type": "string", "minLength": 1},
+    "source_image": {"type": "string"},
+    "camera": {"type": "string"},
+    "primary_mesh": {"type": "string"},
+    "run_metadata": {"type": "string"},
+    "optional": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    }
+  },
+  "additionalProperties": true
+}
