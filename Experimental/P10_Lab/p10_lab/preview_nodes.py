@@ -25,7 +25,7 @@ class ConceptGhostP10CompletionBundleBuilder:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "run_dir": ("STRING", {"default": ""}),
+                "run_dir": ("STRING", {"forceInput": True}),
                 "output_zip": ("STRING", {"default": "ConceptGhost_P9_CompletionBundle.zip"}),
             }
         }
