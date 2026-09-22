@@ -43,6 +43,24 @@ class WanSequentialSamplerTests(unittest.TestCase):
         self.assertEqual(padded_wan_length(31), 33)
         self.assertEqual(padded_wan_length(33), 33)
 
+    def test_invalid_small_or_corrupted_dimensions_fall_back_to_safe_profile(self):
+        from p10_lab.wan_sequence import normalize_wan_dimensions
+        result = normalize_wan_dimensions(630, 95)
+        self.assertEqual((result.width, result.height), (832, 480))
+        self.assertEqual(result.mode, "SAFE_PROFILE_FALLBACK")
+
+    def test_normal_invalid_dimensions_snap_to_nearest_multiple_of_16(self):
+        from p10_lab.wan_sequence import normalize_wan_dimensions
+        result = normalize_wan_dimensions(1000, 562)
+        self.assertEqual((result.width, result.height), (992, 560))
+        self.assertEqual(result.mode, "ALIGN_TO_16")
+
+    def test_valid_dimensions_are_unchanged(self):
+        from p10_lab.wan_sequence import normalize_wan_dimensions
+        result = normalize_wan_dimensions(832, 480)
+        self.assertEqual((result.width, result.height), (832, 480))
+        self.assertEqual(result.mode, "UNCHANGED")
+
     def test_noncontiguous_repeated_mission_is_rejected(self):
         from p10_lab.wan_sequence import mission_ranges_from_payload
         payload = {
