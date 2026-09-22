@@ -151,3 +151,8 @@ Every subgate report states:
 - Remaining subgates in the gate.
 - Whether a user-facing Preview exists yet.
 - GitHub commit / Drive checkpoint state.
+
+
+### Gate 4.1 runtime hotfix r5
+
+User runtime of r4 reached the integrated P10 evidence node and failed at the far-end turnaround with `Waypoint look vector cannot have zero length`. The failure was caused by linear interpolation between antipodal look directions (+forward to -forward), whose midpoint is exactly (0,0,0). r5 replaces vector lerp for look direction with deterministic angular yaw/pitch interpolation; exact 180-degree turns rotate through camera-local +right. Three-mission stabilization remains unchanged: `entry_micro_orbit_360`, `center_micro_orbit_360`, `scene_round_trip`. GitHub Actions run 35699515076 SUCCESS. Installer self-test and real Refined smoke both PASS. Current artifact: `ConceptGhost_v1.54_P10_Gate04_REFINED_COMPLETE_INSTALLER_r5.zip`.
