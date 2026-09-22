@@ -9,6 +9,8 @@ class RefinedEvidencePreviewTests(unittest.TestCase):
         cls = p10_lab.NODE_CLASS_MAPPINGS["ConceptGhostP10RefinedEvidencePreview"]
         self.assertTrue(cls.OUTPUT_NODE)
         self.assertEqual(cls.CATEGORY, "ConceptGhost/P10 Refined")
+        inputs = cls.INPUT_TYPES()
+        self.assertTrue(inputs["required"]["run_dir"][1].get("forceInput"))
         self.assertEqual(
             cls.RETURN_NAMES,
             (
@@ -61,6 +63,11 @@ class RefinedEvidencePreviewTests(unittest.TestCase):
         self.assertNotEqual(incoming[0][1], 15)
         self.assertIn(incoming[0][0], patched["nodes"][0]["outputs"][0]["links"])
         self.assertEqual(patched["last_node_id"], evidence["id"])
+        self.assertEqual(evidence["widgets_values"], [1024, 640, 4])
+        self.assertEqual(
+            [item["name"] for item in evidence["inputs"]],
+            ["run_dir", "panorama_width", "view_width", "steps_per_segment"],
+        )
 
 
 if __name__ == "__main__":
