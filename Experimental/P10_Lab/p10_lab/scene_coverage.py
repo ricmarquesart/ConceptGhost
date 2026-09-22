@@ -99,6 +99,11 @@ class SceneFootprint:
 
 @dataclass(frozen=True)
 class GeometryFlightConfig:
+    # Stabilization preview intentionally uses three missions. The planner data
+    # model remains list-based so the post-stabilization budget can grow to
+    # 7-10 missions without adding/duplicating ComfyUI nodes.
+    stabilization_mission_count: int = 3
+    future_supported_mission_budget_max: int = 10
     orbit_steps: int = 12
     orbit_radius_lateral_fraction: float = 0.06
     orbit_radius_depth_fraction: float = 0.05
@@ -109,6 +114,13 @@ class GeometryFlightConfig:
     return_lateral_fraction: float = 0.16
 
     def __post_init__(self) -> None:
+        if self.stabilization_mission_count != 3:
+            raise ContractError("Gate 4 stabilization profile currently requires exactly 3 missions")
+        if (
+            type(self.future_supported_mission_budget_max) is not int
+            or self.future_supported_mission_budget_max < 10
+        ):
+            raise ContractError("future_supported_mission_budget_max must be at least 10")
         if type(self.orbit_steps) is not int or self.orbit_steps < 8 or self.orbit_steps > 48:
             raise ContractError("orbit_steps must be an integer in [8, 48]")
         if type(self.traverse_segments) is not int or self.traverse_segments < 5 or self.traverse_segments > 24:
@@ -135,7 +147,8 @@ class GeometryAwareFlightPlan:
 
     def manifest(self) -> dict[str, object]:
         return {
-            "schema": "ConceptGhost.P10GeometryAwareFlightPlan.v0.1",
+            "schema": "ConceptGhost.P10GeometryAwareFlightPlan.v0.2",
+            "mission_count": len(self.paths),
             "orbit_radius": self.orbit_radius,
             "far_target": self.far_target,
             "scene_footprint": self.footprint.manifest(),
@@ -218,6 +231,47 @@ def _traverse(
     return CameraPath(name, tuple(points))
 
 
+def _round_trip(
+    *,
+    far_target: float,
+    footprint: SceneFootprint,
+    config: GeometryFlightConfig,
+) -> CameraPath:
+    """One mission that traverses the useful scene and returns while looking back.
+
+    Keeping outbound and inbound legs inside one CameraPath gives the current
+    stabilization preview exactly three logical missions while preserving the
+    two complementary viewing directions the user requested.
+    """
+
+    outbound = _traverse(
+        "scene_round_trip_outbound",
+        start_forward=0.0,
+        end_forward=far_target,
+        base_right=0.0,
+        lateral_amplitude=footprint.lateral_span * config.traverse_lateral_fraction,
+        segments=config.traverse_segments,
+        reverse_look=False,
+    )
+    inbound = _traverse(
+        "scene_round_trip_inbound",
+        start_forward=far_target,
+        end_forward=0.0,
+        base_right=footprint.center_right * 0.25,
+        lateral_amplitude=-footprint.lateral_span * config.return_lateral_fraction,
+        segments=config.traverse_segments,
+        reverse_look=True,
+    )
+
+    # Keep both far-end samples. The first still looks outward; the second
+    # looks back toward the camera and may be later interpolated into a turn.
+    # This makes the direction change explicit in evidence/GIF output.
+    return CameraPath(
+        "scene_round_trip",
+        tuple(outbound.waypoints + inbound.waypoints),
+    )
+
+
 def plan_geometry_aware_flights(
     footprint: SceneFootprint,
     config: GeometryFlightConfig | None = None,
@@ -256,27 +310,14 @@ def plan_geometry_aware_flights(
         steps=config.orbit_steps,
     )
 
-    outbound = _traverse(
-        "outbound_scene_traverse",
-        start_forward=0.0,
-        end_forward=far_target,
-        base_right=0.0,
-        lateral_amplitude=footprint.lateral_span * config.traverse_lateral_fraction,
-        segments=config.traverse_segments,
-        reverse_look=False,
-    )
-    reverse = _traverse(
-        "return_scene_traverse",
-        start_forward=far_target,
-        end_forward=0.0,
-        base_right=footprint.center_right * 0.25,
-        lateral_amplitude=-footprint.lateral_span * config.return_lateral_fraction,
-        segments=config.traverse_segments,
-        reverse_look=True,
+    round_trip = _round_trip(
+        far_target=far_target,
+        footprint=footprint,
+        config=config,
     )
 
     return GeometryAwareFlightPlan(
-        paths=(entry_orbit, center_orbit, outbound, reverse),
+        paths=(entry_orbit, center_orbit, round_trip),
         orbit_radius=orbit_radius,
         far_target=far_target,
         footprint=footprint,
