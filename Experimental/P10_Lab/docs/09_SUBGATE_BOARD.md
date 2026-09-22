@@ -18,7 +18,7 @@ to bypass missing runtime evidence.
 | 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
 | 4. Automatic paths, collision, raw controls and masks | 6 | COMPLETED FUNCTIONALLY; route-quality refinements deferred to Gate 11 |
 | 5. WAN completion and source-preserving composite | 5 | 5.1-5.4 COMPLETED; 5.5 PREVIEW READY / USER RUNTIME PENDING |
-| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1 COMPLETED; 6.2 NEXT |
+| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.2 COMPLETED; 6.3 NEXT |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
@@ -71,8 +71,8 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 ## Gate 6 — 6 subgates
 
 6.1 Generated-view collection and camera manifest — COMPLETED. The Refined evidence stage now persists a Scene-Contract-bound per-frame PINHOLE camera manifest, and Gate 6 pairs every source-preserved Gate 5 composite with the exact planned P9-world camera using global frame index as the join key. GitHub Actions run 35746991214 SUCCESS.
-6.2 SphereSfM dataset adapter — NEXT.
-6.3 SphereSfM camera/sparse reconstruction.
+6.2 Reconstruction dataset adapter — COMPLETED. The primary path is now known-camera COLMAP because ConceptGhost already owns authoritative P9-derived drone poses. The adapter materializes source-preserved Gate 5 composites into `images/`, writes a deterministic `sparse/known/` COLMAP text model, preserves Scene Contract/provenance, deduplicates identical intrinsics, and explicitly converts ConceptGhost/Maya camera axes (+X right, +Y up, -Z forward) into COLMAP axes (+X right, +Y down, +Z forward). SphereSfM remains optional ERP validation/fallback rather than the primary pose solver for perspective P10 composites. GitHub Actions run 35748183037 SUCCESS.
+6.3 Known-camera feature matching + sparse point triangulation (with SphereSfM optional validation path) — NEXT.
 6.4 COLMAP dense stereo/fusion.
 6.5 Dense cloud → pre-fusion triangle mesh + health checks.
 6.6 Reconstruction Preview and runtime validation.
@@ -198,3 +198,16 @@ Runtime installation path remains `03_INSTALL_ALL.bat → 04_VERIFY_INSTALL.bat 
 ### Gate 6.1 image-camera authority checkpoint
 
 Gate 6.1 is complete. The pipeline no longer needs to rediscover P10 camera poses from generated imagery. Each drone frame now carries authoritative PINHOLE intrinsics and a 4×4 P9-world camera matrix in `camera_manifest.json`, bound to the same Scene Contract. The reconstruction-input collector pairs Gate 5 source-preserved composite frames with those cameras and fails closed on missing/duplicate/mismatched frame identities. GitHub Actions run 35746991214 SUCCESS. Next subgate: 6.2 dataset adapter.
+
+
+### Gate 6.2 known-camera COLMAP dataset checkpoint
+
+Gate 6.2 is complete. ConceptGhost no longer hands its perspective P10 composites to a spherical SfM solver merely to rediscover camera poses that are already known. The primary reconstruction dataset now contains the source-preserved Gate 5 images plus an authoritative COLMAP text model in `sparse/known/` generated from the P9-world camera matrices.
+
+Coordinate conversion is explicit and tested:
+- source camera convention: +X right, +Y up, -Z forward;
+- COLMAP convention: +X right, +Y down, +Z forward;
+- local-axis conversion: `diag(1,-1,-1)`;
+- camera-to-world matrices are converted to COLMAP world-to-camera `qvec/tvec`.
+
+The dataset also writes `reconstruction_inputs.json` and `dataset_manifest.json` with Scene Contract, image provenance, camera authority and per-frame identity. Existing non-empty output roots fail closed unless overwrite is explicitly requested. GitHub Actions run 35748183037 SUCCESS. Next subgate: 6.3 sparse reconstruction using fixed/known cameras; SphereSfM is retained as optional ERP validation/fallback.
