@@ -478,3 +478,33 @@ Static package validation PASS:
 - complete workflow rectangle-overlap count = 0.
 
 r5 supersedes r4 for further Gate 5/6 runtime acceptance.
+
+
+### Gate 6 r7 WAN VAE decode-shape hotfix
+
+Real ComfyUI runtime progressed past the earlier WAN dimension, widget-serialization and `wan_seed` failures and reached WAN VAE decode plus frame serialization. Node 2207 then failed when Pillow received a frame array with an extra video dimension.
+
+Observed runtime failure:
+- node: `ConceptGhostP10WanSequentialSampler` (2207);
+- failure point: `Image.fromarray(raw_array)`;
+- effective symptom: decoded WAN video remained rank-5, so per-frame slicing produced an unsupported Pillow array shape.
+
+r7 correction:
+- normalize a decoded rank-5 WAN video tensor to ComfyUI IMAGE batch shape `[N,H,W,C]` immediately after `vae.decode`;
+- leave already-correct rank-4 IMAGE batches unchanged;
+- fail closed on unexpected ranks/channel counts;
+- perform frame accounting, source-preserving composite and Pillow save only after normalization.
+
+Evidence:
+- runtime fix commit: `a5c9383990f5e3f4ad55f7ec1b2474be2a505a3a`;
+- regression commit: `87c56a0644cb1983882264062268596d7e0f97c4`;
+- GitHub Actions run `35771754630`: SUCCESS;
+- current branch head `81d2716285d0719fb4496b2a29c2fc43583e6ced`: SUCCESS in run `35772121481`;
+- artifact: `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r7.zip`;
+- ZIP size: 12,102,618 bytes;
+- SHA-256: `c921fd235ca54b61ab807cf6e94764073b7a818b8079f7c537331c9723f8325c`;
+- Evaluation_Builds ZIP ID: `18VJ3Kn5LU1wPJ4dJsF_DZvxIHVutEBE5`;
+- P10 recovery ZIP ID: `1VMxkp9ohh4tLe9-6j5TmsHGeDQBpalx-`;
+- expanded Evaluation_Builds folder ID: `1RYy_gkp83lcIFHHGgwG00t1DpEPXf4PU`, verified at 155 files.
+
+Status remains **Gate 6.6 PREVIEW READY / USER RUNTIME PENDING**. Do not begin required Gate 7 implementation until the integrated r7 runtime is accepted, although roadmap/design work already recorded for Gate 7.2C remains valid.
