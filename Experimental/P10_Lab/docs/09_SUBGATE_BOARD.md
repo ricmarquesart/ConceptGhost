@@ -368,6 +368,10 @@ Regression-contract commit: `88a0b1604c3b1a9c1163e653238e02171a8dc6b3`.
 GitHub Actions run `35760003619`: SUCCESS.
 
 Replacement user-test artifact: `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r3.zip`.
+- Size: 12,077,109 bytes; 146 ZIP members; SHA-256 `c45a1ada40821aadbcd319074657bbd150e7b71bbe9f74f1fd8b259944f03246`.
+- Evaluation_Builds Drive ID: `1YKUB9_XP06SbiNPjlA_RXiTjzbOimzbz`.
+- P10 recovery mirror Drive ID: `1oBWVddR2prgjgnuiNpZ4MvRISeMSHcrl`.
+- Static package validation PASS: Gate6 bundle structure, Project Control single canonical Master, installer argument forwarding, non-destructive installer contract, and explicit node-2207 widget/input serialization contract.
 r2 is superseded and must not be used for further runtime acceptance.
 ### Gate 6 r2 WAN-dimension hotfix package
 
