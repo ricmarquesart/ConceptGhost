@@ -21,6 +21,7 @@ class RefinedEvidencePreviewTests(unittest.TestCase):
                 "hole_masks",
                 "trajectory_map",
                 "flight_gif_path",
+                "control_manifest_path",
                 "diagnostics_json",
             ),
         )
