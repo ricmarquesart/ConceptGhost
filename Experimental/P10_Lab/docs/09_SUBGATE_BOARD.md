@@ -23,10 +23,10 @@ to bypass missing runtime evidence.
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
 | 10. Adaptive quality, hardware compliance and Refined integration | 6 | PLANNED |
-| 11. Panorama & Adaptive Drone Refinement | 6 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
+| 11. Panorama, Adaptive Drone & HiRes Source-Authority Refinement | 8 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
 | 12. Diagnostic Observability & Visual Branches | 6 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
 
-Total: **64 bounded subgates**.
+Total: **66 bounded subgates**.
 
 ## Gate 1 — 4/4 completed
 
@@ -169,19 +169,20 @@ Current stabilization missions:
 Do not start Gate 4.2 visual promotion until the Gate 4.1 runtime evidence is reviewed.
 
 
-## Gate 11 — 6 subgates — DEFERRED UNTIL COMPLETE RESULT
+## Gate 11 — 8 subgates — DEFERRED UNTIL COMPLETE RESULT
 
-This gate exists deliberately so current end-to-end development does not stall on route/panorama perfection.
+This gate exists deliberately so current end-to-end development does not stall on route/panorama perfection. It now also owns the REQUIRED HiRes source-authority refinement requested for the final-quality pass.
 
 11.1 Panorama/context quality audit: compare P9 partial ERP, source ERP and generated context.
 11.2 Generic scene-coverage scoring from mesh footprint, occupancy, depth and uncovered solid angle.
 11.3 Expand adaptive mission budget from the current 3 stabilization missions to a data-driven 7–10 mission budget without graph duplication.
 11.4 Route-family refinement: lateral, elevated, diagonal, center-orbit, far-orbit and reverse passes selected only when they add coverage.
 11.5 Coverage-aware stopping rule and route ranking using marginal new-visible-area / hole-discovery gain.
-11.6 Final visual regression of panorama, drone paths, masks and runtime cost before release hardening.
+11.6 REQUIRED HiRes Composite source-authority pass. Logical insertion point is after Gate 5 WAN generation and before Gate 6 reconstruction input collection. Reproject full-resolution authoritative source pixels through P9/P10 geometry; use WAN only where geometry/source authority has no answer. Default mode must be geometry-first, not WAN-first. Preserve per-frame coverage/gate masks and visual diagnostics.
+11.7 REQUIRED HiRes Views / dataset augmentation. Logical insertion point is between Gate 6.1 camera authority and Gate 6.3 feature extraction. Render selected high-resolution PINHOLE views from authoritative geometry/source texture, register them as additional known-camera views without moving existing P9/P10 cameras, and optionally retriangulate so they contribute sparse/dense evidence. Reuse the same views later for Gate 8 texture recovery.
+11.8 Final A/B regression: base end-to-end vs HiRes-enhanced end-to-end, including panorama/drone paths, WAN holes, source coverage, sparse/dense reconstruction, mesh quality, texture fidelity, runtime and disk cost.
 
-Acceptance policy: Gate 11 is intentionally non-blocking until Gates 4–10 produce a complete end-to-end Refined result.
-
+Acceptance policy: Gate 11 remains non-blocking until Gates 4–10 produce a complete end-to-end Refined result. Once activated, 11.6 and 11.7 are REQUIRED final-quality work, not optional experiments.
 
 ### Gate 5 Preview r1 recovery checkpoint
 
@@ -312,3 +313,51 @@ Artifact build:
 - GitHub Actions run 35752970504 SUCCESS.
 
 Runtime acceptance is required before Gate 6 is marked fully closed. Next development gate after runtime acceptance is Gate 7 registration/fusion/provenance.
+
+
+### Required HiRes Source-Authority Integration Plan
+
+Decision: HiRes Composite and HiRes Views / dataset augmentation are REQUIRED for the final-quality Refined pipeline, while first end-to-end development continues without reopening Gates 5/6 until Gate 10 is complete.
+
+Why:
+- Gate 5 WAN is necessary only for genuinely unknown/disoccluded pixels. It must not repaint source-observed detail when geometry can reproject the authoritative source.
+- High-resolution known-source views add feature-rich, internally consistent observations to COLMAP and later texture recovery without changing the camera authority hierarchy.
+- Existing P9/P10 cameras remain fixed. HiRes evidence is additive and lower authority than source/P9 geometry.
+
+Logical insertion points:
+1. **HiRes Composite**: immediately after WAN generation and before reconstruction dataset materialization. The composite must be geometry/source-first: authoritative source where reprojection is valid; WAN only in holes. It replaces the current first-pass low-resolution source-preserving composite for the final-quality rerun.
+2. **HiRes Views / dataset augmentation**: after the camera manifest is known and before feature extraction/matching. Add selected high-resolution PINHOLE views with exact P9/P10-derived intrinsics/poses. These views participate in sparse/dense reconstruction and are retained for Gate 8 texture baking/recovery.
+
+Implementation preference:
+- Port/adapt the needed SplatKit ideas natively into ConceptGhost instead of making the entire SplatKit/SphereSfM/Matrix-3D stack mandatory.
+- Reuse ConceptGhost P9/P10 geometry and camera authority instead of re-running MoGe solely for HiRes rendering.
+- Geometry-first HiRes Composite does **not** require RAFT optical flow; RAFT is only needed for the SplatKit WAN-base mode, which is not the ConceptGhost authority policy.
+- Debug-save intermediate WAN-upscaled/fill frames remains OFF by default and can be enabled selectively for Gate 12 diagnostics.
+
+Reference storage from SplatKit HiRes Composite documentation at 8192-pixel panorama width, four trajectories:
+- 25 selected frames per trajectory (`0-15,16-/8`): ~2.3 GB.
+- 41 selected frames per trajectory (`0-80/2`): ~3.8 GB.
+- all 81 frames per trajectory: ~7.4 GB.
+Approximate linear scaling to future ConceptGhost 7–10 routes at the same 8K output:
+- 25 frames/route: ~4.0–5.8 GB.
+- 41 frames/route: ~6.7–9.5 GB.
+- 81 frames/route: ~13.0–18.5 GB.
+HiRes Views are separate full-resolution PINHOLE PNGs; expected working budget is ~1–3 GB for a moderate 4K augmentation set across 7–10 routes, and roughly ~4–8 GB for a comparable 8K-heavy set. Exact disk use is scene/compression/view-count dependent and must be measured in the manifest at runtime.
+Software/model footprint for the native ConceptGhost adaptation is small: the current SplatKit repository itself is only ~2.9 MB of versioned files, and geometry-first HiRes Composite requires no additional RAFT checkpoint. The dominant cost is generated image data, not new model weights.
+
+Upstream technical references:
+- https://github.com/mickmumpitz/ComfyUI-SplatKit
+- https://github.com/mickmumpitz/ComfyUI-SplatKit/blob/main/docs/HIRES_COMPOSITE.md
+
+### Gate 5/6 runtime blocker — WAN dimension normalization
+
+Real user runtime on 2026-09-22 reached node 2207 (`ConceptGhostP10WanSequentialSampler`) after P9 export, but aborted before WAN sampling because the live widget state supplied width/height values that were not valid multiples of 16. The packaged workflow declares 832×480, but the live ComfyUI node showed a stale/corrupted dimension state. This is a Gate 5 blocker and therefore also blocks Gate 6 downstream execution.
+
+Hotfix policy:
+- do not require the user to manually repair stale slider values;
+- widget minimum is raised to 256;
+- valid 16-aligned dimensions pass unchanged;
+- normal invalid dimensions in the supported range snap to the nearest multiple of 16;
+- obviously corrupt/small/out-of-range values fall back to the proven 832×480 RTX 2080 Ti profile;
+- record requested dimensions, effective dimensions and normalization mode in `wan_manifest.json` and diagnostics;
+- Gate 6 resumes automatically after Gate 5 produces a valid WAN manifest.
