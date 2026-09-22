@@ -209,6 +209,4 @@ def adapt_paths_for_clearance(
         for path in paths
     )
     active = tuple(result.path for result in results if not result.blocked)
-    if not active:
-        raise ContractError("All P10 flight missions were blocked by clearance")
     return FlightClearanceBatch(paths=active, results=results)
