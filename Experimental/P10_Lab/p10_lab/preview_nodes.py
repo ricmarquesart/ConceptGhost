@@ -13,6 +13,7 @@ from .panorama import CameraAuthority, PanoramaSpec
 from .panorama_projection import build_projection_plan
 from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
 from .wan_sequence import ConceptGhostP10WanSequentialSampler
+from .reconstruction_node import ConceptGhostP10ReconstructionRuntime
 
 
 _CATEGORY = "ConceptGhost/P10 Lab"
@@ -288,6 +289,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
     "ConceptGhostP10WanMaskedConditioning": ConceptGhostP10WanMaskedConditioning,
     "ConceptGhostP10WanSequentialSampler": ConceptGhostP10WanSequentialSampler,
+    "ConceptGhostP10ReconstructionRuntime": ConceptGhostP10ReconstructionRuntime,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -297,4 +299,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
     "ConceptGhostP10WanMaskedConditioning": "P10 Refined · WAN Masked Conditioning",
     "ConceptGhostP10WanSequentialSampler": "P10 Refined · Sequential WAN + Source Composite",
+    "ConceptGhostP10ReconstructionRuntime": "P10 Refined · Reconstruction Runtime + Mesh Preview",
 }
