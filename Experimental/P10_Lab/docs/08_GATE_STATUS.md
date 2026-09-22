@@ -5,6 +5,24 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-22 r8 runtime + free-space update
+
+This is the newest authoritative status. Older reconciliation/current-summary sections below are retained only as historical checkpoints.
+
+- Current active boundary remains **Gate 6.6 — integrated reconstruction preview/runtime validation**.
+- Gates 1–4 are functionally completed for the first end-to-end pass.
+- Gate 5.1–5.4 are completed; Gate 5.5 runtime evidence is exercised through the integrated Gate 6 preview.
+- Gate 6.1–6.5 have completed first-pass implementations; Gate 6.6 remains OPEN because real runtime acceptance has not yet passed end-to-end.
+- The latest r8 runtime progressed through P9, WAN generation and into Gate 6 reconstruction, then failed in Gate 6.3 with a real camera calibration mismatch between the pre-WAN Gate 4 camera viewport and the saved Gate 5 WAN composite viewport.
+- The correction maps fx/fy/cx/cy through the exact ComfyUI center-crop + resize transform, versions the reconstruction dataset as v0.2 with source digests, invalidates stale datasets, and rebuilds the Gate-6-owned COLMAP database on sparse retry.
+- This runtime correction is separate from the new Free-Space design.
+- Free-Space / Visibility Carving is now an authoritative **planned Gate 7.3 feature generated from Gate 6 evidence**. Gate 6.4 is the producer/retention point for geometric depth, normals and consistency graphs; Gate 6.5 gains a Poisson + Delaunay dual-mesh producer extension when Gate 7 work begins.
+- Gate 7.2C uses CONFIRMED_FREE/UNKNOWN/CONFLICT as confidence evidence; Gate 7.3 enforces CONFIRMED_FREE as no-fill/no-bridge; Gate 8 distinguishes VALID_OPENING, MISSING_SURFACE_UNKNOWN, FALSE_SURFACE_IN_CONFIRMED_FREE and CONFLICT_REGION.
+- Free-space uses a sparse/chunked visibility field with route/view independence rather than a giant dense world grid. Adjacent frames from one route are correlated; initial CONFIRMED_FREE policy requires multiple useful views, at least two independent route/view groups and useful angular diversity.
+- `UNKNOWN != FREE`; no observation is never treated as proof of empty space.
+- Dedicated ComfyUI `P10 · Free-Space 3D Preview` remains diagnostic-only and is planned under Gate 12 standardization.
+- Gate 7 required implementation does not begin until the corrected Gate 6 runtime preview is accepted, although its design documents are already authoritative.
+
 ## Authoritative reconciliation — 2026-09-22 r7
 
 This section supersedes the stale Gate 2 summary below. Historical Gate 2 details are intentionally retained for audit.
