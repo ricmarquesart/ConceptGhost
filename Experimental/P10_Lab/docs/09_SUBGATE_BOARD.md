@@ -113,6 +113,34 @@ pending, but Gate 3 cannot be promoted/closed until Gate 2 closes.
 10.5 Refined topology integration: P9 (= Baseline) → P10.
 10.6 Complete v1.54 release candidate, end-to-end validation and recovery bundle.
 
+## Integration-first preview rule
+
+User-facing P10 previews are no longer considered acceptable as isolated
+laboratory workflows.
+
+The official product surface is the existing ConceptGhost Master workflow:
+- Baseline/P9 branch remains untouched.
+- Refined/P9 Clone is the reserved P10 branch and must progressively become
+  Refined = P9 + P10.
+- Internal P10-Lab workflows/nodes remain valid only for engineering tests.
+- A visual/runtime subgate is accepted only when the new capability is wired
+  into a full ConceptGhost Master Refined preview and can be queued from the
+  same Run Mode profile.
+- Every preview installer must include all ConceptGhost node changes and all
+  third-party packs/models required up to that preview.
+- Do not ask the user to validate isolated P10-Lab graphs when the same
+  capability can be exercised inside the Refined workflow.
+
+Gate 3.5 status clarification:
+- the isolated panorama diagnostic implementation is engineering evidence only;
+- user-facing acceptance requires the same panorama/source-lock/candidate
+  preview wired into Refined/P9 Clone.
+
+Gate 4.1 status clarification:
+- world-camera math is implemented and CI-green (run 35687023080);
+- Gate 4.1 remains IN PROGRESS until the P10 insertion point and these camera
+  paths are connected inside the full Refined workflow.
+
 ## Reporting rule
 
 Every subgate report states:
