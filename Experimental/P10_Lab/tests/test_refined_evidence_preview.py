@@ -1,6 +1,4 @@
-import json
 import unittest
-from pathlib import Path
 
 
 class RefinedEvidencePreviewTests(unittest.TestCase):
@@ -25,29 +23,44 @@ class RefinedEvidencePreviewTests(unittest.TestCase):
             ),
         )
 
-    def test_gate4_integrated_workflow_links_refined_run_dir_into_p10_evidence(self):
-        preview = (
-            Path(__file__).resolve().parents[1]
-            / "previews"
-            / "Gate04"
-            / "ConceptGhost_Master_v1.54_P10_Gate04_PREVIEW_r1.json"
-        )
-        self.assertTrue(preview.is_file())
-        workflow = json.loads(preview.read_text(encoding="utf-8"))
-        by_id = {node["id"]: node for node in workflow["nodes"]}
+    def test_workflow_patcher_links_only_refined_export_run_dir(self):
+        from p10_lab.workflow_integration import integrate_gate4_refined_preview
+
+        workflow = {
+            "last_node_id": 2005,
+            "last_link_id": 178,
+            "nodes": [
+                {
+                    "id": 1015,
+                    "type": "ConceptGhostExportBundle",
+                    "title": "REFINED/P9 CLONE · P10 RESERVED · 06 · EXPORT",
+                    "outputs": [{"name": "run_dir", "type": "STRING", "links": [92]}],
+                },
+                {
+                    "id": 15,
+                    "type": "ConceptGhostExportBundle",
+                    "title": "BASELINE/P9 · 06 · EXPORT",
+                    "outputs": [{"name": "run_dir", "type": "STRING", "links": [12]}],
+                },
+            ],
+            "links": [],
+        }
+
+        patched = integrate_gate4_refined_preview(workflow)
         evidence = next(
-            node for node in workflow["nodes"]
+            node for node in patched["nodes"]
             if node["type"] == "ConceptGhostP10RefinedEvidencePreview"
         )
-        self.assertIn("REFINED/P10", evidence.get("title", ""))
         incoming = [
-            link for link in workflow["links"]
+            link for link in patched["links"]
             if link[3] == evidence["id"] and link[4] == 0
         ]
+
         self.assertEqual(len(incoming), 1)
-        source = by_id[incoming[0][1]]
-        self.assertEqual(source["id"], 1015)
-        self.assertEqual(source["type"], "ConceptGhostExportBundle")
+        self.assertEqual(incoming[0][1], 1015)
+        self.assertNotEqual(incoming[0][1], 15)
+        self.assertIn(incoming[0][0], patched["nodes"][0]["outputs"][0]["links"])
+        self.assertEqual(patched["last_node_id"], evidence["id"])
 
 
 if __name__ == "__main__":
