@@ -434,6 +434,8 @@ def analyze_and_render_mesh(
         "face_vertex_ratio": header.face_count / float(header.vertex_count),
         "sampled_face_count": sampled_count,
         "invalid_face_index_count": invalid_face_count,
+        "invalid_face_index_count_exact": invalid_face_count,
+        "invalid_face_index_sample_count": invalid_face_count,
         "degenerate_face_sample_count": degenerate,
         "degenerate_face_sample_fraction": degenerate_fraction,
         "bounds": bounds,
