@@ -14,17 +14,18 @@ to bypass missing runtime evidence.
 | Gate | Subgates | Current state |
 |---|---:|---|
 | 1. Foundation contracts and visible checkpoints | 4 | COMPLETED |
-| 2. Completion Bundle and P9 identity boundary | 5 | 4 completed + 1 runtime confirmation pending |
-| 3. Temporary panorama and completion envelope | 5 | 3.1-3.4 COMPLETED; 3.5 IMPLEMENTATION READY / RUNTIME PENDING |
-| 4. Automatic paths, collision, raw controls and masks | 6 | 4.1 RUNTIME PASS / VISUAL REVIEW PENDING; 4.2 IMPLEMENTED / CI GREEN |
+| 2. Completion Bundle and P9 identity boundary | 5 | COMPLETED |
+| 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
+| 4. Automatic paths, collision, raw controls and masks | 6 | 4.1 COMPLETED FUNCTIONALLY; 4.2 INTEGRATION IN PROGRESS |
 | 5. WAN completion and source-preserving composite | 5 | PLANNED |
 | 6. SphereSfM and COLMAP reconstruction | 6 | PLANNED |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
 | 10. Adaptive quality, hardware compliance and Refined integration | 6 | PLANNED |
+| 11. Panorama & Adaptive Drone Refinement | 6 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
 
-Total: **52 bounded subgates**.
+Total: **58 bounded subgates**.
 
 ## Gate 1 — 4/4 completed
 
@@ -39,9 +40,7 @@ Total: **52 bounded subgates**.
 2.2 Real v1.53 official-run P9/Baseline adapter — COMPLETED.
 2.3 Identity/hash/stale/tamper comparator and rejection — COMPLETED.
 2.4 ComfyUI Builder/Loader Preview + complete installer packaging — COMPLETED.
-2.5 User runtime confirmation in real ComfyUI Desktop — PENDING USER TEST.
-
-Gate 2 remains open until 2.5 passes.
+2.5 User runtime confirmation in real ComfyUI Desktop — COMPLETED through the integrated Refined r5 execution. The P10 boundary accepted the official Refined run and executed downstream.
 
 ## Gate 3 — 5 subgates
 
@@ -49,14 +48,13 @@ Gate 2 remains open until 2.5 passes.
 Evidence: real v1.53 CameraBundle.v0.8 fixture; FOV recomputation; rigid
 right-handed world-matrix validation; source↔ERP reversible ray math; strict
 2:1 ERP contract; GitHub Actions run 35685846429 SUCCESS.
-3.2 Perspective-to-equirectangular projection and source placement — COMPLETED.\nEvidence: seam-safe camera-local source footprint, reversible ERP sampling, half-pixel raster convention, orientation/no-flip tests and cross-platform CI.\n3.3 Source-lock mask + observed/unknown panorama map — COMPLETED.\nEvidence: exact observed/unknown complements, source authority lock, deterministic SHA-256 and cross-platform CI run 35686124075 SUCCESS.\n3.4 Bounded local completion envelope from authoritative scene/camera scale — COMPLETED.\nEvidence: flight-offset containment, rear/pole/world-scale rejection, unknown-only generation candidates and corrected cross-platform CI run 35686379285 SUCCESS.\n3.5 Gate 3 ComfyUI panorama preview + runtime validation — IMPLEMENTATION READY / RUNTIME PENDING.\nEvidence: registered IMAGE/MASK/MASK preview node, real v1.53 bundle rendered at 2048×1024, observed fraction ≈1.57%, candidate fraction ≈20.67%, PrimaryMesh characteristic radius ≈70.27 canonical units, direct ComfyUI temp-image UI support, and latest branch GitHub Actions run 35686851557 SUCCESS.
+3.2 Perspective-to-equirectangular projection and source placement — COMPLETED.\nEvidence: seam-safe camera-local source footprint, reversible ERP sampling, half-pixel raster convention, orientation/no-flip tests and cross-platform CI.\n3.3 Source-lock mask + observed/unknown panorama map — COMPLETED.\nEvidence: exact observed/unknown complements, source authority lock, deterministic SHA-256 and cross-platform CI run 35686124075 SUCCESS.\n3.4 Bounded local completion envelope from authoritative scene/camera scale — COMPLETED.\nEvidence: flight-offset containment, rear/pole/world-scale rejection, unknown-only generation candidates and corrected cross-platform CI run 35686379285 SUCCESS.\n3.5 Gate 3 ComfyUI panorama preview + runtime validation — COMPLETED FUNCTIONALLY through the integrated Refined r5 execution.\nEvidence: registered IMAGE/MASK/MASK preview node, real v1.53 bundle rendered at 2048×1024, observed fraction ≈1.57%, candidate fraction ≈20.67%, PrimaryMesh characteristic radius ≈70.27 canonical units, direct ComfyUI temp-image UI support, and latest branch GitHub Actions run 35686851557 SUCCESS.
 
-Gate 3 implementation may proceed through independent preparation while 2.5 is
-pending, but Gate 3 cannot be promoted/closed until Gate 2 closes.
+Gate 3 is functionally closed. The partial ERP/source-lock outputs are intentionally accepted as sufficient for end-to-end development; panorama quality and context coverage are deferred to Gate 11.
 
 ## Gate 4 — 6 subgates
 
-4.1 Convert scene-relative flight definitions into authoritative world cameras — PREVIEW READY / USER RUNTIME PENDING. Geometry-aware planning measures the current PrimaryMesh footprint at runtime and produces entry/center micro-orbit 360 paths plus outbound/return full-scene traversals. The integrated Refined node generates ERP, source lock, flight views, raw holes, trajectory map and GIF during the same execution. Real v1.53 runtime smoke: PASS; adaptive per-pose renderer CI run 35690559474 SUCCESS. Complete Installer r1 was rejected by the unchanged v1.53 Project Control self-test because the package accidentally contained multiple filenames matching ConceptGhost_Master_v*.json. r2 fixes packaging without weakening the test: exactly one canonical Master remains (ConceptGhost_Master_v1.53.0.json), while the integrated full Refined preview ships under a noncanonical preview filename and is installed only after base verification. Installer r2 reached the integrated Refined node but ComfyUI rejected the node before execution because linked run_dir deserialization shifted numeric widgets, producing view_width=1. r3 scopes run_dir forceInput=True only to the Refined evidence node and serializes [1024, 640, 2] for panorama_width/view_width/steps_per_segment. Installer r3 reached P10 runtime but rejected the real exported branch_mode `Refined / P9 Clone · P10 Reserved` because the boundary whitelist only contained the shorter Refined label. r4 accepts that exact official label while still rejecting near matches. For stabilization the runtime now uses exactly three adaptive missions: entry_micro_orbit_360, center_micro_orbit_360, and scene_round_trip (full-depth outbound + reverse-looking return). The planner remains data-driven for a later 7-10 mission budget without graph duplication. Current test artifact: ConceptGhost_v1.54_P10_Gate04_REFINED_COMPLETE_INSTALLER_r4.zip.\n4.2 Collision/clearance query contract and safe path adaptation — IMPLEMENTED / CI GREEN, runtime integration acceptance pending. GitHub Actions run 35688972654 SUCCESS.
+4.1 Convert scene-relative flight definitions into authoritative world cameras — COMPLETED FUNCTIONALLY. Geometry-aware planning measures the current PrimaryMesh footprint at runtime and produces entry/center micro-orbit 360 paths plus outbound/return full-scene traversals. The integrated Refined node generates ERP, source lock, flight views, raw holes, trajectory map and GIF during the same execution. Real v1.53 runtime smoke: PASS; adaptive per-pose renderer CI run 35690559474 SUCCESS. Complete Installer r1 was rejected by the unchanged v1.53 Project Control self-test because the package accidentally contained multiple filenames matching ConceptGhost_Master_v*.json. r2 fixes packaging without weakening the test: exactly one canonical Master remains (ConceptGhost_Master_v1.53.0.json), while the integrated full Refined preview ships under a noncanonical preview filename and is installed only after base verification. Installer r2 reached the integrated Refined node but ComfyUI rejected the node before execution because linked run_dir deserialization shifted numeric widgets, producing view_width=1. r3 scopes run_dir forceInput=True only to the Refined evidence node and serializes [1024, 640, 2] for panorama_width/view_width/steps_per_segment. Installer r3 reached P10 runtime but rejected the real exported branch_mode `Refined / P9 Clone · P10 Reserved` because the boundary whitelist only contained the shorter Refined label. r4 accepts that exact official label while still rejecting near matches. For stabilization the runtime now uses exactly three adaptive missions: entry_micro_orbit_360, center_micro_orbit_360, and scene_round_trip (full-depth outbound + reverse-looking return). The planner remains data-driven for a later 7-10 mission budget without graph duplication. Current test artifact: ConceptGhost_v1.54_P10_Gate04_REFINED_COMPLETE_INSTALLER_r4.zip.\n4.2 Collision/clearance query contract and safe path adaptation — INTEGRATION IN PROGRESS. Core contract is implemented / CI GREEN; now wiring runtime mesh clearance into Refined. GitHub Actions run 35688972654 SUCCESS.
 4.3 P10-only raw-hole geometry derivative.
 4.4 Geometry-control frame renderer.
 4.5 Disocclusion/unsupported-region mask generator.
@@ -168,3 +166,17 @@ Current stabilization missions:
 - scene_round_trip
 
 Do not start Gate 4.2 visual promotion until the Gate 4.1 runtime evidence is reviewed.
+
+
+## Gate 11 — 6 subgates — DEFERRED UNTIL COMPLETE RESULT
+
+This gate exists deliberately so current end-to-end development does not stall on route/panorama perfection.
+
+11.1 Panorama/context quality audit: compare P9 partial ERP, source ERP and generated context.
+11.2 Generic scene-coverage scoring from mesh footprint, occupancy, depth and uncovered solid angle.
+11.3 Expand adaptive mission budget from the current 3 stabilization missions to a data-driven 7–10 mission budget without graph duplication.
+11.4 Route-family refinement: lateral, elevated, diagonal, center-orbit, far-orbit and reverse passes selected only when they add coverage.
+11.5 Coverage-aware stopping rule and route ranking using marginal new-visible-area / hole-discovery gain.
+11.6 Final visual regression of panorama, drone paths, masks and runtime cost before release hardening.
+
+Acceptance policy: Gate 11 is intentionally non-blocking until Gates 4–10 produce a complete end-to-end Refined result.
