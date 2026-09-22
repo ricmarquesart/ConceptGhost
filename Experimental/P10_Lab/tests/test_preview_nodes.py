@@ -57,6 +57,16 @@ class Gate2PreviewNodeTests(unittest.TestCase):
             self.assertEqual(report["source_equivalent_to"], "baseline")
             self.assertIn("primary_mesh_payload", report["optional_inputs"])
 
+    def test_package_exports_comfyui_node_mappings(self):
+        import p10_lab
+
+        self.assertIn("ConceptGhostP10CompletionBundleBuilder", p10_lab.NODE_CLASS_MAPPINGS)
+        self.assertIn("ConceptGhostP10BundleLoader", p10_lab.NODE_CLASS_MAPPINGS)
+        self.assertEqual(
+            p10_lab.NODE_DISPLAY_NAME_MAPPINGS["ConceptGhostP10BundleLoader"],
+            "P10 P9 Bundle Loader / Validator",
+        )
+
     def test_node_contract_is_comfyui_discoverable_without_importing_comfyui(self):
         builder_cls, loader_cls = self._nodes()
         for cls in (builder_cls, loader_cls):
