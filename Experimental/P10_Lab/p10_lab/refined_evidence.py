@@ -444,6 +444,8 @@ def build_refined_evidence(
         shrink_factor=0.85,
         max_shrink_attempts=4,
     )
+    clearance_fallback_to_unadapted = not clearance_batch.paths
+    active_paths = clearance_batch.paths or flight_plan.paths
 
     resolved_paths = []
     flight_frames = []
@@ -452,7 +454,7 @@ def build_refined_evidence(
     coverage_by_path: dict[str, list[float]] = {}
     view_height = int(round(view_width * camera.height / camera.width))
 
-    for path in clearance_batch.paths:
+    for path in active_paths:
         waypoints = _interpolated_waypoints(path, steps_per_segment)
         poses = tuple(resolve_world_camera(camera, waypoint, frame_index=index) for index, waypoint in enumerate(waypoints))
         resolved_paths.append((path.name, poses))
@@ -525,6 +527,8 @@ def build_refined_evidence(
             "cloud": clearance_cloud.manifest(),
             "batch": clearance_batch.manifest(),
             "minimum_required": max(0.05, scene_footprint.median_depth * 0.01),
+            "all_blocked_advisory_fallback": clearance_fallback_to_unadapted,
+            "policy": "ADVISORY_APPROXIMATE_VERTEX_CLEARANCE_FOR_END_TO_END_FIRST_PASS",
         },
         "paths": {
             name: {
