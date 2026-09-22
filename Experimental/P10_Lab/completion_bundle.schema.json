@@ -7,23 +7,37 @@
     "source_stage",
     "source_equivalent_to",
     "source_run_id",
+    "scene_contract_id",
+    "source_branch_mode",
+    "source_manifest_schema",
+    "identity_status",
     "source_image",
     "camera",
     "primary_mesh",
-    "run_metadata"
+    "run_metadata",
+    "file_sha256"
   ],
   "properties": {
-    "contract_version": {"const": "p10-p9-baseline-equivalent/0.2"},
+    "contract_version": {"const": "p10-p9-baseline-equivalent/0.3"},
     "source_stage": {"enum": ["p9", "baseline"]},
     "source_equivalent_to": {"const": "baseline"},
     "source_run_id": {"type": "string", "minLength": 1},
-    "source_image": {"type": "string"},
-    "camera": {"type": "string"},
-    "primary_mesh": {"type": "string"},
-    "run_metadata": {"type": "string"},
+    "scene_contract_id": {"type": "string", "minLength": 1},
+    "source_branch_mode": {"enum": ["Baseline / P9", "Refined / P9 Clone"]},
+    "source_manifest_schema": {"type": "string", "minLength": 1},
+    "identity_status": {"const": "PASS"},
+    "source_image": {"type": "string", "minLength": 1},
+    "camera": {"type": "string", "minLength": 1},
+    "primary_mesh": {"type": "string", "minLength": 1},
+    "run_metadata": {"type": "string", "minLength": 1},
     "optional": {
       "type": "object",
-      "additionalProperties": {"type": "string"}
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "file_sha256": {
+      "type": "object",
+      "minProperties": 4,
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
     }
   },
   "additionalProperties": true
