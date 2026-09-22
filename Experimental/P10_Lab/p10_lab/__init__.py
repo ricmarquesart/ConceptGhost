@@ -2,6 +2,6 @@
 
 from .preview_nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
-__version__ = "0.2.1-gate2-preview-r2"
+__version__ = "0.3.0-gate3-panorama-preview"
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
