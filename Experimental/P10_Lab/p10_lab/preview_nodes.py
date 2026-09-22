@@ -40,7 +40,8 @@ class ConceptGhostP10CompletionBundleBuilder:
             "bundle_path": str(result.zip_path),
             "bundle_sha256": result.bundle_sha256,
         }
-        return (str(result.zip_path), _pretty(diagnostics))
+        rendered = _pretty(diagnostics)
+        return {"ui": {"text": [rendered]}, "result": (str(result.zip_path), rendered)}
 
 
 class ConceptGhostP10BundleLoader:
@@ -63,6 +64,7 @@ class ConceptGhostP10BundleLoader:
     )
     FUNCTION = "load"
     CATEGORY = _CATEGORY
+    OUTPUT_NODE = True
 
     def load(self, bundle_path: str, cache_root: str):
         cache = Path(cache_root).expanduser() if str(cache_root).strip() else None
@@ -80,13 +82,17 @@ class ConceptGhostP10BundleLoader:
             "primary_mesh_format": bundle.primary_mesh.suffix.lower(),
             "optional_inputs": sorted(bundle.optional),
         }
-        return (
-            str(bundle.root),
-            str(bundle.source_image),
-            str(bundle.camera),
-            str(bundle.primary_mesh),
-            _pretty(diagnostics),
-        )
+        rendered = _pretty(diagnostics)
+        return {
+            "ui": {"text": [rendered]},
+            "result": (
+                str(bundle.root),
+                str(bundle.source_image),
+                str(bundle.camera),
+                str(bundle.primary_mesh),
+                rendered,
+            ),
+        }
 
 
 NODE_CLASS_MAPPINGS = {
