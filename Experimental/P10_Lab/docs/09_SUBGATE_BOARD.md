@@ -18,7 +18,7 @@ to bypass missing runtime evidence.
 | 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
 | 4. Automatic paths, collision, raw controls and masks | 6 | COMPLETED FUNCTIONALLY; route-quality refinements deferred to Gate 11 |
 | 5. WAN completion and source-preserving composite | 5 | 5.1-5.4 COMPLETED; 5.5 PREVIEW READY / USER RUNTIME PENDING |
-| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.5 COMPLETED; 6.6 NEXT |
+| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.5 COMPLETED; 6.6 PREVIEW READY / USER RUNTIME PENDING |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
@@ -76,7 +76,7 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 6.3 Known-camera feature matching + sparse point triangulation (with SphereSfM optional validation path) — COMPLETED. Gate 6.3 now performs per-intrinsics feature extraction, adaptive matching (exhaustive for <=120 frames, sequential overlap 12 above that), fixed-pose point triangulation, and text conversion for sparse-cloud inspection. COLMAP's native `clear_points=1` filename transcription is used to synchronize database image IDs, while `fix_existing_frames=true` is enforced internally by `point_triangulator`; `refine_intrinsics=0` keeps P9-derived intrinsics authoritative. GitHub Actions run 35749126222 SUCCESS.
 6.4 COLMAP dense stereo/fusion — COMPLETED. The first-pass RTX 2080 Ti profile uses 832 max image size, 4 GB PatchMatch/Fusion caches, 3 PatchMatch iterations, geometric consistency, single GPU 0 and fusion min_num_pixels=2. The runner emits per-command logs, dense_reconstruction_manifest.json, fused.ply, exact fused vertex count from the PLY header, sampled bounds/shape diagnostics and dense_fused_preview.svg with TOP XZ / FRONT XY / SIDE ZY projections. Completed fused clouds fail closed instead of being silently overwritten. GitHub Actions run 35750107834 SUCCESS.
 6.5 Dense cloud → pre-fusion triangle mesh + health checks — COMPLETED. The first-pass Poisson mesher converts `dense/fused.ply` into `dense/pre_fusion_mesh.ply` with depth 10, trim 10, point_weight 1.0 and vertex color enabled. The runner writes a dedicated Poisson log, `prefusion_mesh_manifest.json`, exact vertex/face counts, face/vertex ratio, invalid-face diagnostics, sampled degenerate-face ratio, XYZ bounds/spans, flattened-axis warnings and `pre_fusion_mesh_preview.svg` with TOP XZ / FRONT XY / SIDE ZY triangle projections. Existing meshes fail closed instead of being silently overwritten. GitHub Actions run 35751267600 SUCCESS.
-6.6 Reconstruction Preview and runtime validation.
+6.6 Reconstruction Preview and runtime validation — PREVIEW READY / USER RUNTIME PENDING. The full Refined Master now connects Gate 5 WAN/source-preserved composite outputs to a resumable Gate 6 known-camera reconstruction runtime. It reuses valid stage checkpoints, runs dataset→sparse→dense→Poisson mesh only where required, returns a live pre-fusion mesh preview in ComfyUI, and writes a reconstruction_runtime_manifest.json. COLMAP 4.2.0 CUDA is frozen as the required reconstruction runtime asset. GitHub Actions run 35752970504 SUCCESS. User-test package built and structurally validated: ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r1.zip, 12,064,521 bytes, SHA-256 9ec7a63f0065cd10314ba0129877c4d24cc9bce69fdc44d1645208082720c4a2. Runtime acceptance remains pending.
 
 ## Gate 7 — 5 subgates
 
@@ -286,3 +286,29 @@ Artifacts:
 Mesh diagnostics include exact PLY vertex/face counts, face-to-vertex ratio, exact invalid-index face count, deterministic sampled degenerate-face ratio, XYZ bounds/spans, flattened-axis warnings and a PASS/WARN health status. The visual preview renders sampled triangle edges in TOP XZ, FRONT XY and SIDE ZY so exploded, collapsed, sparse or flattened topology can be inspected without opening Maya.
 
 GitHub Actions run 35751267600 SUCCESS across Windows Python 3.12, Windows Python 3.14 and Ubuntu Python 3.12. Next subgate: 6.6 integrated reconstruction preview/runtime validation.
+
+
+### Gate 6.6 integrated reconstruction preview checkpoint
+
+Gate 6.6 implementation is complete and user runtime acceptance is pending. The Refined Master now contains one integrated reconstruction runtime node downstream of Gate 5. It consumes the live WAN manifest and authoritative camera manifest, then resumes or builds Gate 6.2–6.5 outputs as needed.
+
+The Gate 6 Complete Installer:
+- retains the proven complete v1.53 / Gate 5 payload;
+- freezes the P10 Gate 6 overlay to commit `d07f0c82ab2466e68479c91753f2617ce760a930`;
+- validates/downloads the existing four WAN assets only if missing or hash-invalid;
+- validates/downloads/extracts COLMAP 4.2.0 Windows x64 CUDA;
+- verifies the COLMAP executable and full P10 node/workflow contract;
+- keeps `03_INSTALL_ALL.bat → 04_VERIFY_INSTALL.bat → 05_RUN_CONCEPTGHOST.bat`;
+- enables stage-level checkpoint resume by default;
+- exposes a live mesh preview in the same Refined Master workflow.
+
+Artifact build:
+- `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r1.zip`
+- size: 12,064,521 bytes
+- SHA-256: `9ec7a63f0065cd10314ba0129877c4d24cc9bce69fdc44d1645208082720c4a2`
+- 149 ZIP members
+- Project Control self-test PASS
+- bundle structure PASS
+- GitHub Actions run 35752970504 SUCCESS.
+
+Runtime acceptance is required before Gate 6 is marked fully closed. Next development gate after runtime acceptance is Gate 7 registration/fusion/provenance.
