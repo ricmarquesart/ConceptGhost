@@ -1,0 +1,126 @@
+# P10-Lab Subgate Board
+
+This board decomposes every P10 development gate into bounded, checkpointable
+subgates. Each progress update must report the current Gate/Subgate as X/Y,
+completed subgates, remaining subgates and the next dependency.
+
+The user explicitly authorized safe work on the next gate while a previous
+runtime preview is awaiting their test. This does **not** allow the previous gate
+to be marked complete, nor does it allow a dependent promotion/integration step
+to bypass missing runtime evidence.
+
+## Overall decomposition
+
+| Gate | Subgates | Current state |
+|---|---:|---|
+| 1. Foundation contracts and visible checkpoints | 4 | COMPLETED |
+| 2. Completion Bundle and P9 identity boundary | 5 | 4 completed + 1 runtime confirmation pending |
+| 3. Temporary panorama and completion envelope | 5 | 3.1 IN PROGRESS |
+| 4. Automatic paths, collision, raw controls and masks | 6 | PLANNED |
+| 5. WAN completion and source-preserving composite | 5 | PLANNED |
+| 6. SphereSfM and COLMAP reconstruction | 6 | PLANNED |
+| 7. Registration, fusion and provenance | 5 | PLANNED |
+| 8. Geometry cleanup and texture recovery | 5 | PLANNED |
+| 9. Original-view regression and Maya export | 5 | PLANNED |
+| 10. Adaptive quality, hardware compliance and Refined integration | 6 | PLANNED |
+
+Total: **52 bounded subgates**.
+
+## Gate 1 — 4/4 completed
+
+1.1 Raw-hole safety policy and source authority.
+1.2 Data-driven 3+1 flight-plan contract.
+1.3 Four visible checkpoint roles and digest-safe resume.
+1.4 Filesystem/security hardening and cross-platform closure.
+
+## Gate 2 — 5 subgates
+
+2.1 Completion Bundle v0.3 contract — COMPLETED.
+2.2 Real v1.53 official-run P9/Baseline adapter — COMPLETED.
+2.3 Identity/hash/stale/tamper comparator and rejection — COMPLETED.
+2.4 ComfyUI Builder/Loader Preview + complete installer packaging — COMPLETED.
+2.5 User runtime confirmation in real ComfyUI Desktop — PENDING USER TEST.
+
+Gate 2 remains open until 2.5 passes.
+
+## Gate 3 — 5 subgates
+
+3.1 Canonical camera authority + panorama coordinate/math contract — IN PROGRESS.
+3.2 Perspective-to-equirectangular projection and source placement — PLANNED.
+3.3 Source-lock mask + observed/unknown panorama map — PLANNED.
+3.4 Bounded local completion envelope from authoritative scene/camera scale — PLANNED.
+3.5 Gate 3 ComfyUI panorama preview + runtime validation — PLANNED.
+
+Gate 3 implementation may proceed through independent preparation while 2.5 is
+pending, but Gate 3 cannot be promoted/closed until Gate 2 closes.
+
+## Gate 4 — 6 subgates
+
+4.1 Convert scene-relative flight definitions into authoritative world cameras.
+4.2 Collision/clearance query contract and safe path adaptation.
+4.3 P10-only raw-hole geometry derivative.
+4.4 Geometry-control frame renderer.
+4.5 Disocclusion/unsupported-region mask generator.
+4.6 Per-flight control/mask Preview and runtime validation.
+
+## Gate 5 — 5 subgates
+
+5.1 11 GB WAN runtime/resource policy.
+5.2 Masked-video conditioning adapter.
+5.3 Sequential per-flight WAN completion + checkpoints.
+5.4 Source-preserving high-resolution composite.
+5.5 Generated/composite Preview and runtime validation.
+
+## Gate 6 — 6 subgates
+
+6.1 Generated-view collection and camera manifest.
+6.2 SphereSfM dataset adapter.
+6.3 SphereSfM camera/sparse reconstruction.
+6.4 COLMAP dense stereo/fusion.
+6.5 Dense cloud → pre-fusion triangle mesh + health checks.
+6.6 Reconstruction Preview and runtime validation.
+
+## Gate 7 — 5 subgates
+
+7.1 P10 reconstruction → P9 coordinate registration.
+7.2 Authority-aware known/generated fusion.
+7.3 Narrow transition geometry handling.
+7.4 Per-face/per-region provenance.
+7.5 Registration/fusion Preview and runtime validation.
+
+## Gate 8 — 5 subgates
+
+8.1 Defect analysis and bounded repair regions.
+8.2 Local remesh/cleanup.
+8.3 UV preservation/recovery.
+8.4 Texture recovery with texel provenance.
+8.5 Cleanup/texture Preview and runtime validation.
+
+## Gate 9 — 5 subgates
+
+9.1 Original-camera reprojection/regression metrics.
+9.2 Observed-region rejection thresholds.
+9.3 Maya scene assembly.
+9.4 Diagnostic groups/sets/material/provenance export.
+9.5 Preliminary editable Maya Preview and runtime validation.
+
+## Gate 10 — 6 subgates
+
+10.1 Residual-defect analyzer.
+10.2 Adaptive-flight spending policy.
+10.3 Restart/cache/resource cleanup.
+10.4 RTX 2080 Ti 11 GB compliance run.
+10.5 Refined topology integration: P9 (= Baseline) → P10.
+10.6 Complete v1.54 release candidate, end-to-end validation and recovery bundle.
+
+## Reporting rule
+
+Every subgate report states:
+
+- Gate X — N total subgates.
+- Current Subgate X.Y — part Y/N.
+- What was completed in this subgate.
+- Acceptance evidence.
+- Remaining subgates in the gate.
+- Whether a user-facing Preview exists yet.
+- GitHub commit / Drive checkpoint state.
