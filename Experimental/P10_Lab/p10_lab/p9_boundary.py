@@ -15,6 +15,7 @@ from .contracts import CONTRACT_VERSION, CompletionBundle, ContractError
 _BRANCH_TO_STAGE = {
     "Baseline / P9": "baseline",
     "Refined / P9 Clone": "p9",
+    "Refined / P9 Clone · P10 Reserved": "p9",
 }
 _IDENTITY_FIELDS = (
     "scene_contract_id",
