@@ -15,7 +15,7 @@ to bypass missing runtime evidence.
 |---|---:|---|
 | 1. Foundation contracts and visible checkpoints | 4 | COMPLETED |
 | 2. Completion Bundle and P9 identity boundary | 5 | 4 completed + 1 runtime confirmation pending |
-| 3. Temporary panorama and completion envelope | 5 | 3.1 IN PROGRESS |
+| 3. Temporary panorama and completion envelope | 5 | 3.1 COMPLETED; 3.2 IN PROGRESS |
 | 4. Automatic paths, collision, raw controls and masks | 6 | PLANNED |
 | 5. WAN completion and source-preserving composite | 5 | PLANNED |
 | 6. SphereSfM and COLMAP reconstruction | 6 | PLANNED |
@@ -45,8 +45,11 @@ Gate 2 remains open until 2.5 passes.
 
 ## Gate 3 — 5 subgates
 
-3.1 Canonical camera authority + panorama coordinate/math contract — IN PROGRESS.
-3.2 Perspective-to-equirectangular projection and source placement — PLANNED.
+3.1 Canonical camera authority + panorama coordinate/math contract — COMPLETED.
+Evidence: real v1.53 CameraBundle.v0.8 fixture; FOV recomputation; rigid
+right-handed world-matrix validation; source↔ERP reversible ray math; strict
+2:1 ERP contract; GitHub Actions run 35685846429 SUCCESS.
+3.2 Perspective-to-equirectangular projection and source placement — IN PROGRESS.
 3.3 Source-lock mask + observed/unknown panorama map — PLANNED.
 3.4 Bounded local completion envelope from authoritative scene/camera scale — PLANNED.
 3.5 Gate 3 ComfyUI panorama preview + runtime validation — PLANNED.
