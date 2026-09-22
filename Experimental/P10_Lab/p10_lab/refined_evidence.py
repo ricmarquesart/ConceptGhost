@@ -12,6 +12,7 @@ from .mesh_clearance import build_clearance_cloud, adapt_paths_for_clearance
 from .raw_holes import RawHoleFrame
 from .disocclusion import build_disocclusion_mask
 from .control_sequence import ControlFrameRecord, ControlSequenceManifest
+from .camera_sequence import CameraFrameRecord, CameraSequenceManifest
 from .p9_boundary import validate_official_run
 from .panorama import CameraAuthority, PanoramaSpec
 from .path_planner import RelativeWaypoint, plan_flights
@@ -28,6 +29,7 @@ class RefinedEvidenceResult:
     trajectory_map: Any
     gif_path: str
     control_manifest_path: str
+    camera_manifest_path: str
     diagnostics: dict[str, Any]
     ui_images: tuple[dict[str, str], ...]
 
@@ -359,6 +361,7 @@ def _save_evidence_images(
     disocclusion_masks,
     frame_path_names,
     frame_path_indexes,
+    camera_frames,
     path_labels,
     np,
     Image,
@@ -444,7 +447,19 @@ def _save_evidence_images(
         json.dumps(control_manifest.to_dict(), indent=2, sort_keys=True),
         encoding="utf-8",
     )
-    return str(gif_path), str(control_manifest_path), tuple(ui_images)
+
+    camera_manifest = CameraSequenceManifest(frames=tuple(camera_frames))
+    camera_manifest_path = control_root / "camera_manifest.json"
+    camera_manifest_path.write_text(
+        json.dumps(camera_manifest.to_dict(), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return (
+        str(gif_path),
+        str(control_manifest_path),
+        str(camera_manifest_path),
+        tuple(ui_images),
+    )
 
 
 def build_refined_evidence(
@@ -501,6 +516,7 @@ def build_refined_evidence(
     disocclusion_masks = []
     frame_path_names = []
     frame_path_indexes = []
+    camera_frames = []
     labels = []
     coverage_by_path: dict[str, list[float]] = {}
     view_height = int(round(view_width * camera.height / camera.width))
@@ -538,6 +554,22 @@ def build_refined_evidence(
             )
             frame_path_names.append(path.name)
             frame_path_indexes.append(index)
+            sx = view_width / float(camera.width)
+            sy = view_height / float(camera.height)
+            camera_frames.append(
+                CameraFrameRecord(
+                    global_frame_index=len(camera_frames),
+                    path_name=path.name,
+                    path_frame_index=index,
+                    width=view_width,
+                    height=view_height,
+                    fx=camera.fx * sx,
+                    fy=camera.fy * sy,
+                    cx=camera.cx * sx,
+                    cy=camera.cy * sy,
+                    world_matrix=pose.world_matrix,
+                )
+            )
             fraction = float(coverage.mean())
             coverage_by_path[path.name].append(fraction)
             waypoint = pose.relative_waypoint
@@ -558,7 +590,7 @@ def build_refined_evidence(
         ImageDraw,
     )
 
-    gif_path, control_manifest_path, ui_images = _save_evidence_images(
+    gif_path, control_manifest_path, camera_manifest_path, ui_images = _save_evidence_images(
         run_id=boundary.run_id,
         p9_erp=p9_erp,
         source_erp=source_erp,
@@ -569,6 +601,7 @@ def build_refined_evidence(
         disocclusion_masks=disocclusion_masks,
         frame_path_names=frame_path_names,
         frame_path_indexes=frame_path_indexes,
+        camera_frames=camera_frames,
         path_labels=labels,
         np=np,
         Image=Image,
@@ -610,6 +643,7 @@ def build_refined_evidence(
         },
         "flight_gif_path": gif_path,
         "control_sequence_manifest_path": control_manifest_path,
+        "camera_sequence_manifest_path": camera_manifest_path,
         "raw_holes": {
             "frame_count": len(raw_hole_frames),
             "policy": raw_hole_frames[0].policy if raw_hole_frames else None,
@@ -644,6 +678,7 @@ def build_refined_evidence(
         trajectory_map=image_tensor(trajectory),
         gif_path=gif_path,
         control_manifest_path=control_manifest_path,
+        camera_manifest_path=camera_manifest_path,
         diagnostics=diagnostics,
         ui_images=ui_images,
     )
