@@ -24,8 +24,9 @@ to bypass missing runtime evidence.
 | 9. Original-view regression and Maya export | 5 | PLANNED |
 | 10. Adaptive quality, hardware compliance and Refined integration | 6 | PLANNED |
 | 11. Panorama & Adaptive Drone Refinement | 6 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
+| 12. Diagnostic Observability & Visual Branches | 6 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
 
-Total: **58 bounded subgates**.
+Total: **64 bounded subgates**.
 
 ## Gate 1 — 4/4 completed
 
@@ -226,3 +227,17 @@ Current policy:
 - each COLMAP step writes a dedicated log and a final `sparse_triangulation_manifest.json`.
 
 GitHub Actions run 35749126222 SUCCESS across Windows Python 3.12, Windows Python 3.14 and Ubuntu Python 3.12. Next subgate: 6.4 COLMAP dense stereo/fusion.
+
+
+## Gate 12 — 6 subgates — DEFERRED UNTIL COMPLETE RESULT
+
+This gate standardizes visual and machine-readable diagnostics across the full Refined pipeline without changing the functional architecture.
+
+12.1 Stage evidence inventory: enumerate every major P9/P10 stage and classify whether a visual proxy, numeric diagnostic, log, or all three are meaningful.
+12.2 Unified evidence folder contract per run/stage with stable filenames, manifests and provenance.
+12.3 Visual branches for panorama, camera paths, holes/masks, WAN raw/composite, sparse cloud, dense cloud, registration/fusion, cleanup/texture and final reprojection where applicable.
+12.4 Machine-readable health metrics and threshold summaries for each stage, including explicit PASS/WARN/FAIL reasons.
+12.5 Consolidated diagnostic bundle + HTML/JSON index linking visuals, logs, metrics and source artifacts.
+12.6 Regression/acceptance audit ensuring a stage can be isolated and diagnosed without rerunning unrelated upstream stages when checkpoints are valid.
+
+Cross-cutting rule effective immediately: new stages should emit useful logs/manifests and a lightweight visual proxy whenever practical, but Gate 12 remains non-blocking until the first complete end-to-end result exists.
