@@ -439,3 +439,41 @@ Artifact:
 - GitHub Actions run `35762253447`: SUCCESS.
 
 r4 changes layout only. If the user is already running r3, that test remains valid; installing r4 is only necessary to obtain the reorganized workflow surface.
+
+
+### Gate 6 r5 implicit-seed-control removal
+
+User runtime with r4 still loaded node 2207 with an invalid shifted widget state: the visible `seed` value became `fixed`, followed by `width=480`, `height=33`, `max_window_length=4`, `steps=1`. Investigation against the current ComfyUI frontend confirmed that inputs named exactly `seed` or `noise_seed` receive an implicit client-side control-after-generate widget. That made hand-authored workflow serialization version-sensitive.
+
+Definitive r5 fix:
+- rename the sampler input from `seed` to `wan_seed`;
+- remove all dependence on the implicit `fixed/randomize/increment/decrement` helper;
+- serialize widgets deterministically as `[0, 832, 480, 33, 4, 1.0]`;
+- explicit input tail is `clip_vision_output, wan_seed, width, height, max_window_length, steps, cfg`;
+- retain the runtime dimension-normalization safety layer;
+- retain the r4 zero-overlap P10 visual lane.
+
+Implementation:
+- runtime rename commit: `1f4243611e14f271157a8a2505797a95d4495233`;
+- workflow serializer commit: `abbdd99f74f6c7ec093e26fd7aedb137df626ee1`;
+- regression contract commit: `1b78057d3e068005955b3f47dc5c9eac787b00fd`;
+- GitHub Actions run `35763186003`: SUCCESS.
+
+Artifact:
+- `ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r5.zip`
+- size: 12,072,091 bytes
+- ZIP members: 149
+- SHA-256: `5f8e165fb904d3a0c64d74aff1c87d46d4b051b4044c9ce21b58fd78890f6e6a`
+- Evaluation_Builds Drive ID: `1wgnLY0zqgQqalw5TK46KfQYk3Qux7ZyR`
+- P10 recovery mirror Drive ID: `1zMSHwV9JFvhDmb9acTIKYJIZcGzUHRdo`
+
+Static package validation PASS:
+- Gate 6 bundle structure;
+- Project Control single canonical Master;
+- installer argument forwarding;
+- non-destructive installer;
+- exact node-2207 `wan_seed` input contract;
+- exact WAN widgets `[0,832,480,33,4,1.0]`;
+- complete workflow rectangle-overlap count = 0.
+
+r5 supersedes r4 for further Gate 5/6 runtime acceptance.
