@@ -9,6 +9,9 @@ from typing import Any
 from .contracts import ContractError
 from .scene_coverage import derive_scene_footprint_from_primary_mesh, plan_geometry_aware_flights
 from .mesh_clearance import build_clearance_cloud, adapt_paths_for_clearance
+from .raw_holes import RawHoleFrame
+from .disocclusion import build_disocclusion_mask
+from .control_sequence import ControlFrameRecord, ControlSequenceManifest
 from .p9_boundary import validate_official_run
 from .panorama import CameraAuthority, PanoramaSpec
 from .path_planner import RelativeWaypoint, plan_flights
@@ -351,6 +354,10 @@ def _save_evidence_images(
     trajectory,
     flight_frames,
     hole_masks,
+    raw_hole_frames,
+    disocclusion_masks,
+    frame_path_names,
+    frame_path_indexes,
     path_labels,
     np,
     Image,
@@ -397,7 +404,46 @@ def _save_evidence_images(
             loop=0,
             optimize=False,
         )
-    return str(gif_path), tuple(ui_images)
+
+    control_root = root / "control_sequence"
+    frame_root = control_root / "frames"
+    mask_root = control_root / "masks"
+    frame_root.mkdir(parents=True, exist_ok=True)
+    mask_root.mkdir(parents=True, exist_ok=True)
+
+    records = []
+    for global_index, raw in enumerate(flight_frames):
+        frame_name = f"frame_{global_index:04d}.png"
+        mask_name = f"mask_{global_index:04d}.png"
+        Image.fromarray(raw).save(frame_root / frame_name)
+        mask_array = (
+            np.frombuffer(disocclusion_masks[global_index].mask, dtype=np.uint8)
+            .reshape(raw_hole_frames[global_index].height, raw_hole_frames[global_index].width)
+            .copy()
+        )
+        Image.fromarray(mask_array, mode="L").save(mask_root / mask_name)
+        records.append(
+            ControlFrameRecord(
+                global_frame_index=global_index,
+                path_name=frame_path_names[global_index],
+                path_frame_index=frame_path_indexes[global_index],
+                hole_fraction=raw_hole_frames[global_index].hole_fraction,
+                frame_file=f"frames/{frame_name}",
+                mask_file=f"masks/{mask_name}",
+            )
+        )
+
+    control_manifest = ControlSequenceManifest(
+        frames=tuple(records),
+        width=int(flight_frames[0].shape[1]),
+        height=int(flight_frames[0].shape[0]),
+    )
+    control_manifest_path = control_root / "manifest.json"
+    control_manifest_path.write_text(
+        json.dumps(control_manifest.to_dict(), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return str(gif_path), str(control_manifest_path), tuple(ui_images)
 
 
 def build_refined_evidence(
@@ -450,6 +496,10 @@ def build_refined_evidence(
     resolved_paths = []
     flight_frames = []
     hole_masks = []
+    raw_hole_frames = []
+    disocclusion_masks = []
+    frame_path_names = []
+    frame_path_indexes = []
     labels = []
     coverage_by_path: dict[str, list[float]] = {}
     view_height = int(round(view_width * camera.height / camera.width))
@@ -472,6 +522,21 @@ def build_refined_evidence(
             flight_frames.append(frame)
             holes = (~coverage).astype(np.float32)
             hole_masks.append(holes)
+            raw_frame = RawHoleFrame.from_coverage(
+                view_width,
+                view_height,
+                coverage.reshape(-1).tolist(),
+            )
+            raw_hole_frames.append(raw_frame)
+            disocclusion_masks.append(
+                build_disocclusion_mask(
+                    view_width,
+                    view_height,
+                    raw_frame.mask,
+                )
+            )
+            frame_path_names.append(path.name)
+            frame_path_indexes.append(index)
             fraction = float(coverage.mean())
             coverage_by_path[path.name].append(fraction)
             waypoint = pose.relative_waypoint
@@ -492,13 +557,17 @@ def build_refined_evidence(
         ImageDraw,
     )
 
-    gif_path, ui_images = _save_evidence_images(
+    gif_path, control_manifest_path, ui_images = _save_evidence_images(
         run_id=boundary.run_id,
         p9_erp=p9_erp,
         source_erp=source_erp,
         trajectory=trajectory,
         flight_frames=flight_frames,
         hole_masks=hole_masks,
+        raw_hole_frames=raw_hole_frames,
+        disocclusion_masks=disocclusion_masks,
+        frame_path_names=frame_path_names,
+        frame_path_indexes=frame_path_indexes,
         path_labels=labels,
         np=np,
         Image=Image,
@@ -539,6 +608,21 @@ def build_refined_evidence(
             for name, values in coverage_by_path.items()
         },
         "flight_gif_path": gif_path,
+        "control_sequence_manifest_path": control_manifest_path,
+        "raw_holes": {
+            "frame_count": len(raw_hole_frames),
+            "policy": raw_hole_frames[0].policy if raw_hole_frames else None,
+            "mean_hole_fraction": (
+                sum(frame.hole_fraction for frame in raw_hole_frames) / len(raw_hole_frames)
+                if raw_hole_frames else 0.0
+            ),
+        },
+        "disocclusion": {
+            "frame_count": len(disocclusion_masks),
+            "policy": disocclusion_masks[0].policy if disocclusion_masks else None,
+            "feathered": False,
+            "dilated": False,
+        },
         "rules": {
             "baseline_modified": False,
             "wan_generation_performed": False,
