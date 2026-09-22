@@ -18,7 +18,7 @@ to bypass missing runtime evidence.
 | 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
 | 4. Automatic paths, collision, raw controls and masks | 6 | COMPLETED FUNCTIONALLY; route-quality refinements deferred to Gate 11 |
 | 5. WAN completion and source-preserving composite | 5 | 5.1-5.4 COMPLETED; 5.5 PREVIEW READY / USER RUNTIME PENDING |
-| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.2 COMPLETED; 6.3 NEXT |
+| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.3 COMPLETED; 6.4 NEXT |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
@@ -72,7 +72,7 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 
 6.1 Generated-view collection and camera manifest — COMPLETED. The Refined evidence stage now persists a Scene-Contract-bound per-frame PINHOLE camera manifest, and Gate 6 pairs every source-preserved Gate 5 composite with the exact planned P9-world camera using global frame index as the join key. GitHub Actions run 35746991214 SUCCESS.
 6.2 Reconstruction dataset adapter — COMPLETED. The primary path is now known-camera COLMAP because ConceptGhost already owns authoritative P9-derived drone poses. The adapter materializes source-preserved Gate 5 composites into `images/`, writes a deterministic `sparse/known/` COLMAP text model, preserves Scene Contract/provenance, deduplicates identical intrinsics, and explicitly converts ConceptGhost/Maya camera axes (+X right, +Y up, -Z forward) into COLMAP axes (+X right, +Y down, +Z forward). SphereSfM remains optional ERP validation/fallback rather than the primary pose solver for perspective P10 composites. GitHub Actions run 35748183037 SUCCESS.
-6.3 Known-camera feature matching + sparse point triangulation (with SphereSfM optional validation path) — NEXT.
+6.3 Known-camera feature matching + sparse point triangulation (with SphereSfM optional validation path) — COMPLETED. Gate 6.3 now performs per-intrinsics feature extraction, adaptive matching (exhaustive for <=120 frames, sequential overlap 12 above that), fixed-pose point triangulation, and text conversion for sparse-cloud inspection. COLMAP's native `clear_points=1` filename transcription is used to synchronize database image IDs, while `fix_existing_frames=true` is enforced internally by `point_triangulator`; `refine_intrinsics=0` keeps P9-derived intrinsics authoritative. GitHub Actions run 35749126222 SUCCESS.
 6.4 COLMAP dense stereo/fusion.
 6.5 Dense cloud → pre-fusion triangle mesh + health checks.
 6.6 Reconstruction Preview and runtime validation.
@@ -211,3 +211,18 @@ Coordinate conversion is explicit and tested:
 - camera-to-world matrices are converted to COLMAP world-to-camera `qvec/tvec`.
 
 The dataset also writes `reconstruction_inputs.json` and `dataset_manifest.json` with Scene Contract, image provenance, camera authority and per-frame identity. Existing non-empty output roots fail closed unless overwrite is explicitly requested. GitHub Actions run 35748183037 SUCCESS. Next subgate: 6.3 sparse reconstruction using fixed/known cameras; SphereSfM is retained as optional ERP validation/fallback.
+
+
+### Gate 6.3 fixed-camera sparse triangulation checkpoint
+
+Gate 6.3 is complete. The runner creates/resumes `database.db`, extracts features by known PINHOLE intrinsics group, selects a matcher by dataset size, triangulates against the `sparse/known/` model, and exports a TXT copy of the triangulated model for point-count/health inspection.
+
+Current policy:
+- <=120 frames: `exhaustive_matcher` for maximum first-pass connectivity;
+- >120 frames: `sequential_matcher` with overlap 12 and loop detection disabled until Gate 11 route-scale refinement;
+- P9/P10 camera poses stay fixed through COLMAP's `point_triangulator`;
+- camera intrinsics are not refined;
+- completed sparse outputs are never silently overwritten;
+- each COLMAP step writes a dedicated log and a final `sparse_triangulation_manifest.json`.
+
+GitHub Actions run 35749126222 SUCCESS across Windows Python 3.12, Windows Python 3.14 and Ubuntu Python 3.12. Next subgate: 6.4 COLMAP dense stereo/fusion.
