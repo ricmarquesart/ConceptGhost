@@ -292,7 +292,7 @@ class ConceptGhostP10WanSequentialSampler:
 
             sampled = common_ksampler(
                 model,
-                int(seed) + window_index,
+                int(wan_seed) + window_index,
                 int(steps),
                 float(cfg),
                 "euler",
@@ -388,7 +388,7 @@ class ConceptGhostP10WanSequentialSampler:
                     "decoded_frame_count": frame_count,
                     "raw_dir": str(window_raw_dir),
                     "composite_dir": str(window_comp_dir),
-                    "seed": int(seed) + window_index,
+                    "seed": int(wan_seed) + window_index,
                 }
             )
 
