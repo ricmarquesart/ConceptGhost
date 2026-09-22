@@ -12,6 +12,7 @@ from .p9_boundary import build_completion_bundle, load_completion_bundle
 from .panorama import CameraAuthority, PanoramaSpec
 from .panorama_projection import build_projection_plan
 from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
+from .wan_sequence import ConceptGhostP10WanSequentialSampler
 
 
 _CATEGORY = "ConceptGhost/P10 Lab"
@@ -233,7 +234,7 @@ class ConceptGhostP10RefinedEvidencePreview:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "IMAGE", "MASK", "IMAGE", "MASK", "IMAGE", "STRING", "STRING")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "MASK", "IMAGE", "MASK", "IMAGE", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
         "p9_3d_partial_erp",
         "source_authority_erp",
@@ -242,6 +243,7 @@ class ConceptGhostP10RefinedEvidencePreview:
         "hole_masks",
         "trajectory_map",
         "flight_gif_path",
+        "control_manifest_path",
         "diagnostics_json",
     )
     FUNCTION = "preview"
@@ -282,6 +284,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
     "ConceptGhostP10WanMaskedConditioning": ConceptGhostP10WanMaskedConditioning,
+    "ConceptGhostP10WanSequentialSampler": ConceptGhostP10WanSequentialSampler,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -290,4 +293,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
     "ConceptGhostP10WanMaskedConditioning": "P10 Refined · WAN Masked Conditioning",
+    "ConceptGhostP10WanSequentialSampler": "P10 Refined · Sequential WAN + Source Composite",
 }
