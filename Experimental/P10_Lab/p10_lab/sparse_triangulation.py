@@ -74,7 +74,7 @@ def _parse_cameras_txt(path: Path) -> dict[int, tuple[int, int, float, float, fl
         if not line or line.startswith("#"):
             continue
         parts = line.split()
-        if len(parts) != 9:
+        if len(parts) != 8:
             raise ContractError(f"Unsupported cameras.txt row: {line}")
         camera_id = int(parts[0])
         if parts[1] != "PINHOLE":
