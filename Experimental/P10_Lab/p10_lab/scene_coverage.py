@@ -281,3 +281,94 @@ def plan_geometry_aware_flights(
         far_target=far_target,
         footprint=footprint,
     )
+
+
+
+def derive_scene_footprint_from_primary_mesh(
+    primary_mesh,
+    camera,
+    *,
+    lower_percentile: float = 0.5,
+    upper_percentile: float = 99.5,
+):
+    """Measure the P9 mesh footprint in canonical camera-local coordinates.
+
+    Robust percentiles guide motion; true maxima are retained only as evidence
+    and a hard upper bound. This makes long scenes traversable without allowing
+    isolated far vertices to dominate the route.
+    """
+
+    try:
+        import numpy as np
+    except ImportError as error:
+        raise ContractError("NumPy is required to measure the P10 scene footprint") from error
+
+    if not 0.0 <= lower_percentile < upper_percentile <= 100.0:
+        raise ContractError("Scene footprint percentiles are invalid")
+
+    from pathlib import Path
+    path = Path(primary_mesh)
+    if not path.is_file() or path.suffix.lower() != ".npz":
+        raise ContractError(f"Scene footprint requires authoritative PrimaryMesh NPZ: {path}")
+
+    try:
+        with np.load(path, allow_pickle=False) as payload:
+            if "vertices" not in payload.files:
+                raise ContractError("PrimaryMesh NPZ is missing vertices")
+            vertices = np.asarray(payload["vertices"], dtype=np.float64)
+    except ContractError:
+        raise
+    except Exception as error:
+        raise ContractError(f"Cannot read PrimaryMesh for scene footprint: {path}: {error}") from error
+
+    if vertices.ndim != 2 or vertices.shape[1] != 3 or vertices.shape[0] < 3:
+        raise ContractError("PrimaryMesh vertices must have shape [N,3] with N >= 3")
+    if not np.isfinite(vertices).all():
+        raise ContractError("PrimaryMesh contains non-finite vertices")
+
+    world = np.asarray(camera.world_matrix, dtype=np.float64)
+    rotation = world[:3, :3]
+    center = world[:3, 3]
+    right_axis = rotation[:, 0]
+    up_axis = rotation[:, 1]
+    forward_axis = -rotation[:, 2]
+
+    local = vertices - center[None, :]
+    right = local @ right_axis
+    up = local @ up_axis
+    forward = local @ forward_axis
+    valid = np.isfinite(right) & np.isfinite(up) & np.isfinite(forward) & (forward > 0.0)
+    if int(valid.sum()) < 3:
+        raise ContractError("PrimaryMesh has insufficient forward-facing vertices for path planning")
+
+    right = right[valid]
+    up = up[valid]
+    forward = forward[valid]
+
+    footprint = SceneFootprint(
+        right_min=float(np.percentile(right, lower_percentile)),
+        right_max=float(np.percentile(right, upper_percentile)),
+        up_min=float(np.percentile(up, lower_percentile)),
+        up_max=float(np.percentile(up, upper_percentile)),
+        forward_near=float(np.percentile(forward, lower_percentile)),
+        forward_far=float(np.percentile(forward, upper_percentile)),
+        median_depth=float(np.median(forward)),
+        true_forward_far=float(np.max(forward)),
+    )
+    evidence = {
+        "schema": "ConceptGhost.P10SceneFootprintEvidence.v0.1",
+        "vertex_count": int(vertices.shape[0]),
+        "valid_forward_vertex_count": int(valid.sum()),
+        "lower_percentile": float(lower_percentile),
+        "upper_percentile": float(upper_percentile),
+        "true_bounds": {
+            "right_min": float(np.min(right)),
+            "right_max": float(np.max(right)),
+            "up_min": float(np.min(up)),
+            "up_max": float(np.max(up)),
+            "forward_near": float(np.min(forward)),
+            "forward_far": float(np.max(forward)),
+        },
+        "robust_footprint": footprint.manifest(),
+    }
+    return footprint, evidence
