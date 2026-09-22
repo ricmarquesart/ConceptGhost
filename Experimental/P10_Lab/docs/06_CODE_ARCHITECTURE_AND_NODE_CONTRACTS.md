@@ -133,3 +133,30 @@ Planned native modules:
 - `free_space_preview.py` — ComfyUI-only 3D diagnostics.
 
 See `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md` for the full contract.
+
+
+## Mandatory visible Notes for nodes and node groups
+
+Every meaningful P10 node or visual node group shipped in the Refined workflow must include a visible operator note.
+
+The note is part of the workflow UX and is required even when the same information exists in code comments, manifests, README files or external planning documents.
+
+Each note must state:
+- **Purpose** — why the node/group exists.
+- **Inputs** — what authoritative or diagnostic data it consumes.
+- **Operation** — what it calculates/changes.
+- **Outputs** — what it emits and who consumes it.
+- **Authority** — diagnostic, candidate, or official.
+- **Geometry impact** — none, optional, or required.
+- **Default state** — especially for ON/OFF refinement controls.
+- **Failure/fallback** — what happens if it cannot complete safely.
+- **TEMP/retention** — which outputs are temporary versus retained.
+- **Next stage** — downstream gate/group.
+
+Workflow group names should include Gate/Subgate IDs, for example:
+`G8.2 · Structural Regularization — Optional Polish (OFF by default)`.
+
+New P10 groups must ship with notes immediately.
+Existing groups are backfilled/standardized during Gate 12 Diagnostic Observability & Visual Branches.
+
+This rule is release-facing: a preview workflow that adds a new functional P10 group without its operator note is incomplete.
