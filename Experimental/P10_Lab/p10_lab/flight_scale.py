@@ -28,6 +28,36 @@ class FlightScaleEvidence:
         }
 
 
+def select_local_flight_radius(depths) -> tuple[float, dict[str, float | int]]:
+    values = []
+    for value in depths:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            continue
+        value = float(value)
+        if isfinite(value) and value > 0.0:
+            values.append(value)
+    if len(values) < 3:
+        raise ContractError("At least three finite positive camera depths are required")
+    values.sort()
+
+    def percentile(percent: float) -> float:
+        position = (len(values) - 1) * percent
+        lower = int(position)
+        upper = min(len(values) - 1, lower + 1)
+        weight = position - lower
+        return values[lower] * (1.0 - weight) + values[upper] * weight
+
+    median = percentile(0.50)
+    stats = {
+        "sample_count": len(values),
+        "median_depth": median,
+        "p80_depth": percentile(0.80),
+        "p95_depth": percentile(0.95),
+        "max_depth": values[-1],
+    }
+    return median, stats
+
+
 def derive_flight_scale_from_primary_mesh(
     primary_mesh: str | Path,
 ) -> tuple[SceneScale, FlightScaleEvidence]:
@@ -58,23 +88,13 @@ def derive_flight_scale_from_primary_mesh(
     except Exception as error:
         raise ContractError(f"Cannot read PrimaryMesh NPZ flight scale: {path}: {error}") from error
 
-    valid = depths[np.isfinite(depths) & (depths > 0.0)]
-    if valid.size < 3:
-        raise ContractError("PrimaryMesh does not contain enough finite positive camera_depth samples")
-
-    median = float(np.median(valid))
-    p80 = float(np.percentile(valid, 80.0))
-    p95 = float(np.percentile(valid, 95.0))
-    maximum = float(np.max(valid))
-    if not all(isfinite(value) and value > 0.0 for value in (median, p80, p95, maximum)):
-        raise ContractError("Derived P10 flight scale is invalid")
-
+    median, stats = select_local_flight_radius(depths.tolist())
     evidence = FlightScaleEvidence(
         method="PRIMARY_MESH_MEDIAN_CAMERA_DEPTH",
-        sample_count=int(valid.size),
-        median_depth=median,
-        p80_depth=p80,
-        p95_depth=p95,
-        max_depth=maximum,
+        sample_count=int(stats["sample_count"]),
+        median_depth=float(stats["median_depth"]),
+        p80_depth=float(stats["p80_depth"]),
+        p95_depth=float(stats["p95_depth"]),
+        max_depth=float(stats["max_depth"]),
     )
     return SceneScale(median), evidence
