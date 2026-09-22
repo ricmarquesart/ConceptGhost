@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import shutil
@@ -7,6 +8,14 @@ from pathlib import Path
 
 from .contracts import ContractError
 from .reconstruction_inputs import build_reconstruction_input_manifest
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _finite_matrix4(value) -> tuple[tuple[float, float, float, float], ...]:
@@ -260,7 +269,7 @@ def prepare_known_camera_colmap_dataset(
     )
 
     dataset_manifest = {
-        "schema": "ConceptGhost.P10KnownCameraColmapDataset.v0.1",
+        "schema": "ConceptGhost.P10KnownCameraColmapDataset.v0.2",
         "run_id": reconstruction.get("run_id"),
         "scene_contract_id": scene_contract_id,
         "frame_count": len(materialized_frames),
@@ -268,6 +277,14 @@ def prepare_known_camera_colmap_dataset(
         "reconstruction_strategy": "KNOWN_CAMERA_COLMAP_PRIMARY",
         "camera_authority": "P9_BASELINE_WORLD_DERIVED",
         "image_authority": "SOURCE_PRESERVED_P10_COMPOSITE",
+        "camera_image_mapping_policy": reconstruction.get("camera_image_mapping_policy"),
+        "composite_dimensions": reconstruction.get("composite_dimensions"),
+        "source_inputs": {
+            "wan_manifest_path": str(Path(wan_manifest_path).resolve()),
+            "wan_manifest_sha256": _sha256_file(Path(wan_manifest_path).resolve()),
+            "camera_manifest_path": str(Path(camera_manifest_path).resolve()),
+            "camera_manifest_sha256": _sha256_file(Path(camera_manifest_path).resolve()),
+        },
         "coordinate_conversion": {
             "source": "CONCEPTGHOST_MAYA_CAMERA_C2W_XRIGHT_YUP_MINUSZ_FORWARD",
             "target": "COLMAP_W2C_XRIGHT_YDOWN_ZFORWARD",
