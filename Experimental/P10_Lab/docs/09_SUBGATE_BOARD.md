@@ -84,6 +84,7 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 7.2 Authority-aware known/generated fusion.
    - **Confidence diagnostics + optional refinement overlay (7.2C):** after 7.1 registration, always compute a per-face P9/P10 geometry-confidence field and expose an always-available dedicated ComfyUI 3D confidence preview (HIGH=blue, LOW/VERY_LOW=red, NEUTRAL uncolored). Geometry refinement remains **DEFAULT OFF** and, only when explicitly enabled, may allow low/very-low-confidence side/back geometry to become eligible for bounded replacement/remesh while preserving high-confidence source-facing geometry. Confidence visualization is diagnostic-only and is not exported to Maya. Full policy: `docs/11_GEOMETRY_CONFIDENCE_REFINEMENT_POLICY.md`.
 7.3 Narrow transition geometry handling.
+   - **Free-space / visibility carving extension:** consume Gate 6 geometric depth + known-camera visibility to classify OCCUPIED / FREE / UNKNOWN / CONFLICT. Add a COLMAP Delaunay visibility-aware mesh branch alongside Poisson, then enforce CONFIRMED_FREE as a no-fill constraint during Gate 7 fusion/transition handling. Detailed policy: `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md`.
 7.4 Per-face/per-region provenance, including confidence classification metadata for diagnostics and optional refinement provenance only when 7.2C refinement is enabled.
 7.5 Registration/fusion Preview and runtime validation. Confidence analysis/3D preview is expected as a normal diagnostic surface, while the required refinement-OFF path remains the geometry acceptance baseline; confidence refinement ON must pass a separate A/B regression before it can be considered beneficial.
 
@@ -237,7 +238,7 @@ This gate standardizes visual and machine-readable diagnostics across the full R
 
 12.1 Stage evidence inventory: enumerate every major P9/P10 stage and classify whether a visual proxy, numeric diagnostic, log, or all three are meaningful.
 12.2 Unified evidence + TEMP workspace contract per run/stage with stable filenames, manifests, provenance, visible `temp_workspace_path`, lifecycle state and measured/estimated storage.
-12.3 Visual branches for panorama, camera paths, holes/masks, WAN raw/composite, sparse cloud, dense cloud, registration/fusion, cleanup/texture and final reprojection where applicable.
+12.3 Visual branches for panorama, camera paths, holes/masks, WAN raw/composite, sparse cloud, dense cloud, free-space/occupancy, registration/fusion, cleanup/texture and final reprojection where applicable.
 12.4 Machine-readable health metrics and threshold summaries for each stage, including explicit PASS/WARN/FAIL reasons plus workspace state (`CLEAN`, `ACTIVE`, `FAILED_RETAINED`, `CLEANUP_PENDING`).
 12.5 Consolidated retained diagnostic package + HTML/JSON index linking visuals, summarized logs, metrics and removed-artifact inventory. Target **<=200 MB**, preferably substantially smaller; never retain full 4K/6K/8K frame sequences or complete dense/cache intermediates in this permanent package.
 12.6 Regression/acceptance audit ensuring a stage can be isolated and diagnosed without rerunning unrelated upstream stages when checkpoints are valid.
