@@ -34,8 +34,13 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             (dataset/"dataset_manifest.json").write_text(json.dumps({"frame_count":1}),encoding="utf-8")
             for name in ("sparse_triangulation_manifest.json","dense_reconstruction_manifest.json","prefusion_mesh_manifest.json"):
                 (dataset/name).write_text(json.dumps({"status":"PASS"}),encoding="utf-8")
+            sparse=dataset/"sparse"/"triangulated"
+            sparse.mkdir(parents=True)
+            for name in ("cameras.bin","images.bin","points3D.bin"):
+                (sparse/name).write_bytes(b"x")
             mesh=dataset/"dense"/"pre_fusion_mesh.ply"
             mesh.parent.mkdir()
+            (dataset/"dense"/"fused.ply").write_bytes(b"ply")
             mesh.write_text("mesh",encoding="utf-8")
             with patch("p10_lab.reconstruction_runtime.prepare_known_camera_colmap_dataset") as a, \
                  patch("p10_lab.reconstruction_runtime.run_sparse_triangulation") as b, \
