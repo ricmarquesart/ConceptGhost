@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from .contracts import ContractError
@@ -15,6 +16,102 @@ def _read_json(path: str | Path, label: str) -> tuple[Path, dict]:
     if not isinstance(payload,dict):
         raise ContractError(f"{label} must contain a JSON object")
     return path,payload
+
+
+
+def transform_camera_for_composite(
+    camera: dict,
+    *,
+    target_width: int,
+    target_height: int,
+) -> tuple[dict, dict]:
+    """Map a Gate 4 camera into the exact Gate 5 composite pixel viewport.
+
+    Gate 5 uses ComfyUI common_upscale(..., crop="center") before saving
+    the source-preserving WAN composite. COLMAP must therefore receive camera
+    intrinsics expressed in that saved image coordinate system, not in the
+    pre-WAN Gate 4 control viewport.
+
+    The crop math intentionally mirrors ComfyUI's current common_upscale:
+    symmetric integer center crop followed by interpolation. Principal-point
+    mapping is pixel-center aware for PyTorch interpolate (align_corners=False).
+    """
+
+    if not isinstance(camera, dict) or camera.get("model") != "PINHOLE":
+        raise ContractError("Composite camera transform requires a PINHOLE camera")
+
+    source_width = camera.get("width")
+    source_height = camera.get("height")
+    if (
+        type(source_width) is not int
+        or type(source_height) is not int
+        or source_width <= 0
+        or source_height <= 0
+    ):
+        raise ContractError("Source camera dimensions must be positive integers")
+    if (
+        type(target_width) is not int
+        or type(target_height) is not int
+        or target_width <= 0
+        or target_height <= 0
+    ):
+        raise ContractError("Target composite dimensions must be positive integers")
+
+    try:
+        fx = float(camera["fx"])
+        fy = float(camera["fy"])
+        cx = float(camera["cx"])
+        cy = float(camera["cy"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ContractError("Source camera intrinsics are incomplete") from error
+    if not all(math.isfinite(v) for v in (fx, fy, cx, cy)) or fx <= 0.0 or fy <= 0.0:
+        raise ContractError("Source camera intrinsics must be finite with positive fx/fy")
+
+    old_aspect = source_width / float(source_height)
+    new_aspect = target_width / float(target_height)
+    crop_x = 0
+    crop_y = 0
+    if old_aspect > new_aspect:
+        crop_x = round(
+            (source_width - source_width * (new_aspect / old_aspect)) / 2.0
+        )
+    elif old_aspect < new_aspect:
+        crop_y = round(
+            (source_height - source_height * (old_aspect / new_aspect)) / 2.0
+        )
+
+    crop_width = source_width - 2 * crop_x
+    crop_height = source_height - 2 * crop_y
+    if crop_width <= 0 or crop_height <= 0:
+        raise ContractError("Composite center crop collapsed the camera viewport")
+
+    scale_x = target_width / float(crop_width)
+    scale_y = target_height / float(crop_height)
+
+    transformed = dict(camera)
+    transformed.update({
+        "width": target_width,
+        "height": target_height,
+        "fx": fx * scale_x,
+        "fy": fy * scale_y,
+        "cx": (cx - crop_x + 0.5) * scale_x - 0.5,
+        "cy": (cy - crop_y + 0.5) * scale_y - 0.5,
+    })
+    transform = {
+        "schema": "ConceptGhost.P10CompositeCameraTransform.v0.1",
+        "policy": "COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
+        "source_width": source_width,
+        "source_height": source_height,
+        "target_width": target_width,
+        "target_height": target_height,
+        "crop_x": crop_x,
+        "crop_y": crop_y,
+        "crop_width": crop_width,
+        "crop_height": crop_height,
+        "scale_x": scale_x,
+        "scale_y": scale_y,
+    }
+    return transformed, transform
 
 
 def build_reconstruction_input_manifest(
@@ -36,6 +133,22 @@ def build_reconstruction_input_manifest(
         raise ContractError("WAN manifest requires non-empty windows")
     if not isinstance(camera_frames,list) or not camera_frames:
         raise ContractError("Camera manifest requires non-empty frames")
+
+    effective_dimensions = wan.get("effective_dimensions")
+    if not isinstance(effective_dimensions, dict):
+        raise ContractError(
+            "WAN manifest requires effective_dimensions so Gate 6 can map "
+            "camera intrinsics into the saved composite viewport"
+        )
+    target_width = effective_dimensions.get("width")
+    target_height = effective_dimensions.get("height")
+    if (
+        type(target_width) is not int
+        or type(target_height) is not int
+        or target_width <= 0
+        or target_height <= 0
+    ):
+        raise ContractError("WAN effective_dimensions width/height must be positive integers")
 
     camera_by_index={}
     for record in camera_frames:
@@ -88,6 +201,11 @@ def build_reconstruction_input_manifest(
                     f"WAN={base_window_name!r}, camera={path_name!r}"
                 )
 
+            composite_camera, camera_transform = transform_camera_for_composite(
+                camera_record["camera"],
+                target_width=target_width,
+                target_height=target_height,
+            )
             frames.append({
                 "global_frame_index":global_index,
                 "path_name":path_name or base_window_name,
@@ -95,7 +213,9 @@ def build_reconstruction_input_manifest(
                 "image_path":str(image_path.resolve()),
                 "image_provenance":"P10_WAN_SOURCE_PRESERVED_COMPOSITE",
                 "camera_authority":"P9_PLANNED_WORLD_CAMERA",
-                "camera":camera_record["camera"],
+                "camera":composite_camera,
+                "source_camera":camera_record["camera"],
+                "camera_image_transform":camera_transform,
             })
 
     frames.sort(key=lambda item:item["global_frame_index"])
@@ -114,5 +234,7 @@ def build_reconstruction_input_manifest(
         "frame_count":len(frames),
         "image_authority":"SOURCE_PRESERVED_P10_COMPOSITE",
         "camera_authority":"P9_BASELINE_WORLD_DERIVED",
+        "camera_image_mapping_policy":"COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
+        "composite_dimensions":{"width":target_width,"height":target_height},
         "frames":frames,
     }
