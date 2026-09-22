@@ -362,6 +362,7 @@ def _save_evidence_images(
     frame_path_names,
     frame_path_indexes,
     camera_frames,
+    scene_contract_id,
     path_labels,
     np,
     Image,
@@ -448,7 +449,10 @@ def _save_evidence_images(
         encoding="utf-8",
     )
 
-    camera_manifest = CameraSequenceManifest(frames=tuple(camera_frames))
+    camera_manifest = CameraSequenceManifest(
+        frames=tuple(camera_frames),
+        scene_contract_id=scene_contract_id,
+    )
     camera_manifest_path = control_root / "camera_manifest.json"
     camera_manifest_path.write_text(
         json.dumps(camera_manifest.to_dict(), indent=2, sort_keys=True),
@@ -602,6 +606,7 @@ def build_refined_evidence(
         frame_path_names=frame_path_names,
         frame_path_indexes=frame_path_indexes,
         camera_frames=camera_frames,
+        scene_contract_id=boundary.scene_contract_id,
         path_labels=labels,
         np=np,
         Image=Image,
