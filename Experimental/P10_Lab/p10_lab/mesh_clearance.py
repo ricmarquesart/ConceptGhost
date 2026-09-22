@@ -7,7 +7,8 @@ from typing import Iterable
 
 from .contracts import ContractError
 from .panorama import CameraAuthority
-from .path_planner import RelativeWaypoint
+from .path_planner import CameraPath, RelativeWaypoint
+from .clearance import ClearanceConfig, ClearanceResult, adapt_path_for_clearance
 
 
 @dataclass(frozen=True)
@@ -149,3 +150,65 @@ def build_clearance_cloud(
 
     points = zip(right.tolist(), up.tolist(), forward.tolist())
     return ClearanceCloud.from_local_points(points, max_points=max_points)
+
+
+
+@dataclass(frozen=True)
+class FlightClearanceBatch:
+    paths: tuple[CameraPath, ...]
+    results: tuple[ClearanceResult, ...]
+
+    def manifest(self) -> dict[str, object]:
+        return {
+            "schema": "ConceptGhost.P10FlightClearanceBatch.v0.1",
+            "mission_count_input": len(self.results),
+            "mission_count_output": len(self.paths),
+            "blocked_mission_count": sum(1 for result in self.results if result.blocked),
+            "adapted_mission_count": sum(1 for result in self.results if result.adapted),
+            "missions": [
+                {
+                    "name": result.path.name,
+                    "blocked": result.blocked,
+                    "adapted": result.adapted,
+                    "minimum_clearance": result.minimum_clearance,
+                    "shrink_scale": result.shrink_scale,
+                    "reason": result.reason,
+                    "sample_count": result.sample_count,
+                }
+                for result in self.results
+            ],
+        }
+
+
+def adapt_paths_for_clearance(
+    paths: tuple[CameraPath, ...],
+    cloud: ClearanceCloud,
+    *,
+    min_clearance: float,
+    samples_per_segment: int = 3,
+    shrink_factor: float = 0.85,
+    max_shrink_attempts: int = 4,
+) -> FlightClearanceBatch:
+    """Apply bounded clearance adaptation to each planned mission.
+
+    Blocked missions are omitted from the returned active path list rather than
+    failing the entire Refined pipeline. This keeps Gate 4.2 fail-safe while
+    allowing the end-to-end implementation to continue with remaining missions.
+    """
+
+    if not paths:
+        raise ContractError("At least one flight path is required for clearance")
+    config = ClearanceConfig(
+        min_clearance=min_clearance,
+        samples_per_segment=samples_per_segment,
+        shrink_factor=shrink_factor,
+        max_shrink_attempts=max_shrink_attempts,
+    )
+    results = tuple(
+        adapt_path_for_clearance(path, cloud.query, config)
+        for path in paths
+    )
+    active = tuple(result.path for result in results if not result.blocked)
+    if not active:
+        raise ContractError("All P10 flight missions were blocked by clearance")
+    return FlightClearanceBatch(paths=active, results=results)
