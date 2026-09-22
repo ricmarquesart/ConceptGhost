@@ -8,9 +8,10 @@ recorded and its checkpoint is mirrored to GitHub and Google Drive.
 ## Current summary
 
 - Current gate: **Gate 1 — Foundation contracts and visible checkpoints**
-- State: **IN PROGRESS**
-- Completed gates: **0 / 10**
-- Gates remaining after the current gate: **9**
+- State: **COMPLETED**
+- Completed gates: **1 / 10**
+- Gates remaining: **9**
+- Next gate: **Gate 2 — Completion Bundle and P9 identity boundary (NOT STARTED)**
 - Current branch: `work/v1.54-p10-multiview-completion`
 - Latest verified implementation commit: `2b30c6a`
 - Baseline rule: the standalone Baseline remains unchanged
@@ -20,7 +21,7 @@ recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
 | Gate | State | Scope | Completion evidence |
 |---|---|---|---|
-| 1. Foundation contracts and visible checkpoints | **IN PROGRESS** | Raw-hole policy; configurable 3+1 flight plan; reusable flight data; control/mask/WAN/composite checkpoint contract; digest-safe resume; safety validation | P10 tests and full repository regression suite; final review; GitHub and Drive mirrors |
+| 1. Foundation contracts and visible checkpoints | **COMPLETED** | Raw-hole policy; configurable 3+1 flight plan; reusable flight data; control/mask/WAN/composite checkpoint contract; digest-safe resume; safety validation | 22/22 P10 tests; 111/111 repository tests locally; GitHub Actions success on three matrix jobs; GitHub and Drive mirrors |
 | 2. Completion Bundle and P9 identity boundary | **NEXT** | Real Completion Bundle; loader and dry-run validator; Baseline-equivalent P9 adapter; identity regression | Valid bundle loads automatically; malformed/stale bundles fail; P9 remains equivalent to Baseline |
 | 3. Temporary panorama and completion envelope | **PLANNED** | Perspective-to-ERP placement; lock original pixels; panorama preview; bounded local exploration envelope | Original region is mathematically preserved; envelope does not silently expand to 360° or interiors |
 | 4. Automatic paths, collision, raw controls and masks | **PLANNED** | Scene-relative paths; collision adaptation; raw-hole control renderer; disocclusion masks; per-flight previews | Left/right/forward-elevated paths execute safely and expose unsupported regions without compensation |
@@ -43,8 +44,18 @@ recorded and its checkpoint is mirrored to GitHub and Google Drive.
 - [x] P10-specific tests passed locally: 22/22.
 - [x] Existing repository regression tests passed locally: 111/111, with one Windows-only test skipped on Linux.
 - [x] Final Gate 1 review completed; both Important findings were fixed with four RED-to-GREEN regression tests.
-- [ ] Gate 1 branch is mirrored to GitHub.
-- [ ] Gate 1 recovery bundle is mirrored to Google Drive.
+- [x] Gate 1 branch is mirrored to GitHub.
+- [x] Gate 1 recovery bundle is mirrored to Google Drive.
+
+## Gate 1 publication evidence
+
+- GitHub branch: `work/v1.54-p10-multiview-completion`
+- GitHub comparison against `main`: exactly 26 changed files.
+- GitHub Actions run `35675054211`: success on Windows/Python 3.12,
+  Windows/Python 3.14 and Ubuntu/Python 3.12.
+- Google Drive folder: `P10_Lab_Refined_P9_Plus_P10`.
+- Gate 1 remains `NO VISUAL PREVIEW`; the published bundle is an engineering
+  recovery checkpoint, and Gate 2 is the first node-level preview.
 
 ## Gate 1 review record
 
