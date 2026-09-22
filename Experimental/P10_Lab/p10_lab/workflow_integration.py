@@ -8,6 +8,48 @@ from .contracts import ContractError
 _REFINED_EXPORT_ID = 1015
 _EVIDENCE_NODE_ID = 2100
 
+# Dedicated P10 visual lane below the existing Refined/P9 graph.
+# These positions intentionally leave the proven v1.53 Baseline/Refined layout
+# untouched while arranging Gate 4 -> Gate 5 -> Gate 6 left-to-right.
+_P10_LAYOUT_POSITIONS = {
+    2100: (10200, 10000),
+    2101: (10900, 9600),
+    2102: (11320, 9600),
+    2103: (10900, 9950),
+    2104: (11220, 9950),
+    2105: (11740, 9600),
+    2106: (10900, 10300),
+    2107: (11220, 10300),
+    2108: (11640, 9950),
+    2200: (12600, 9600),
+    2201: (12600, 9720),
+    2202: (12600, 9830),
+    2203: (12600, 9930),
+    2204: (13090, 9930),
+    2205: (13090, 10080),
+    2206: (12600, 10070),
+    2207: (13620, 9600),
+    2208: (14330, 9600),
+    2300: (14910, 9600),
+    2301: (15650, 9600),
+}
+
+
+def organize_p10_layout(workflow: dict) -> dict:
+    """Move known P10 nodes into a dedicated non-overlapping visual lane.
+
+    This is layout-only: node ids, links, values, modes and execution semantics
+    remain unchanged. Unknown/future nodes are not moved automatically.
+    """
+    nodes = workflow.get("nodes") if isinstance(workflow, dict) else None
+    if not isinstance(nodes, list):
+        raise ContractError("Workflow must contain a nodes array")
+    for node in nodes:
+        node_id = node.get("id")
+        if node_id in _P10_LAYOUT_POSITIONS:
+            node["pos"] = list(_P10_LAYOUT_POSITIONS[node_id])
+    return workflow
+
 
 def integrate_gate4_refined_preview(workflow: dict) -> dict:
     """Add the Gate 4 P10 evidence node to the full ConceptGhost Master graph.
@@ -53,7 +95,7 @@ def integrate_gate4_refined_preview(workflow: dict) -> dict:
     node = {
         "id": _EVIDENCE_NODE_ID,
         "type": "ConceptGhostP10RefinedEvidencePreview",
-        "pos": [9240, 8300],
+        "pos": list(_P10_LAYOUT_POSITIONS[2100]),
         "size": [620, 520],
         "flags": {},
         "order": max((int(item.get("order") or 0) for item in nodes), default=0) + 1,
@@ -172,7 +214,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2200,
             "type": "UNETLoader",
-            "pos": [10040, 8200],
+            "pos": list(_P10_LAYOUT_POSITIONS[2200]),
             "size": [430, 90],
             "flags": {},
             "order": order + 1,
@@ -189,7 +231,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2201,
             "type": "LoraLoaderModelOnly",
-            "pos": [10040, 8320],
+            "pos": list(_P10_LAYOUT_POSITIONS[2201]),
             "size": [430, 82],
             "flags": {},
             "order": order + 2,
@@ -206,7 +248,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2202,
             "type": "ModelSamplingSD3",
-            "pos": [10040, 8430],
+            "pos": list(_P10_LAYOUT_POSITIONS[2202]),
             "size": [430, 58],
             "flags": {},
             "order": order + 3,
@@ -220,7 +262,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2203,
             "type": "CLIPLoader",
-            "pos": [10040, 8530],
+            "pos": list(_P10_LAYOUT_POSITIONS[2203]),
             "size": [430, 106],
             "flags": {},
             "order": order + 4,
@@ -238,7 +280,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2204,
             "type": "CLIPTextEncode",
-            "pos": [10520, 8500],
+            "pos": list(_P10_LAYOUT_POSITIONS[2204]),
             "size": [460, 125],
             "flags": {},
             "order": order + 5,
@@ -254,7 +296,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2205,
             "type": "CLIPTextEncode",
-            "pos": [10520, 8650],
+            "pos": list(_P10_LAYOUT_POSITIONS[2205]),
             "size": [460, 125],
             "flags": {},
             "order": order + 6,
@@ -270,7 +312,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2206,
             "type": "VAELoader",
-            "pos": [10040, 8670],
+            "pos": list(_P10_LAYOUT_POSITIONS[2206]),
             "size": [430, 60],
             "flags": {},
             "order": order + 7,
@@ -284,7 +326,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2207,
             "type": "ConceptGhostP10WanSequentialSampler",
-            "pos": [11100, 8260],
+            "pos": list(_P10_LAYOUT_POSITIONS[2207]),
             "size": [650, 520],
             "flags": {},
             "order": order + 8,
@@ -318,7 +360,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
         {
             "id": 2208,
             "type": "PreviewImage",
-            "pos": [11820, 8260],
+            "pos": list(_P10_LAYOUT_POSITIONS[2208]),
             "size": [520, 420],
             "flags": {},
             "order": order + 9,
@@ -410,7 +452,7 @@ def integrate_gate6_refined_preview(workflow: dict) -> dict:
     reconstruction = {
         "id": 2300,
         "type": "ConceptGhostP10ReconstructionRuntime",
-        "pos": [12400, 8260],
+        "pos": list(_P10_LAYOUT_POSITIONS[2300]),
         "size": [680, 390],
         "flags": {},
         "order": order + 1,
@@ -446,7 +488,7 @@ def integrate_gate6_refined_preview(workflow: dict) -> dict:
     preview = {
         "id": 2301,
         "type": "PreviewImage",
-        "pos": [13120, 8260],
+        "pos": list(_P10_LAYOUT_POSITIONS[2301]),
         "size": [560, 430],
         "flags": {},
         "order": order + 2,
@@ -481,4 +523,5 @@ def integrate_gate6_refined_preview(workflow: dict) -> dict:
                 "BASELINE + REFINED WAN + KNOWN-CAMERA 3D"
             )
 
+    organize_p10_layout(patched)
     return patched
