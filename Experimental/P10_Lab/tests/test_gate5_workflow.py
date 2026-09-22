@@ -66,14 +66,20 @@ class Gate5WorkflowIntegrationTests(unittest.TestCase):
             node for node in patched["nodes"]
             if node["type"] == "ConceptGhostP10WanSequentialSampler"
         )
-        self.assertEqual(sampler["widgets_values"], [0, "fixed", 832, 480, 33, 4, 1.0])
+        self.assertEqual(sampler["widgets_values"], [0, 832, 480, 33, 4, 1.0])
         self.assertEqual(sampler["inputs"][7]["name"], "clip_vision_output")
-        self.assertEqual(sampler["inputs"][8]["name"], "seed")
+        self.assertEqual(sampler["inputs"][8]["name"], "wan_seed")
         self.assertEqual(sampler["inputs"][9]["name"], "width")
         self.assertEqual(sampler["inputs"][10]["name"], "height")
         self.assertEqual(sampler["inputs"][11]["name"], "max_window_length")
         self.assertEqual(sampler["inputs"][12]["name"], "steps")
         self.assertEqual(sampler["inputs"][13]["name"], "cfg")
+
+    def test_wan_seed_name_avoids_comfy_implicit_seed_control(self):
+        from p10_lab.wan_sequence import ConceptGhostP10WanSequentialSampler
+        required = ConceptGhostP10WanSequentialSampler.INPUT_TYPES()["required"]
+        self.assertIn("wan_seed", required)
+        self.assertNotIn("seed", required)
 
     def test_gate5_model_filenames_are_canonical(self):
         from p10_lab.workflow_integration import integrate_gate5_refined_preview
