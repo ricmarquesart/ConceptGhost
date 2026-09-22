@@ -9,10 +9,12 @@ The existing P9→P10 path remains authoritative and unchanged by default.
 
 Add one optional confidence-guided geometry refinement layer:
 
+- `geometry_confidence_analysis = ON` by default and is part of normal diagnostics.
+- `show_geometry_confidence = ON` by default in the dedicated ComfyUI 3D confidence-view node.
 - `geometry_confidence_refine = OFF` by default.
-- `show_geometry_confidence = OFF` by default.
-- With both OFF, numerical/topological behavior must remain identical to the current Gate 7 plan.
-- The layer may be enabled only by explicit artist choice.
+- Confidence analysis/visualization may run without changing geometry.
+- With refinement OFF, numerical/topological behavior must remain identical to the current Gate 7 plan.
+- Geometry changes may occur only after explicit artist choice.
 - The confidence layer must never weaken original-source authority.
 
 The current motivating failure class is local geometry ambiguity where the reference view is correct but side/back topology becomes fused or stretched (for example a foreground pot/plant cluster merging into neighboring geometry). High-confidence front-facing evidence must be preserved while low-confidence side/back continuation can become eligible for additional reconstruction/fusion work.
@@ -76,8 +78,11 @@ This is the core requirement for cases like pot + plant: preserve what the sourc
 
 ### 7.2C-4 — Optional Confidence-Guided Refinement
 
+Confidence analysis and the ComfyUI confidence visualization are produced regardless of refinement state.
+
 When `geometry_confidence_refine = OFF`:
-- diagnostics only if requested;
+- confidence is still computed;
+- confidence preview is still available;
 - no geometry movement;
 - no topology deletion;
 - no change to Gate 7 fusion.
@@ -112,32 +117,47 @@ Candidate rule:
 
 The mask may be consumed later by Gate 8 local remesh/repair and by Gate 11 refinement experiments. It must not alter the original Gate 4 raw-hole contract when the feature is disabled.
 
-### 7.2C-6 — 3D Confidence Visualization
+### 7.2C-6 — Dedicated ComfyUI 3D Confidence Visualization
 
-Generate a 3D diagnostic representation without changing the official mesh.
+Generate a temporary 3D diagnostic representation for the ComfyUI workflow without changing the official mesh or Maya deliverables.
 
-Maya structure proposal:
+The official product surface is a dedicated 3D confidence-view node in the Refined ComfyUI lane.
 
-`CG_DIAGNOSTICS/CG_GEOMETRY_CONFIDENCE`
+Default behavior:
+- confidence analysis = ON;
+- confidence visualization node = ON / visible by default;
+- confidence-guided geometry refinement = OFF.
 
 Visual policy:
-- HIGH confidence = BLUE
-- LOW / VERY_LOW confidence = RED
-- NEUTRAL = no overlay / transparent
-- official source texture remains untouched
+- HIGH confidence = BLUE;
+- LOW / VERY_LOW confidence = RED;
+- NEUTRAL = original/neutral shading or transparent/no confidence overlay;
+- official source texture and official P9/P10 mesh materials remain untouched.
 
-Prefer a diagnostic duplicate/overlay or face-set/material view rather than modifying the official material.
+The viewer should support rotating/orbiting the mesh so the user can inspect front-facing high-confidence regions versus side/back low-confidence continuation.
 
-Add visibility control:
-- `show_geometry_confidence = OFF` by default.
+The visualization is diagnostic only. It must NOT:
+- create Maya materials;
+- create Maya selection sets;
+- create Maya groups;
+- alter the .ma scene;
+- become part of FBX/USD artist deliverables.
 
-The user must be able to toggle the confidence visualization independently of confidence-guided refinement.
+Implementation preference:
+- build a temporary colored mesh/proxy (for example PLY/GLB or viewer-native mesh payload) from the same canonical geometry;
+- store it in the per-run TEMP/diagnostic workspace;
+- expose its absolute path in the node diagnostics when disk-backed;
+- allow auto-clean after the downstream/final run is validated.
 
-Also emit a lightweight machine-readable and shareable diagnostic:
-- `geometry_confidence_manifest.json`
-- `geometry_confidence_preview.ply` or equivalent colored 3D proxy when practical
-- compact multi-angle preview PNG/SVG
-- summary histogram of HIGH/NEUTRAL/LOW/VERY_LOW face area/count
+The user may hide/show the preview independently, but the normal default is to calculate and present it.
+
+Also emit lightweight diagnostics:
+- `geometry_confidence_manifest.json`;
+- temporary colored 3D confidence proxy when required by the viewer;
+- compact multi-angle preview PNG/SVG where useful;
+- summary histogram of HIGH/NEUTRAL/LOW/VERY_LOW face area/count.
+
+These confidence diagnostics belong to ComfyUI/run diagnostics, not to Maya.
 
 ### 7.2C-7 — A/B Safety Contract
 
@@ -160,16 +180,20 @@ Acceptance rule:
 
 ## UI policy
 
-Recommended artist-facing properties:
+Recommended artist-facing behavior:
 
+Dedicated ComfyUI node:
+`P10 · Geometry Confidence 3D Preview`
+
+Main refinement control:
 `Geometry Confidence Refinement: OFF / ON`
-`Show Confidence Map: OFF / ON`
 
-Default:
+Defaults:
+- Confidence Analysis = ON
+- Confidence 3D Preview = ON
 - Refinement = OFF
-- Visualization = OFF
 
-Advanced/debug-only values may expose thresholds later, but should not be required for normal operation.
+The preview node should normally be present and active automatically. It is not necessary to expose a separate user-facing analysis toggle unless later performance measurements justify one. Advanced/debug-only values may expose thresholds later, but should not be required for normal operation.
 
 ## Provenance / authority
 
@@ -195,7 +219,8 @@ Gate 8:
 - local remesh must respect HIGH locks.
 
 Gate 9:
-- exports confidence diagnostic group/materials/sets to Maya;
+- does NOT export confidence colors/materials/sets/groups into Maya;
+- confidence remains a ComfyUI/run diagnostic only;
 - original-view regression is release-blocking for confidence-refined runs.
 
 Gate 10:
@@ -213,4 +238,4 @@ Gate 12:
 
 The OFF path is the contract.
 
-With `geometry_confidence_refine = OFF` and `show_geometry_confidence = OFF`, outputs must remain equivalent to the already planned Gate 7/8/9 pipeline except for inert metadata needed to declare the feature disabled.
+With `geometry_confidence_refine = OFF`, official geometry/fusion/export outputs must remain equivalent to the already planned Gate 7/8/9 pipeline. Confidence analysis and its temporary ComfyUI diagnostic visualization may still be produced, but they must not alter the official mesh, texture, camera or Maya deliverables.
