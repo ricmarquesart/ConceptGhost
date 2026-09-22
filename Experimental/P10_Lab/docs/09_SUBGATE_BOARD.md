@@ -18,7 +18,7 @@ to bypass missing runtime evidence.
 | 3. Temporary panorama and completion envelope | 5 | COMPLETED FUNCTIONALLY; visual-quality refinement deferred to Gate 11 |
 | 4. Automatic paths, collision, raw controls and masks | 6 | COMPLETED FUNCTIONALLY; route-quality refinements deferred to Gate 11 |
 | 5. WAN completion and source-preserving composite | 5 | 5.1-5.4 COMPLETED; 5.5 PREVIEW READY / USER RUNTIME PENDING |
-| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.4 COMPLETED; 6.5 NEXT |
+| 6. SphereSfM and COLMAP reconstruction | 6 | 6.1-6.5 COMPLETED; 6.6 NEXT |
 | 7. Registration, fusion and provenance | 5 | PLANNED |
 | 8. Geometry cleanup and texture recovery | 5 | PLANNED |
 | 9. Original-view regression and Maya export | 5 | PLANNED |
@@ -75,7 +75,7 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 6.2 Reconstruction dataset adapter — COMPLETED. The primary path is now known-camera COLMAP because ConceptGhost already owns authoritative P9-derived drone poses. The adapter materializes source-preserved Gate 5 composites into `images/`, writes a deterministic `sparse/known/` COLMAP text model, preserves Scene Contract/provenance, deduplicates identical intrinsics, and explicitly converts ConceptGhost/Maya camera axes (+X right, +Y up, -Z forward) into COLMAP axes (+X right, +Y down, +Z forward). SphereSfM remains optional ERP validation/fallback rather than the primary pose solver for perspective P10 composites. GitHub Actions run 35748183037 SUCCESS.
 6.3 Known-camera feature matching + sparse point triangulation (with SphereSfM optional validation path) — COMPLETED. Gate 6.3 now performs per-intrinsics feature extraction, adaptive matching (exhaustive for <=120 frames, sequential overlap 12 above that), fixed-pose point triangulation, and text conversion for sparse-cloud inspection. COLMAP's native `clear_points=1` filename transcription is used to synchronize database image IDs, while `fix_existing_frames=true` is enforced internally by `point_triangulator`; `refine_intrinsics=0` keeps P9-derived intrinsics authoritative. GitHub Actions run 35749126222 SUCCESS.
 6.4 COLMAP dense stereo/fusion — COMPLETED. The first-pass RTX 2080 Ti profile uses 832 max image size, 4 GB PatchMatch/Fusion caches, 3 PatchMatch iterations, geometric consistency, single GPU 0 and fusion min_num_pixels=2. The runner emits per-command logs, dense_reconstruction_manifest.json, fused.ply, exact fused vertex count from the PLY header, sampled bounds/shape diagnostics and dense_fused_preview.svg with TOP XZ / FRONT XY / SIDE ZY projections. Completed fused clouds fail closed instead of being silently overwritten. GitHub Actions run 35750107834 SUCCESS.
-6.5 Dense cloud → pre-fusion triangle mesh + health checks.
+6.5 Dense cloud → pre-fusion triangle mesh + health checks — COMPLETED. The first-pass Poisson mesher converts `dense/fused.ply` into `dense/pre_fusion_mesh.ply` with depth 10, trim 10, point_weight 1.0 and vertex color enabled. The runner writes a dedicated Poisson log, `prefusion_mesh_manifest.json`, exact vertex/face counts, face/vertex ratio, invalid-face diagnostics, sampled degenerate-face ratio, XYZ bounds/spans, flattened-axis warnings and `pre_fusion_mesh_preview.svg` with TOP XZ / FRONT XY / SIDE ZY triangle projections. Existing meshes fail closed instead of being silently overwritten. GitHub Actions run 35751267600 SUCCESS.
 6.6 Reconstruction Preview and runtime validation.
 
 ## Gate 7 — 5 subgates
@@ -263,3 +263,26 @@ Artifacts:
 - `logs/gate6_4/02_stereo_fusion.log`
 
 The visual preview samples the fused PLY deterministically and renders TOP XZ, FRONT XY and SIDE ZY projections with point colors, count and sampled bounds. This provides a quick way to detect collapsed/flattened/displaced dense geometry without opening a 3D package. GitHub Actions run 35750107834 SUCCESS across Windows Python 3.12, Windows Python 3.14 and Ubuntu Python 3.12. Next subgate: 6.5 dense cloud → pre-fusion triangle mesh + health checks.
+
+
+### Gate 6.5 pre-fusion mesh + health diagnostics checkpoint
+
+Gate 6.5 is complete. The P10-only dense cloud is now converted into a preliminary triangle surface before Gate 7 registration/fusion.
+
+First-pass meshing policy:
+- COLMAP `poisson_mesher`;
+- Poisson depth 10 rather than COLMAP's default 13 to keep the first end-to-end pass bounded;
+- trim 10;
+- point_weight 1.0;
+- vertex color enabled;
+- no silent overwrite of an existing pre-fusion mesh.
+
+Artifacts:
+- `dense/pre_fusion_mesh.ply`
+- `dense/pre_fusion_mesh_preview.svg`
+- `prefusion_mesh_manifest.json`
+- `logs/gate6_5/00_poisson_mesher.log`
+
+Mesh diagnostics include exact PLY vertex/face counts, face-to-vertex ratio, exact invalid-index face count, deterministic sampled degenerate-face ratio, XYZ bounds/spans, flattened-axis warnings and a PASS/WARN health status. The visual preview renders sampled triangle edges in TOP XZ, FRONT XY and SIDE ZY so exploded, collapsed, sparse or flattened topology can be inspected without opening Maya.
+
+GitHub Actions run 35751267600 SUCCESS across Windows Python 3.12, Windows Python 3.14 and Ubuntu Python 3.12. Next subgate: 6.6 integrated reconstruction preview/runtime validation.
