@@ -220,14 +220,71 @@ class ConceptGhostP10PanoramaPreview:
         }
 
 
+class ConceptGhostP10RefinedEvidencePreview:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "run_dir": ("STRING", {"default": ""}),
+                "panorama_width": ("INT", {"default": 1024, "min": 512, "max": 4096, "step": 2}),
+                "view_width": ("INT", {"default": 640, "min": 320, "max": 1280, "step": 16}),
+                "steps_per_segment": ("INT", {"default": 4, "min": 1, "max": 12, "step": 1}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE", "IMAGE", "MASK", "IMAGE", "MASK", "IMAGE", "STRING", "STRING")
+    RETURN_NAMES = (
+        "p9_3d_partial_erp",
+        "source_authority_erp",
+        "source_lock_mask",
+        "flight_views",
+        "hole_masks",
+        "trajectory_map",
+        "flight_gif_path",
+        "diagnostics_json",
+    )
+    FUNCTION = "preview"
+    CATEGORY = "ConceptGhost/P10 Refined"
+    OUTPUT_NODE = True
+
+    def preview(self, run_dir: str, panorama_width: int, view_width: int, steps_per_segment: int):
+        from .refined_evidence import build_refined_evidence
+
+        evidence = build_refined_evidence(
+            run_dir,
+            panorama_width=panorama_width,
+            view_width=view_width,
+            steps_per_segment=steps_per_segment,
+        )
+        rendered = _pretty(evidence.diagnostics)
+        ui = {"text": [rendered]}
+        if evidence.ui_images:
+            ui["images"] = list(evidence.ui_images)
+        return {
+            "ui": ui,
+            "result": (
+                evidence.p9_erp,
+                evidence.source_erp,
+                evidence.source_lock,
+                evidence.flight_views,
+                evidence.hole_masks,
+                evidence.trajectory_map,
+                evidence.gif_path,
+                rendered,
+            ),
+        }
+
+
 NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10CompletionBundleBuilder": ConceptGhostP10CompletionBundleBuilder,
     "ConceptGhostP10BundleLoader": ConceptGhostP10BundleLoader,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
+    "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10CompletionBundleBuilder": "P10 P9 Completion Bundle Builder",
     "ConceptGhostP10BundleLoader": "P10 P9 Bundle Loader / Validator",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
+    "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
 }
