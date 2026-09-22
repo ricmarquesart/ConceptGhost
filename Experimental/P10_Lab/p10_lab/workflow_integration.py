@@ -340,7 +340,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
                 {"name": "hole_mask", "type": "MASK", "link": None},
                 {"name": "control_manifest_path", "type": "STRING", "link": None},
                 {"name": "clip_vision_output", "type": "CLIP_VISION_OUTPUT", "link": None},
-                {"name": "seed", "type": "INT", "widget": {"name": "seed"}, "link": None},
+                {"name": "wan_seed", "type": "INT", "widget": {"name": "wan_seed"}, "link": None},
                 {"name": "width", "type": "INT", "widget": {"name": "width"}, "link": None},
                 {"name": "height", "type": "INT", "widget": {"name": "height"}, "link": None},
                 {"name": "max_window_length", "type": "INT", "widget": {"name": "max_window_length"}, "link": None},
@@ -354,7 +354,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
                 {"name": "diagnostics_json", "type": "STRING", "links": None, "slot_index": 3},
             ],
             "properties": {"Node name for S&R": "ConceptGhostP10WanSequentialSampler"},
-            "widgets_values": [0, "fixed", 832, 480, 33, 4, 1.0],
+            "widgets_values": [0, 832, 480, 33, 4, 1.0],
             "title": "REFINED/P10 · 09 · SEQUENTIAL WAN + SOURCE-PRESERVING COMPOSITE",
         },
         {
