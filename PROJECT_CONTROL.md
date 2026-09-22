@@ -320,3 +320,22 @@ The authoritative binary mirror is the complete ZIP bundle stored in the Concept
 The Google Drive copy must use the same filename/version as the delivered bundle. If the bundle is rebuilt after validation or documentation changes, the Drive file must be updated/replaced so its bytes match the final delivered ZIP.
 
 Do not create unnecessary intermediate duplicates. Keep the current version canonical and preserve intentionally frozen baselines separately.
+
+
+## 21. Release integrity gate and mirror parity
+
+A ConceptGhost release must not be reported as ready merely because its ZIP was created or because source-level unit tests passed.
+
+Before a release is handed to the user:
+
+1. GitHub Actions must pass the repository test matrix, including the P10 complete-release integrity regression suite.
+2. The final extracted bundle must pass the same integrity validator against the actual release bytes, not only against repository sources.
+3. Required nested payloads must be present, including the complete `Installer`, `Payload/custom_nodes/ConceptGhost_Stage68`, `Payload/custom_nodes/ConceptGhost_P10_Lab`, `Payload/workflows`, and `Runtime` trees.
+4. Release revision identifiers must agree across `P10_GATE6_RELEASE.json`, the Gate 6 workflow filename, the operator install BAT, and the Gate 6 README.
+5. `SHA256SUMS.txt` must validate all files it lists.
+6. When a release manifest pins an authoritative Git blob for a packaged implementation file, the packaged bytes must match that blob.
+7. Google Drive synchronization is a separate release gate. The ZIP mirror and any expanded evaluation folder must be checked after upload/copy. A partially copied expanded folder is not a valid release even if the ZIP itself is correct.
+8. The user-facing release status may be marked READY only after GitHub CI, local/extracted bundle integrity, and Google Drive mirror verification all pass.
+
+GitHub Actions cannot by itself prove the state of a post-upload Google Drive folder unless Drive credentials are explicitly provided to CI. Therefore the official workflow is: **GitHub CI PASS → build/validate exact bundle → upload identical ZIP to Drive → recursively verify Drive structure/parity → report READY**.
+
