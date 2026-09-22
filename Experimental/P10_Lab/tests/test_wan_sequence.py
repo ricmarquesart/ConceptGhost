@@ -36,6 +36,13 @@ class WanSequentialSamplerTests(unittest.TestCase):
             [("a", 0, 2), ("b", 2, 5)],
         )
 
+    def test_wan_conditioning_length_pads_to_next_four_k_plus_one(self):
+        from p10_lab.wan_sequence import padded_wan_length
+        self.assertEqual(padded_wan_length(1), 1)
+        self.assertEqual(padded_wan_length(25), 25)
+        self.assertEqual(padded_wan_length(31), 33)
+        self.assertEqual(padded_wan_length(33), 33)
+
     def test_noncontiguous_repeated_mission_is_rejected(self):
         from p10_lab.wan_sequence import mission_ranges_from_payload
         payload = {
