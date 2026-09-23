@@ -134,7 +134,28 @@ def read_control_manifest(path: str | Path) -> tuple[Path, dict, tuple[MissionRa
         raise ContractError(f"Cannot read control sequence manifest {path}: {error}") from error
     if not isinstance(payload,dict):
         raise ContractError("Control sequence manifest must be a JSON object")
-    return path,payload,mission_ranges_from_payload(payload)
+    ranges=mission_ranges_from_payload(payload)
+    derived_order=[mission.mission_name for mission in ranges]
+    declared_order=payload.get("mission_order")
+    if declared_order is not None:
+        if not isinstance(declared_order,list) or declared_order!=derived_order:
+            raise ContractError(
+                "Control manifest mission_order must exactly match frame mission order"
+            )
+    declared_missions=payload.get("missions")
+    if declared_missions is not None:
+        if not isinstance(declared_missions,list) or len(declared_missions)!=len(ranges):
+            raise ContractError("Control manifest missions metadata is inconsistent")
+        for declared,mission in zip(declared_missions,ranges):
+            if not isinstance(declared,dict):
+                raise ContractError("Control manifest mission metadata must be JSON objects")
+            if str(declared.get("name") or "")!=mission.mission_name:
+                raise ContractError("Control manifest mission metadata order/name mismatch")
+            if declared.get("frame_count")!=mission.length:
+                raise ContractError(
+                    f"Control manifest frame count mismatch for {mission.mission_name}"
+                )
+    return path,payload,ranges
 
 
 def validate_control_batch_contract(
