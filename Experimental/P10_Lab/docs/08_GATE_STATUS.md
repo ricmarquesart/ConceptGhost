@@ -5,6 +5,23 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 DR8D complete
+
+This is the newest authoritative development status.
+
+- DR8A route diagnostics remains COMPLETE / CI PASS.
+- DR8B per-drone final-composite GIFs remains COMPLETE / CI PASS.
+- DR8C formal preview index/output surfacing remains COMPLETE / CI PASS.
+- **DR8D — Preview Invalidation / Freshness — is COMPLETED / CI PASS.**
+- Preview authority now requires matching route-plan hash, control-manifest hash, WAN-generation-context hash, GIF bytes and exact final-composite source bytes.
+- The prior preview package is explicitly classified before regeneration; missing/tampered prior index bytes are distinguished from route/control/settings changes.
+- Gate 5 removes the previous ConceptGhost-owned preview package before writing the next one, preventing stale GIF/index state from surviving as current authority.
+- Post-generation source-composite mutation now fails freshness validation instead of leaving an apparently valid GIF.
+- The WAN manifest and diagnostics record the preview invalidation reason and freshness policy.
+- CI run `35817845135` completed SUCCESS on implementation commit `5ee52c8edf0b84ecbaec0c3f3458fb6543ef8e2e`.
+- CI run `35817871526` completed SUCCESS on regression commit `1dc4c5c44b88cd313adf48ae0da92e8bb96b5c3d`.
+- **Next bounded development: DR8E — Final Regression Closeout.**
+
 ## Authoritative reconciliation — 2026-09-23 DR8C complete
 
 This is the newest authoritative development status.
