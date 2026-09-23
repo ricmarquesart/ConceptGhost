@@ -79,3 +79,20 @@ The default prompt is stored in `Config/geometry_assist_config.json` and is inte
 ## Status
 
 Experimental diagnostic only. No official pipeline impact.
+
+
+## r2 hotfix — ControlNet canvas alignment + CLIP prompt guard
+
+The first hardware run proved that the isolated install, CUDA stack, SDXL, ControlNet and IP-Adapter all load correctly, but the ControlNet Aux Canny preprocessor returned a 704x512 control image while img2img used a 1024x768 source canvas. Diffusers then failed with a latent/control feature mismatch (128 vs 88).
+
+r2 fixes the root cause by:
+- making the working canvas 64-pixel aligned;
+- requesting the ControlNet Aux preprocessor at the exact working resolution;
+- applying a final exact-size guard before inference;
+- passing explicit `height` / `width` to the SDXL ControlNet img2img pipeline;
+- shortening the default positive/negative prompts to remain inside CLIP's 77-token context;
+- adding an explicit prompt-token contract so future prompt growth fails early instead of being silently truncated.
+
+The other warnings seen in the r1 run (missing optional MediaPipe, timm deprecations, no Flash Attention) are non-fatal for the Canny-only diagnostic path.
+
+Existing r1 installations do **not** need to be uninstalled. Running the r2 installer reuses the isolated Python/models and replaces only the owned worker/config as needed.
