@@ -12,6 +12,7 @@ from .sparse_triangulation import run_sparse_triangulation
 from .dense_reconstruction import run_dense_reconstruction
 from .prefusion_mesh import run_prefusion_meshing
 from .p9_roundtrip_audit import run_p9_roundtrip_audit
+from .reconstruction_overlay import build_metric_reconstruction_overlay
 
 
 def standard_colmap_candidates(*, localappdata: str | None = None) -> tuple[Path, ...]:
@@ -308,6 +309,52 @@ def run_reconstruction_pipeline(
         stages["mesh"]={"state":"BUILT","manifest_path":str(mesh_manifest_path)}
 
     final_mesh_manifest=_read_json(mesh_manifest_path,"pre-fusion mesh manifest")
+
+    metric_overlay=None
+    source_p9_run_dir=str(wan.get("source_p9_run_dir") or "").strip()
+    if source_p9_run_dir:
+        overlay_root=output_root/"diagnostics"
+        overlay_path=overlay_root/"p9_p10_metric_overlay.png"
+        try:
+            metric_overlay=build_metric_reconstruction_overlay(
+                source_p9_run_dir,
+                camera_manifest_path,
+                dataset_root,
+                overlay_path,
+            )
+            stages["metric_overlay"]={
+                "state":"BUILT",
+                "status":metric_overlay.get("status"),
+                "manifest_path":metric_overlay.get("manifest_path"),
+                "preview_png_path":metric_overlay.get("preview_png_path"),
+            }
+        except Exception as error:
+            overlay_root.mkdir(parents=True,exist_ok=True)
+            metric_overlay={
+                "schema":"ConceptGhost.P10MetricReconstructionOverlay.v0.1",
+                "status":"WARN",
+                "alerts":["METRIC_OVERLAY_RENDER_FAILED"],
+                "error":f"{type(error).__name__}: {error}",
+                "p9_authority_changed":False,
+                "source_p9_run_dir":source_p9_run_dir,
+            }
+            stages["metric_overlay"]={
+                "state":"FAILED_DIAGNOSTIC",
+                "status":"WARN",
+                "error":metric_overlay["error"],
+            }
+    else:
+        metric_overlay={
+            "schema":"ConceptGhost.P10MetricReconstructionOverlay.v0.1",
+            "status":"WARN",
+            "alerts":["SOURCE_P9_RUN_DIR_MISSING"],
+            "p9_authority_changed":False,
+        }
+        stages["metric_overlay"]={
+            "state":"SKIPPED",
+            "status":"WARN",
+        }
+
     diagnostics={
         "schema":"ConceptGhost.P10ReconstructionRuntime.v0.1",
         "status":"PASS",
@@ -330,6 +377,11 @@ def run_reconstruction_pipeline(
         "sparse_quality_status":final_mesh_manifest.get("sparse_quality_status"),
         "p9_roundtrip_audit":p9_roundtrip,
         "p9_roundtrip_audit_enabled":bool(p9_roundtrip_audit_enabled),
+        "metric_overlay":metric_overlay,
+        "metric_overlay_preview_png_path":(
+            metric_overlay.get("preview_png_path")
+            if isinstance(metric_overlay,dict) else None
+        ),
         "checkpoint_resume_enabled":bool(resume),
     }
     out=output_root/"reconstruction_runtime_manifest.json"
