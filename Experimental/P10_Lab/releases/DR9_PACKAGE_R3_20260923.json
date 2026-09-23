@@ -1,0 +1,34 @@
+{
+  "schema": "ConceptGhost.P10DR9PackageRecord.v0.3",
+  "release": "ConceptGhost_v1.54_P10_DR9_ARTIST_ROUTE_RUNTIME_COMPLETE_INSTALLER_r3",
+  "created_at": "2026-09-23T05:58:00Z",
+  "source_checkpoint": "26b8c8158a84fdcbf908c151e6896650cbfce402",
+  "runtime_workflow": "ConceptGhost_v1.54_P10_DR9_ARTIST_ROUTE_PREVIEW_r2.json",
+  "package_hotfix": {
+    "defect": "DR9 r2 correctly enforced CURRENT_ONLY and removed superseded Gate5/Gate6 preview workflows, but 04_VERIFY_INSTALL chained verify_gate5.ps1 and verify_gate6.ps1 that still required the deleted legacy workflow paths from INSTALL_READY.json.",
+    "fix": "Gate5/Gate6 verifiers are now supersession-aware. When p10_dr9_status is PASS they validate their contracts against p10_dr9_workflow, while still requiring Gate5 WAN model evidence and Gate6 code/COLMAP evidence.",
+    "workflow_policy": "CURRENT_ONLY_PRESERVED",
+    "runtime_graph_changed": false,
+    "obsolete_release": "ConceptGhost_v1.54_P10_DR9_ARTIST_ROUTE_RUNTIME_COMPLETE_INSTALLER_r2_OBSOLETE_VERIFY_CURRENT_ONLY_DO_NOT_USE.zip"
+  },
+  "validation": {
+    "bundle_structure": "PASS",
+    "extracted_bundle_structure": "PASS",
+    "extracted_sha256s": "PASS",
+    "drive_redownload_sha256": "PASS",
+    "zip_members": 181,
+    "expanded_root_items": 39,
+    "expanded_installer_items": 55
+  },
+  "drive": {
+    "expanded_folder_id": "1vmAbzDqgkFxjRXwegSJoNoOBB4ZvtJ0d",
+    "expanded_folder_url": "https://drive.google.com/drive/folders/1vmAbzDqgkFxjRXwegSJoNoOBB4ZvtJ0d",
+    "zip_file_id": "1swOq9AKx4ewEhduLuOKIIQcwwwiXqYT5",
+    "zip_url": "https://drive.google.com/file/d/1swOq9AKx4ewEhduLuOKIIQcwwwiXqYT5/view",
+    "zip_sha256": "4f1adbded05fb4ff696022e38e73623f3c3d9ae52de3b8b4acc7751fe4d54d5b",
+    "zip_bytes": 12189288
+  },
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "user_runtime_acceptance": "PENDING",
+  "next_after_acceptance": "Gate 7 fusion work"
+}
