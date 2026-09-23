@@ -1,0 +1,32 @@
+{
+  "schema": "ConceptGhost.P10DR9PackageRecord.v0.2",
+  "release": "ConceptGhost_v1.54_P10_DR9_ARTIST_ROUTE_RUNTIME_COMPLETE_INSTALLER_r2",
+  "created_at": "2026-09-23T05:28:00Z",
+  "source_checkpoint": "26b8c8158a84fdcbf908c151e6896650cbfce402",
+  "package_hotfix": {
+    "defect": "r1 omitted Payload/workflows/ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_PREVIEW_r10.json from the actual expanded/ZIP bundle although manifests listed it.",
+    "fix": "r2 physically includes the Gate 6 r10 workflow, reapplies the exact DR8 checkpoint source payload, and validates every manifested file/hash after ZIP extraction.",
+    "obsolete_releases": [
+      "ConceptGhost_v1.54_P10_DR9_ARTIST_ROUTE_RUNTIME_COMPLETE_INSTALLER_r1_OBSOLETE_MISSING_GATE6_WORKFLOW_DO_NOT_USE.zip",
+      "ConceptGhost_v1.54_P10_DR9_ARTIST_ROUTE_RUNTIME_COMPLETE_INSTALLER_r1_FINAL_OBSOLETE_MISSING_GATE6_WORKFLOW_DO_NOT_USE.zip"
+    ]
+  },
+  "validation": {
+    "exact_dr8_code_manifest_mismatches": 0,
+    "extracted_bundle_structure": "PASS",
+    "extracted_sha256s": "PASS",
+    "required_gate6_workflow_sha256": "c2764344b22b4068c433cfdfcd2849408d19996cf6a8a409699de522bab96356",
+    "file_count": 181
+  },
+  "drive": {
+    "expanded_folder_id": "1vmAbzDqgkFxjRXwegSJoNoOBB4ZvtJ0d",
+    "expanded_folder_url": "https://drive.google.com/drive/folders/1vmAbzDqgkFxjRXwegSJoNoOBB4ZvtJ0d",
+    "zip_file_id": "1e8D9fiMelieM-oURwxgvnFX-RWlEPkiH",
+    "zip_url": "https://drive.google.com/file/d/1e8D9fiMelieM-oURwxgvnFX-RWlEPkiH/view",
+    "zip_sha256": "4128056e9b6450e25e9c194f299ae2077cae550d9716eb4dc4b52c665d6c39eb",
+    "zip_bytes": 12187709
+  },
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "user_runtime_acceptance": "PENDING",
+  "next_after_acceptance": "Gate 7 fusion work"
+}
