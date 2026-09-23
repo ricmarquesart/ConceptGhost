@@ -1,0 +1,45 @@
+name: Publish DR9R r7 bundle release
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - .github/workflows/p10-dr9r-r7-publish.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      FILE_NAME: ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r7.zip
+      EXPECTED_SHA256: 0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756
+      BUNDLE_URL: "https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-f8e0-8211-b6ca-8364fb2575b8/raw?se=2026-09-23T17%3A53%3A55Z&sp=r&sv=2026-02-06&sr=b&scid=ba8e1f21-50c4-51df-939d-f767d4cd084f&skoid=4b04981f-b1dc-41e0-a770-8ce0d5c8f411&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-23T16%3A29%3A31Z&ske=2026-09-24T16%3A29%3A31Z&sks=b&skv=2026-02-06&sig=bMuj4sovENWc1sP8CRoOQPWI7reYuUdkUpyuNPtkVV4%3D"
+      SOURCE_COMMIT: 2b35f61057c1131520d21059c183ab02fbdca635
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact validated bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 "$BUNDLE_URL" --output "$FILE_NAME"
+          echo "$EXPECTED_SHA256  $FILE_NAME" | sha256sum --check -
+      - name: Publish GitHub release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create p10-dr9r-r7 "$FILE_NAME#ConceptGhost DR9R r7 complete two-stage installer" \
+            --target "$SOURCE_COMMIT" \
+            --title "ConceptGhost v1.54 P10 DR9R r7" \
+            --notes "DR9R-F workflow UX/storage continuity release. Numbered 01 Route Setup -> 02 Production, reset-safe four-view editor, zoom/pan all views, visible AUTO_LATEST paths, persisted P9 dependency inventory, safe P10 cleanup, current-only workflow install, dual Maya non-overwrite contract. SHA-256: $EXPECTED_SHA256"
+      - name: Preserve as Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conceptghost-p10-dr9r-r7-bundle
+          path: ${{ env.FILE_NAME }}
+          if-no-files-found: error
+          retention-days: 90
