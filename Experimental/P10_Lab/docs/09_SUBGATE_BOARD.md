@@ -961,3 +961,20 @@ Runtime acceptance of r6 is reopened by first real Route Setup UX findings. Gate
 - F8 aggregate regressions + replacement bundle.
 
 No intermediate user runtime test. Save each subgate checkpoint to GitHub and Google Drive.
+
+
+### DR9R-F r7 published — 2026-09-23
+
+- F1 numbered 01/02 workflows + embedded Run instructions — COMPLETE.
+- F2 reset-safe dynamic four-view workspace + all-view zoom/axis-locked pan + visibility guard — COMPLETE / runtime pending.
+- F3 explicit P10 storage lifecycle + safe cleanup tool — COMPLETE for current P10; final automatic disposable cleanup remains tied to final P10 closeout.
+- F4 AUTO_LATEST resolved-path observability — COMPLETE.
+- F5 persisted P9 dependency inventory / critical hash validation — COMPLETE; future gates fail closed on missing persisted evidence.
+- F6 dual Maya non-overwrite contract — IMPLEMENTED; actual P10 refined Maya export remains in the later Maya/export gate.
+- F7 current-only user workflow installation — COMPLETE in r7.
+- F8 static regression/package acceptance — COMPLETE.
+- Final package: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r7.zip`
+- SHA-256: `0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756`
+- Google Drive file id: `1hAp4qqbCVxUyHLXrKuWQUPHERLcFNFWR`
+- GitHub release: `p10-dr9r-r7`
+- User runtime acceptance: PENDING. Gate 7 remains blocked until r7 is reviewed.
