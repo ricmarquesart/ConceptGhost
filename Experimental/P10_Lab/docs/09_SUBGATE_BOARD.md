@@ -910,3 +910,10 @@ The user requested **no intermediate runtime test**. Each partial subgate must n
 - DR9R-B6 — PLANNED: Gate 6 geometry-quality authority.
 
 No user runtime test is requested until DR9R-E after B1-B6/C/D are complete.
+
+
+### DR9R C/D closeout — 2026-09-23
+
+- DR9R-C — COMPLETE / CI PASS: explicit P9 Route Setup → committed production entry → standalone P10 Production handoff; Stage A stops before WAN/Gate6 and Stage B contains no P9 solver dependency.
+- DR9R-D — COMPLETE / CI PASS: unique immutable p10_attempt_id per Production queue; Gate4/Gate5/Gate6 share one attempt root; previous attempts are preserved; LATEST_P10_RUN is pointer-only; cross-attempt manifest mixing fails closed.
+- DR9R-E — ACTIVE: aggregate closeout regression + final two-workflow installer + one deferred user runtime acceptance pass.
