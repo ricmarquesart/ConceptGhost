@@ -49,6 +49,8 @@ class ControlSequenceManifest:
     scene_contract_id: str | None = None
     source_run_id: str | None = None
     source_p9_run_dir: str | None = None
+    p10_attempt_id: str | None = None
+    p10_attempt_root: str | None = None
     mission_modes: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
@@ -111,6 +113,8 @@ class ControlSequenceManifest:
             "scene_contract_id": self.scene_contract_id,
             "source_run_id": self.source_run_id,
             "source_p9_run_dir": self.source_p9_run_dir,
+            "p10_attempt_id": self.p10_attempt_id,
+            "p10_attempt_root": self.p10_attempt_root,
             "mission_order": mission_order,
             "missions": [
                 {
