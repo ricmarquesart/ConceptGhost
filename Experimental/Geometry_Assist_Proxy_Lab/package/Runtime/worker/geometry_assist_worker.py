@@ -30,7 +30,8 @@ def validate_prompt_contract(tokenizers, prompt: str, negative_prompt: str, conf
         prompt_tokens = len(tokenizer(prompt, truncation=False, add_special_tokens=True)["input_ids"])
         negative_tokens = len(tokenizer(negative_prompt, truncation=False, add_special_tokens=True)["input_ids"])
         details[name] = {
-            "prompt_tokenizers": prompt_contract,
+            "prompt_tokens": prompt_tokens,
+            "negative_prompt_tokens": negative_tokens,
             "max_tokens": effective_max,
         }
         if prompt_tokens > effective_max or negative_tokens > effective_max:
@@ -355,8 +356,7 @@ def run(root: Path, input_path: Path) -> int:
             "status": "PASS",
             "preprocessor": preprocessor,
             "control_hint_working_size": [hint.width, hint.height],
-            "prompt_tokens": prompt_tokens,
-            "negative_prompt_tokens": negative_tokens,
+            "prompt_tokenizers": prompt_contract,
             "runtime_seconds": round(elapsed, 3),
             "peak_cuda_allocated_gb": peak_vram,
             "metrics": {
