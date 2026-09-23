@@ -27,7 +27,7 @@ CONTROL_PATTERNS = [
     "diffusion_pytorch_model.fp16.safetensors",
 ]
 IP_PATTERNS = [
-    "sdxl_models/ip-adapter_sdxl.bin",
+    "sdxl_models/ip-adapter_sdxl_vit-h.safetensors",
     "models/image_encoder/config.json",
     "models/image_encoder/model.safetensors",
 ]
@@ -73,7 +73,7 @@ def main() -> int:
         models / "sdxl_base" / "unet" / "diffusion_pytorch_model.fp16.safetensors",
         models / "controlnet_canny_sdxl_small" / "config.json",
         models / "controlnet_canny_sdxl_small" / "diffusion_pytorch_model.fp16.safetensors",
-        models / "ip_adapter" / "sdxl_models" / "ip-adapter_sdxl.bin",
+        models / "ip_adapter" / "sdxl_models" / "ip-adapter_sdxl_vit-h.safetensors",
         models / "ip_adapter" / "models" / "image_encoder" / "config.json",
         models / "ip_adapter" / "models" / "image_encoder" / "model.safetensors",
     ]
