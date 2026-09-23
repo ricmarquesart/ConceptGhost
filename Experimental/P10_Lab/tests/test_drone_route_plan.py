@@ -138,8 +138,7 @@ class DroneRoutePlanTests(unittest.TestCase):
         )
         self.assertEqual(restored.missions[0].orientation_mode,"LOOK_ALONG_PATH")
         self.assertEqual(authority,"ARTIST_AUTHORED")
-        self.assertEqual(len(new_hash),64)
-        self.assertNotEqual(new_hash,payload["route_plan_sha256"])
+        self.assertEqual(new_hash,payload["route_plan_sha256"])
 
     def test_spin_360_stays_fixed_and_rotates_full_yaw(self):
         from p10_lab.drone_route_plan import DroneMission, DroneWaypoint, sample_mission
