@@ -1,0 +1,43 @@
+{
+  "schema": "ConceptGhost.P10DR9RSourceCommitHotfixPackage.v0.14",
+  "package": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r14.zip",
+  "date": "2026-09-23",
+  "supersedes": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r13.zip",
+  "trigger": {
+    "runtime_stage": "Final DR9R code/workflow verification after Gate5+Gate6 PASS",
+    "error": "unexpected DR9R source commit",
+    "cause": "P10_DR9_CODE_MANIFEST.json and release metadata had the route-editor fix source commit, while verify_p10_dr9.py and the current installer marker still referenced the older pre-fix source commit."
+  },
+  "correction": {
+    "source_commit": "59724195a94a5614c5d7b853aa15589779ab9641",
+    "code_manifest_runtime_verifier_release_installer_consistency": "PASS",
+    "route_editor_frontend_fix_retained": true,
+    "geometry_authority_changed": false
+  },
+  "release_commit": "595058ec454d676c2605bd5a6ab4a0f2db1be10a",
+  "zip": {
+    "bytes": 12255077,
+    "sha256": "66e2486e501d79ef9cb06c498d42fc96bd982c37abca65fd0a595b344c4f6c85"
+  },
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "file_id": "1DN62hGT0o_pfVQkuDLkZ9bCJ2pvZUEG3",
+    "sha256_sidecar_file_id": "1nm1x1Yr5PV2rnZSI-5ac1kVllKkdYnAr",
+    "validation_file_id": "1U6Q6GkiBjE1H1H4PxI58aNdFsCwX0rmd"
+  },
+  "github": {
+    "tag": "p10-dr9r-r14",
+    "release_url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r14",
+    "asset_digest": "sha256:66e2486e501d79ef9cb06c498d42fc96bd982c37abca65fd0a595b344c4f6c85"
+  },
+  "ci": {
+    "tests_run": 35933991967,
+    "tests_status": "SUCCESS",
+    "publish_run": 35933992053,
+    "publish_status": "SUCCESS",
+    "snapshot_run": 35933991927,
+    "snapshot_status": "SUCCESS"
+  },
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "gate7": "BLOCKED_UNTIL_RUNTIME_ACCEPTANCE"
+}
