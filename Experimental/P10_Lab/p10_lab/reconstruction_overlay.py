@@ -74,27 +74,31 @@ def _load_sparse_points(dataset_root: Path,max_points: int,np):
     path=dataset_root/"sparse"/"triangulated_txt"/"points3D.txt"
     if not path.is_file():
         return np.empty((0,3),dtype=np.float64),0
-    values=[]
-    total=0
-    for raw in path.read_text(encoding="utf-8",errors="replace").splitlines():
-        line=raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        parts=line.split()
-        if len(parts)<4:
-            continue
-        total+=1
-        if len(values)<max_points:
-            values.append((float(parts[1]),float(parts[2]),float(parts[3])))
-        elif total % max(1,total//max_points+1)==0:
-            # Keep bounded memory; dense/mesh views carry the overall shape.
-            pass
-    return (
-        np.asarray(values,dtype=np.float64).reshape((-1,3))
-        if values else np.empty((0,3),dtype=np.float64),
-        total,
-    )
 
+    def rows():
+        with path.open("r",encoding="utf-8",errors="replace") as handle:
+            for raw in handle:
+                line=raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts=line.split()
+                if len(parts)<4:
+                    continue
+                try:
+                    yield (float(parts[1]),float(parts[2]),float(parts[3]))
+                except ValueError:
+                    continue
+
+    total=sum(1 for _ in rows())
+    if total<=0:
+        return np.empty((0,3),dtype=np.float64),0
+    stride=max(1,math.ceil(total/max_points))
+    values=[
+        point
+        for index,point in enumerate(rows())
+        if index%stride==0
+    ][:max_points]
+    return np.asarray(values,dtype=np.float64).reshape((-1,3)),total
 
 def _load_ply_points(path: Path,max_points: int,np):
     if not path.is_file():
@@ -315,7 +319,6 @@ def build_metric_reconstruction_overlay(
 
     specs=((0,2,"TOP XZ"),(0,1,"FRONT XY"),(2,1,"SIDE ZY"))
     panels=[]
-    projection_cache={}
     for index,(a,b,label) in enumerate(specs):
         x0=gap+index*(panel_w+gap)
         y0=header
@@ -345,7 +348,6 @@ def build_metric_reconstruction_overlay(
             px=panel["x"]+panel["pad"]+(float(point[panel["axis_a"]])-ae[0])/(ae[1]-ae[0])*usable_w
             py=panel["y"]+panel["height"]-panel["pad"]-(float(point[panel["axis_b"]])-be[0])/(be[1]-be[0])*usable_h
             return px,py
-        projection_cache[label]=project
 
         # P9: preserve source readability but dim it so P10 evidence is obvious.
         p9_stride=max(1,math.ceil(len(p9)/30000))
