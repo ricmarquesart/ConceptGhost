@@ -12,9 +12,12 @@ from .path_planner import CameraPath, RelativeWaypoint
 _ALLOWED_MODES = {"PATH", "SPIN_360"}
 _ALLOWED_COLLISION_MODES = {"HOLD_AND_RESUME", "DISABLED"}
 _ALLOWED_ROUTE_AUTHORITIES = {"EDITABLE_SEED", "ARTIST_AUTHORED"}
+_ALLOWED_ORIENTATION_MODES = {"LOOK_AT_TARGET", "LOOK_ALONG_PATH", "MANUAL_DIRECTION"}
 _MAX_DRONES = 7
-_ROUTE_SCHEMA = "ConceptGhost.P10DroneRoutePlan.v0.1"
-_BOUND_ROUTE_SCHEMA = "ConceptGhost.P10BoundDroneRoutePlan.v0.1"
+_ROUTE_SCHEMA = "ConceptGhost.P10DroneRoutePlan.v0.2"
+_LEGACY_ROUTE_SCHEMAS = {"ConceptGhost.P10DroneRoutePlan.v0.1", _ROUTE_SCHEMA}
+_BOUND_ROUTE_SCHEMA = "ConceptGhost.P10BoundDroneRoutePlan.v0.2"
+_LEGACY_BOUND_ROUTE_SCHEMAS = {"ConceptGhost.P10BoundDroneRoutePlan.v0.1", _BOUND_ROUTE_SCHEMA}
 
 
 def _finite(value, label: str) -> float:
@@ -56,6 +59,9 @@ class DroneMission:
     mode: str
     waypoints: tuple[DroneWaypoint, ...]
     enabled: bool = True
+    orientation_mode: str = "LOOK_ALONG_PATH"
+    look_target: DroneWaypoint | None = None
+    manual_direction: DroneWaypoint | None = None
 
     def __post_init__(self) -> None:
         name = str(self.name).strip()
@@ -68,16 +74,31 @@ class DroneMission:
         object.__setattr__(self, "mode", mode)
         if not isinstance(self.enabled, bool):
             raise ContractError("Drone mission enabled must be boolean")
+
+        orientation = str(self.orientation_mode or "LOOK_ALONG_PATH").strip().upper()
+        if orientation not in _ALLOWED_ORIENTATION_MODES:
+            raise ContractError(f"Unsupported camera orientation mode: {orientation}")
+        object.__setattr__(self, "orientation_mode", orientation)
+
         if mode == "PATH" and len(self.waypoints) < 2:
             raise ContractError("PATH mission requires at least two waypoints")
         if mode == "SPIN_360" and len(self.waypoints) != 1:
             raise ContractError("SPIN_360 mission requires exactly one anchor waypoint")
+        if mode == "PATH" and orientation == "LOOK_AT_TARGET" and self.look_target is None:
+            raise ContractError("LOOK_AT_TARGET PATH mission requires look_target")
+        if mode == "PATH" and orientation == "MANUAL_DIRECTION" and self.manual_direction is None:
+            raise ContractError("MANUAL_DIRECTION PATH mission requires manual_direction")
 
     def to_dict(self) -> dict[str, object]:
         return {
             "name": self.name,
             "mode": self.mode,
             "enabled": self.enabled,
+            "orientation_mode": self.orientation_mode,
+            "look_target": self.look_target.to_dict() if self.look_target is not None else None,
+            "manual_direction": (
+                self.manual_direction.to_dict() if self.manual_direction is not None else None
+            ),
             "waypoints": [p.to_dict() for p in self.waypoints],
         }
 
@@ -126,7 +147,7 @@ class DroneRoutePlan:
         if not isinstance(payload, dict):
             raise ContractError("Drone route plan must be an object")
         schema = str(payload.get("schema") or _ROUTE_SCHEMA)
-        if schema != _ROUTE_SCHEMA:
+        if schema not in _LEGACY_ROUTE_SCHEMAS:
             raise ContractError(f"Unsupported drone route schema: {schema}")
         raw = payload.get("missions")
         if not isinstance(raw, list):
@@ -151,12 +172,33 @@ class DroneRoutePlan:
                         forward=p.get("forward"),
                     )
                 )
+            def parse_optional_waypoint(value, label):
+                if value is None:
+                    return None
+                if not isinstance(value, dict):
+                    raise ContractError(f"Mission {index} {label} must be an object")
+                return DroneWaypoint(
+                    right=value.get("right"),
+                    up=value.get("up"),
+                    forward=value.get("forward"),
+                )
+
+            # v0.1 route files had implicit tangent-follow orientation.
+            orientation_mode=str(
+                item.get("orientation_mode")
+                or ("LOOK_ALONG_PATH" if schema=="ConceptGhost.P10DroneRoutePlan.v0.1" else "LOOK_ALONG_PATH")
+            )
             missions.append(
                 DroneMission(
                     name=str(item.get("name") or f"drone_{index + 1}"),
                     mode=str(item.get("mode") or "PATH"),
                     enabled=bool(item.get("enabled", True)),
                     waypoints=tuple(parsed_points),
+                    orientation_mode=orientation_mode,
+                    look_target=parse_optional_waypoint(item.get("look_target"), "look_target"),
+                    manual_direction=parse_optional_waypoint(
+                        item.get("manual_direction"), "manual_direction"
+                    ),
                 )
             )
         return cls(
@@ -259,7 +301,7 @@ def parse_bound_route_plan(
     if not isinstance(payload,dict):
         raise ContractError("Bound drone route plan must be a JSON object")
     binding_schema=str(payload.get("binding_schema") or _BOUND_ROUTE_SCHEMA)
-    if binding_schema!=_BOUND_ROUTE_SCHEMA:
+    if binding_schema not in _LEGACY_BOUND_ROUTE_SCHEMAS:
         raise ContractError(f"Unsupported route binding schema: {binding_schema}")
 
     scene_contract_id=_clean_binding_text(payload.get("scene_contract_id"),"scene_contract_id")
@@ -345,22 +387,26 @@ def _sample_path(mission: DroneMission, frame_count: int) -> CameraPath:
 
     result = []
     for frame in range(frame_count):
-        target = total * frame / float(max(1, frame_count - 1))
+        target_distance = total * frame / float(max(1, frame_count - 1))
         segment = len(lengths) - 1
         for index, end in enumerate(cumulative[1:]):
-            if target <= end + 1.0e-12:
+            if target_distance <= end + 1.0e-12:
                 segment = index
                 break
         left = points[segment]
         right = points[segment + 1]
         length = lengths[segment]
-        amount = 0.0 if length <= 1.0e-12 else (target - cumulative[segment]) / length
+        amount = (
+            0.0 if length <= 1.0e-12
+            else (target_distance - cumulative[segment]) / length
+        )
         amount = max(0.0, min(1.0, amount))
         position = DroneWaypoint(
             left.right * (1.0 - amount) + right.right * amount,
             left.up * (1.0 - amount) + right.up * amount,
             left.forward * (1.0 - amount) + right.forward * amount,
         )
+
         tangent = _normalize(
             (
                 right.right - left.right,
@@ -368,13 +414,33 @@ def _sample_path(mission: DroneMission, frame_count: int) -> CameraPath:
                 right.forward - left.forward,
             )
         )
+        if mission.orientation_mode == "LOOK_AT_TARGET":
+            target = mission.look_target
+            if target is None:
+                raise ContractError(
+                    f"Mission {mission.name} LOOK_AT_TARGET has no target"
+                )
+            look = _normalize((
+                target.right - position.right,
+                target.up - position.up,
+                target.forward - position.forward,
+            ))
+        elif mission.orientation_mode == "MANUAL_DIRECTION":
+            manual = mission.manual_direction
+            if manual is None:
+                raise ContractError(
+                    f"Mission {mission.name} MANUAL_DIRECTION has no direction"
+                )
+            look = _normalize((manual.right, manual.up, manual.forward))
+        else:
+            look = tangent
+
         result.append(position.to_relative(
-            look_right=tangent[0],
-            look_up=tangent[1],
-            look_forward=tangent[2],
+            look_right=look[0],
+            look_up=look[1],
+            look_forward=look[2],
         ))
     return CameraPath(mission.name, tuple(result))
-
 
 def _sample_spin(mission: DroneMission, frame_count: int) -> CameraPath:
     anchor = mission.waypoints[0]
@@ -505,10 +571,17 @@ def seed_plan_from_footprint(footprint, *, frames_per_drone: int = 30) -> DroneR
         start_up,
         0.5 * (float(footprint.up_min) + float(footprint.up_max)) * 0.05,
     )
+    target = DroneWaypoint(
+        float(footprint.center_right),
+        0.5 * (float(footprint.up_min) + float(footprint.up_max)),
+        float(footprint.center_forward),
+    )
     mission = DroneMission(
         name="drone_1",
         mode="PATH",
         enabled=True,
+        orientation_mode="LOOK_AT_TARGET",
+        look_target=target,
         waypoints=(
             DroneWaypoint(0.0, start_up, start_forward),
             DroneWaypoint(float(footprint.center_right) * 0.25, end_up, end_forward),
