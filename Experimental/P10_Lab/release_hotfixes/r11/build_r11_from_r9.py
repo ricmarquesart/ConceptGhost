@@ -48,6 +48,19 @@ def patch_versions(root: Path) -> None:
         if "r9" not in text:
             raise RuntimeError(f"expected r9 label missing in {rel}")
         text = text.replace("r9", "r11").replace("\r\n", "\n").replace("\r", "\n")
+        target = "Installer\\install_dr11.ps1" if rel == "03_INSTALL_ALL.bat" else "Installer\\verify_dr11.ps1"
+        invoke = f'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0{target}"'
+        if invoke not in text:
+            raise RuntimeError(f"expected PowerShell entrypoint missing in {rel}: {invoke}")
+        guard = (
+            f'if not exist "%~dp0{target}" (\n'
+            f'  echo.\n'
+            f'  echo [FAIL] Required r11 entrypoint is missing: {target}\n'
+            f'  pause\n'
+            f'  exit /b 1\n'
+            f')\n'
+        )
+        text = text.replace(invoke, guard + invoke, 1)
         p.write_bytes(text.replace("\n", "\r\n").encode("utf-8"))
 
     p = root / "Installer" / "install_dr9.ps1"
@@ -265,6 +278,7 @@ P10 code manifest/hash validation: PASS
 Current-only workflow policy: PASS
 03_INSTALL_ALL.bat target exists: PASS
 04_VERIFY_INSTALL.bat target exists: PASS
+03/04 BAT missing-target preflight: PASS
 Gate5 private current-Production verifier fixture: INCLUDED
 Gate6 private current-Production verifier fixture: INCLUDED
 Legacy Gate5/Gate6 preview requirement in DR9R mode: REMOVED
@@ -341,6 +355,10 @@ def static_validate(root: Path) -> list[str]:
         errors.append("03_INSTALL_ALL.bat does not target Installer\\install_dr11.ps1")
     if "Installer\\verify_dr11.ps1" not in bat_verify:
         errors.append("04_VERIFY_INSTALL.bat does not target Installer\\verify_dr11.ps1")
+    if 'if not exist "%~dp0Installer\\install_dr11.ps1"' not in bat_install:
+        errors.append("03_INSTALL_ALL.bat missing fail-closed target preflight")
+    if 'if not exist "%~dp0Installer\\verify_dr11.ps1"' not in bat_verify:
+        errors.append("04_VERIFY_INSTALL.bat missing fail-closed target preflight")
 
     for label, name, private_name in (
         ("Gate5", "install_gate5.ps1", "02_ConceptGhost_P10_PRODUCTION_GATE5_VERIFY.json"),
