@@ -75,7 +75,7 @@ class DR9RCloseoutTests(unittest.TestCase):
             Path(__file__).resolve().parents[1]
             /"docs"/"18_DR9R_RUNTIME_FINDINGS_REFINEMENT_PLAN.md"
         ).read_text(encoding="utf-8")
-        self.assertIn("USER TEST DEFERRED",plan)
+        self.assertIn("user runtime test is intentionally deferred",plan.lower())
         self.assertIn("DR9R-E",plan)
         self.assertIn("Only after DR9R-B1..B6, DR9R-C and DR9R-D are complete",plan)
 
