@@ -83,13 +83,15 @@ Exit: route can be authored without manually editing JSON.
 
 Exit: artist can author and inspect any mix of 1–7 missions.
 
-### DR5 — Collision protection / external-space safety — PARTIAL BACKEND
-- initial P9-geometry clearance query;
-- hold last safe position while requested route intersects collision envelope;
-- resume when authored path is safe again;
-- visualize blocked/held segments;
-- fail closed if a mission starts inside geometry;
-- later Gate 7 free-space evidence may augment the collision query without changing route-plan files.
+### DR5 — Collision protection / external-space safety — IMPLEMENTED AT CODE LEVEL / CI + USER RUNTIME PENDING
+- P9 PrimaryMesh clearance now samples both vertices and triangle centroids into a bounded surface cloud;
+- dense segment preflight samples the full authored segment, not just waypoint/frame endpoints;
+- hold last safe position while requested route intersects the collision envelope;
+- resume only when the requested target is reachable from the held position without crossing the known P9 surface, preventing a post-wall teleport;
+- blocked route segments are returned as structured diagnostics and drawn in red in the tri-view editor after validation;
+- route edits invalidate the previous collision result until the node is executed again;
+- fail closed if a mission starts inside the current collision envelope;
+- later Gate 7 CONFIRMED_FREE/visibility evidence may augment the collision query without changing route-plan files.
 
 Exit: no emitted camera frame passes through known P9 geometry under enabled collision policy.
 
@@ -139,7 +141,8 @@ Exit: artist-driven route workflow accepted in real ComfyUI runtime.
 
 Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
-Partially implemented: DR5, DR6, DR8
+Implemented / awaiting CI + user runtime: DR5
+Partially implemented: DR6, DR8
 Pending: DR7, DR9
 
 There are 10 subgates total. DR0–DR2 are complete; DR3–DR4 are implemented and CI-green but still need real ComfyUI runtime acceptance; DR5–DR9 remain to be closed.
