@@ -4,7 +4,7 @@ Date: 2026-09-23
 
 ## Runtime acceptance state
 
-DR9 is **NOT accepted yet**. Corrective block DR9R remains active before Gate 7.
+DR9R implementation/package closeout is complete. **User runtime acceptance is now the only remaining DR9R step before Gate 7.**
 
 The next user runtime test is intentionally deferred until the complete DR9R improvement set below is implemented and internally checkpointed. Intermediate DR9R subgates are recovery/development checkpoints only and are not user-test releases.
 
@@ -76,7 +76,7 @@ Status: **COMPLETE / CI PASS**
 - route/collision math unchanged.
 
 ### DR9R-B — Route + Reconstruction Hardening
-Status: **ACTIVE**
+Status: **COMPLETE / CI PASS**
 
 DR9R-B is decomposed into six bounded recovery checkpoints. No user runtime test is requested between them.
 
@@ -169,7 +169,7 @@ Status: **COMPLETE / CI PASS**
 - LATEST_P10_RUN is a pointer only.
 
 ### DR9R-E — Complete Runtime Regression + User Test Bundle
-Status: **ACTIVE / FINAL PACKAGE BUILD**
+Status: **PACKAGE PUBLISHED / USER RUNTIME ACCEPTANCE PENDING**
 
 Only after DR9R-B1..B6, DR9R-C and DR9R-D are complete:
 - build one complete installer/workflow bundle;
@@ -292,3 +292,19 @@ GitHub authority:
 - Gate 6 closeout updates `attempt_manifest.json` to COMPLETE or COMPLETE_GEOMETRY_FAIL without deleting previous attempts.
 - CI run 35875820261 passed including unique-attempt and cross-attempt fail-closed regressions.
 - Next: DR9R-E — aggregate regression, final two-workflow installer package and one user runtime acceptance pass.
+
+
+### DR9R-E package checkpoint — 2026-09-23
+
+- Final bundle: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r5.zip`.
+- SHA-256: `63ec487e3a73e98018cb72d5d27472ada3e33ccbd450ebf964028e558420be1d`.
+- ZIP size: 12,230,648 bytes; 187 members.
+- Google Drive Evaluation_Builds file id: `1qr3iAHlRRlgRHsqRF1zwULlfNikhTwyH`.
+- GitHub Release tag: `p10-dr9r-r5`; the release asset digest matches the same SHA-256.
+- Runtime code source checkpoint: `e5a11bca683c08d436c211f2fdfb634f46c23c2b`.
+- CI source validation: run `35884897990` SUCCESS.
+- Local/extracted bundle regression: PASS; every entry in `SHA256SUMS.txt` revalidated with zero mismatches.
+- Drive redownload is byte-identical to the validated local ZIP.
+- Final user flow: Route Setup Queue #1 -> edit route -> Route Setup Queue #2 commit -> P10 Production Queue #1.
+- Every Production queue creates a unique immutable `p10_attempt_id`.
+- DR9R is not runtime-accepted until the final user pass is reviewed.
