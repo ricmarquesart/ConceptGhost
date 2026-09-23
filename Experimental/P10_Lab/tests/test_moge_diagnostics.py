@@ -3,7 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 
 class MoGeDiagnosticsTests(unittest.TestCase):
@@ -24,6 +27,8 @@ class MoGeDiagnosticsTests(unittest.TestCase):
         self.assertIn('"official_geometry_impact": false',report.lower())
 
     def test_disabled_mode_writes_nothing(self):
+        if np is None:
+            self.skipTest("NumPy unavailable in dependency-light CI lane")
         from p10_lab.moge_diagnostics import ConceptGhostMoGeDepthDiagnostics
         with tempfile.TemporaryDirectory() as tmp:
             node=ConceptGhostMoGeDepthDiagnostics()
@@ -42,6 +47,8 @@ class MoGeDiagnosticsTests(unittest.TestCase):
             self.assertFalse(report["geometry_impact"])
 
     def test_enabled_mode_exports_native_and_derived_depth_evidence(self):
+        if np is None:
+            self.skipTest("NumPy unavailable in dependency-light CI lane")
         from p10_lab.moge_diagnostics import ConceptGhostMoGeDepthDiagnostics
         h,w=18,24
         yy,xx=np.mgrid[:h,:w]
