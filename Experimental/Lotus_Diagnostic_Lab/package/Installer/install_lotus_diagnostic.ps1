@@ -100,6 +100,8 @@ $env:PIP_CACHE_DIR = Join-Path $CacheRoot 'pip'
 $env:TEMP = $TempRoot
 $env:TMP = $TempRoot
 $env:PYTHONNOUSERSITE = '1'
+$env:HF_HUB_DISABLE_SYMLINKS_WARNING = '1'
+$env:HF_HUB_DISABLE_TELEMETRY = '1'
 
 # 1) Private Python 3.10.11 embeddable runtime.
 if (-not (Test-Path $PythonExe)) {
@@ -171,8 +173,10 @@ Copy-Item -LiteralPath (Join-Path $PackageRoot 'Runtime\worker\prepare_models.py
 Copy-Item -LiteralPath (Join-Path $PackageRoot 'Runtime\worker\lotus_diagnostic_worker.py') -Destination (Join-Path $RuntimeRoot 'Worker\lotus_diagnostic_worker.py') -Force
 Copy-Item -LiteralPath (Join-Path $PackageRoot 'Config\lotus_diagnostic_config.json') -Destination (Join-Path $ManifestDir 'lotus_diagnostic_config.json') -Force
 
-# 6) Download complete official discriminative depth + native-normal checkpoints into isolated HF cache.
-Write-Log 'Downloading official Lotus disparity and native-normal model snapshots...'
+# 6) Materialize complete official discriminative depth + native-normal checkpoints without symlinks.
+# r3 writes ordinary files directly under the owned Models tree and can reuse complete/partial
+# blobs left by the failed r2 Hugging Face cache attempt. No Developer Mode/admin required.
+Write-Log 'Materializing official Lotus disparity and native-normal models with direct no-symlink downloader...'
 & $PythonExe (Join-Path $RuntimeRoot 'Worker\prepare_models.py') --runtime-root $RuntimeRoot
 if ($LASTEXITCODE -ne 0) { throw 'Model snapshot preparation failed.' }
 
