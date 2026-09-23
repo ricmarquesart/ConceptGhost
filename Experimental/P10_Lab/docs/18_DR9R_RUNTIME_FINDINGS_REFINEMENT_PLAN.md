@@ -308,3 +308,25 @@ GitHub authority:
 - Final user flow: Route Setup Queue #1 -> edit route -> Route Setup Queue #2 commit -> P10 Production Queue #1.
 - Every Production queue creates a unique immutable `p10_attempt_id`.
 - DR9R is not runtime-accepted until the final user pass is reviewed.
+
+
+### DR9R-E r6 final package checkpoint — 2026-09-23
+
+- Final user-test package: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r6.zip`.
+- The package contains exactly two current user workflows:
+  - `ConceptGhost_v1.54_P10_DR9R_ROUTE_SETUP_r6.json`
+  - `ConceptGhost_v1.54_P10_DR9R_PRODUCTION_r6.json`
+- Route Setup requires two Queue Prompt actions for a new scene: first solve/show P9 and stop before WAN/Gate6; then, after artist editing, commit the exact route while P9 remains cached.
+- Production requires one Queue Prompt and uses `AUTO_LATEST` to load the latest committed route/P9 entry.
+- Every Production queue creates a new immutable `p10_attempt_id` and never overwrites prior attempts.
+- r6 corrects two package-only defects found during final static audit: incorrect PowerShell workflow source path composition and a malformed newline literal in `verify_p10_dr9.py`.
+- Package validation:
+  - 256 P10 source tests PASS;
+  - all P10 and Installer Python compile;
+  - Route Setup contract PASS (86 nodes / 179 links);
+  - Production contract PASS (13 nodes / 18 links, no P9 solver, AUTO_LATEST);
+  - extracted SHA256SUMS PASS;
+  - Google Drive re-download SHA-256 matches local package.
+- ZIP bytes: 12,256,852.
+- ZIP SHA-256: `be3e3fc5ef84f404a41cd7177b16a5aa9331ba0420c6013397a4f641413226d5`.
+- Runtime acceptance remains PENDING until the target Windows/ComfyUI execution is completed.
