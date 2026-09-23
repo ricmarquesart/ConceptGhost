@@ -1,5 +1,5 @@
 name: Publish DR9R r10 Bundle
-# retry-after-crlf-fix
+# retry-clean-cache-republish
 
 on:
   push:
@@ -102,6 +102,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
+          if (gh release view p10-dr9r-r10 --repo ${{ github.repository }} 2>$null) { gh release delete p10-dr9r-r10 --repo ${{ github.repository }} --yes --cleanup-tag }
           gh release create p10-dr9r-r10 release/ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10.zip release/ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10_SHA256.txt release/P10_DR9R_R10_VALIDATION.txt --repo ${{ github.repository }} --target $env:GITHUB_SHA --title 'ConceptGhost P10 DR9R r10 — Nested Installer Compatibility' --notes 'r10 supersedes r9 for runtime acceptance. It fixes the inherited Gate5 failure and the same latent Gate6 dependency by using the current Production workflow only as a private verifier fixture in DR9R internal mode. Public workflows remain exactly 01 Route Setup and 02 Production. P9/P10 geometry authority is unchanged.'
 
       - name: Upload r10 build artifact
