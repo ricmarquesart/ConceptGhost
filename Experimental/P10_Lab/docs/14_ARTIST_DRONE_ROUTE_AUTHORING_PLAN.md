@@ -95,15 +95,19 @@ Exit: artist can author and inspect any mix of 1–7 missions.
 
 Exit: no emitted camera frame passes through known P9 geometry under enabled collision policy.
 
-### DR6 — Gate 4 / Gate 5 / Gate 6 integration — PARTIAL
+### DR6 — Gate 4 / Gate 5 / Gate 6 integration — COMPLETED / CI PASS / USER RUNTIME PENDING
 - route editor output drives Gate 4 evidence;
 - artist-authored route bypasses automatic route interpolation;
-- control/camera manifests preserve drone identity;
-- WAN receives frames in exact authored mission order;
-- known-camera COLMAP receives the resulting cameras without changing calibration authority;
-- automatic route remains only fallback when no authored plan exists.
+- control and camera manifests v0.2 preserve route authority, route hash, mission order, mission mode and frame counts;
+- WAN validates exact graph-tensor parity against the Gate 4 manifest before generation;
+- WAN fails closed if a window loses any authored frame instead of silently shortening the route;
+- split WAN windows preserve their original drone mission identity;
+- Gate 6 validates route authority/hash/mission order parity between WAN and camera manifests before COLMAP materialization;
+- known-camera COLMAP dataset retains the same route identity without changing P9-derived pose/intrinsics authority;
+- an untouched auto-created seed remains EDITABLE_SEED; the first artist edit promotes it to ARTIST_AUTHORED;
+- automatic planning remains fallback only when no route-editor payload exists.
 
-Exit: one manually authored route completes WAN + Gate 6 reconstruction.
+Exit at code/CI level: the artist-route graph is wired route editor → Gate 4 evidence → Gate 5 WAN → Gate 6 known-camera reconstruction, with exact mission/frame identity enforced. Real ComfyUI runtime acceptance remains part of DR9.
 
 ### DR7 — Persistence / resume / deterministic identity — PENDING
 - save route plan with scene_contract_id and source_run_id;
@@ -142,7 +146,8 @@ Exit: artist-driven route workflow accepted in real ComfyUI runtime.
 Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
 Implemented / awaiting CI + user runtime: DR5
-Partially implemented: DR6, DR8
+Completed at code/CI level; user runtime acceptance pending: DR6
+Partially implemented: DR8
 Pending: DR7, DR9
 
 There are 10 subgates total. DR0–DR2 are complete; DR3–DR4 are implemented and CI-green but still need real ComfyUI runtime acceptance; DR5–DR9 remain to be closed.
