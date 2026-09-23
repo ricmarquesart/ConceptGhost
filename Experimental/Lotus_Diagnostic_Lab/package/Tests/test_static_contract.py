@@ -59,3 +59,17 @@ def test_comfy_root_fallback_does_not_escape_function_scope():
     assert '$script:candidates' not in s
     assert 'foreach ($dir in (Get-ChildItem' in s
     assert 'explicit ComfyUI root points inside the Lotus package' in s
+
+
+def test_model_downloader_forbids_snapshot_symlink_cache_path():
+    s=(ROOT/'Runtime/worker/prepare_models.py').read_text(encoding='utf-8')
+    assert 'snapshot_download' not in s
+    assert 'os.symlink' not in s
+    assert 'DIRECT_HTTP_NO_SYMLINKS' in s
+    assert '.part' in s
+    assert '_reuse_legacy_blob' in s
+
+def test_installer_sets_no_symlink_runtime_policy():
+    s=(ROOT/'Installer/install_lotus_diagnostic.ps1').read_text(encoding='utf-8')
+    assert "HF_HUB_DISABLE_SYMLINKS_WARNING" in s
+    assert 'direct no-symlink downloader' in s
