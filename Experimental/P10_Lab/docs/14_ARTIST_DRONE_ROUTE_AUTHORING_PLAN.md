@@ -109,15 +109,24 @@ Exit: no emitted camera frame passes through known P9 geometry under enabled col
 
 Exit at code/CI level: the artist-route graph is wired route editor → Gate 4 evidence → Gate 5 WAN → Gate 6 known-camera reconstruction, with exact mission/frame identity enforced. Real ComfyUI runtime acceptance remains part of DR9.
 
-### DR7 — Persistence / resume / deterministic identity — PENDING
-- save route plan with scene_contract_id and source_run_id;
-- reject route from another scene;
-- version/hash plan;
-- preserve plan across workflow save/reload;
-- checkpoint invalidation when route changes;
-- resume only when route/camera/image hashes still match.
+### DR7 — Persistence / resume / deterministic identity — COMPLETED / CI PASS / USER RUNTIME PENDING
+- the serialized route is bound to both `scene_contract_id` and `source_run_id`;
+- artist-authored routes from another scene/run fail closed instead of being silently reused;
+- untouched `EDITABLE_SEED` state may be regenerated for a new current scene, while `ARTIST_AUTHORED` state is never silently transplanted;
+- `ConceptGhost.P10BoundDroneRoutePlan.v0.1` adds deterministic SHA-256 identity over the route, scene/run binding and route authority;
+- every editor change removes the old hash, marks the route dirty and promotes the route to `ARTIST_AUTHORED`; the next node execution rebinds/re-hashes the exact current plan;
+- a visible `Resetar cena` control intentionally discards the saved route so the current scene can create a fresh editable seed;
+- Gate 4 persists the bound plan as `control_sequence/route_plan.json` and rebuilds its owned frame/mask directories exactly, preventing stale artifacts when a route becomes shorter;
+- control/camera manifests carry the route-plan filename, route hash, scene contract and source run;
+- Gate 5 verifies the persisted route file/hash/binding before WAN generation and invalidates previous WAN outputs when route/control/WAN-generation context changes;
+- Gate 5 removes stale WAN windows and the previous WAN manifest before regeneration, so a failed new run cannot expose an old manifest as current;
+- Gate 6 dataset manifests hash every source composite image plus the ordered source-image set;
+- Gate 6 resume requires WAN manifest, camera manifest and source-composite hashes to remain identical; changed/missing source images force dataset rebuild;
+- Gate 6 continues to enforce scene/run/route/mission parity before COLMAP.
 
-Exit: saved workflow reproduces identical camera manifests.
+Exit at code/CI level: a saved route has deterministic scene-bound identity, changed route/camera/image context cannot silently reuse stale downstream reconstruction, and cross-scene artist-route reuse fails closed. Real ComfyUI save/reload acceptance remains part of DR9.
+
+CI evidence: GitHub Actions run `35813649004` — SUCCESS on head `02c72585a312e26fda011e128e27dd9eae4f1cc2`.
 
 ### DR8 — Diagnostics / quality controls / tests — PARTIAL
 - route length / min clearance;
@@ -146,18 +155,15 @@ Exit: artist-driven route workflow accepted in real ComfyUI runtime.
 Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
 Implemented / awaiting CI + user runtime: DR5
-Completed at code/CI level; user runtime acceptance pending: DR6
+Completed at code/CI level; user runtime acceptance pending: DR6, DR7
 Partially implemented: DR8
-Pending: DR7, DR9
+Pending: DR9
 
-There are 10 subgates total. DR0–DR2 are complete; DR3–DR4 are implemented and CI-green but still need real ComfyUI runtime acceptance; DR5–DR9 remain to be closed.
+There are 10 subgates total. DR0–DR2 are complete; DR3–DR7 are implemented and CI-green but still need real ComfyUI runtime acceptance where applicable; DR8 remains the active engineering subgate and DR9 is the final packaged user acceptance.
 
 ## Immediate implementation order
 
-1. finish DR3 frontend editor;
-2. finish DR4 drone controls and PATH/SPIN interaction;
-3. add collision visualization and strengthen DR5;
-4. complete DR6 end-to-end route wiring;
-5. add DR7 persistence/hash invalidation;
-6. close DR8 CI/diagnostics;
-7. package DR9 for user runtime validation.
+1. close DR8 diagnostics, quality metrics and regression coverage;
+2. package DR9 with the complete route-editor workflow;
+3. perform real ComfyUI acceptance for DR3–DR7 using a curved/descending PATH plus a SPIN_360 mission;
+4. record final ergonomics refinements before returning to required Gate 7 fusion work.
