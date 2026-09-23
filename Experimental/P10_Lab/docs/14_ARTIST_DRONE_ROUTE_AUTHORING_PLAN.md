@@ -128,17 +128,51 @@ Exit at code/CI level: a saved route has deterministic scene-bound identity, cha
 
 CI evidence: GitHub Actions run `35813649004` — SUCCESS on head `02c72585a312e26fda011e128e27dd9eae4f1cc2`.
 
-### DR8 — Diagnostics / quality controls / tests — PARTIAL
-- route length / min clearance;
-- active drone count;
-- per-mission frame count;
-- blocked/held/resumed counts;
-- trajectory preview before WAN;
-- unit tests on Linux/Windows CI;
+### DR8 — Diagnostics / quality controls / tests — ACTIVE
+
+#### DR8A — Pre-WAN route diagnostics summary — COMPLETED / CI PASS
+- deterministic `ConceptGhost.P10DroneRouteDiagnostics.v0.1` manifest;
+- one record per active drone/mission;
+- mode, authored route length, emitted translation length and exact frame count;
+- minimum/mean/maximum P9 coverage and hole fraction;
+- collision hold/resume counts and minimum candidate/output clearance;
+- active drone count, mission order, total emitted frames and total held frames;
+- deterministic PASS / WARN / FAIL semantics:
+  - PASS = exact route/frame contract and no collision hold;
+  - WARN = valid contract but collision hold or zero-P9-coverage advisory;
+  - FAIL = mission/frame/diagnostic contract mismatch;
+- low P9 coverage remains descriptive rather than automatic failure because WAN is explicitly responsible for missing-P9 completion;
+- persisted before expensive WAN generation at `p10_gate4/<run_id>/diagnostics/drone_route_diagnostics.json`;
+- the same summary is embedded in the Gate 4 diagnostics JSON.
+
+CI evidence: GitHub Actions run `35816433877` — SUCCESS on `efb7a39b0a53c2035ab8ae58ca34a26c339ea92a`.
+
+#### DR8B — Per-drone final composite GIF previews — NEXT
+- generate one animated GIF per drone from final Gate 5 composite frames;
+- preserve exact mission/frame order, including missions split across multiple WAN windows;
+- default lightweight preview sizing/fps;
+- loop continuously;
+- never mix frames from different drones.
+
+#### DR8C — Preview index / output surfacing — PENDING
+- write `drone_preview_index.json`;
+- include mission name/mode/frame count/fps/preview dimensions/source type/hash context;
+- expose preview locations clearly in Gate 5 diagnostics/output metadata.
+
+#### DR8D — Preview invalidation / freshness — PENDING
+- route/control/WAN/composite changes invalidate old previews;
+- no stale GIF/index can remain authoritative after regeneration.
+
+#### DR8E — Final regression closeout — PENDING
+- GIF/frame-order regressions;
+- multi-window same-drone grouping;
+- multi-drone separation;
+- diagnostics/index consistency;
+- Linux/Windows CI;
 - workflow wiring regression tests;
 - no mutation of Baseline/P9.
 
-Exit: GitHub Actions PASS and diagnostic manifest available before expensive generation.
+Exit: GitHub Actions PASS, pre-WAN diagnostic manifest available, per-drone preview package validated, and DR8 ready for DR9 packaging.
 
 ### DR9 — Preview package + user runtime acceptance — PENDING
 - publish next complete installer/workflow;
@@ -156,7 +190,7 @@ Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
 Implemented / awaiting CI + user runtime: DR5
 Completed at code/CI level; user runtime acceptance pending: DR6, DR7
-Partially implemented: DR8
+DR8 active: DR8A complete; DR8B next; DR8C–DR8E pending
 Pending: DR9
 
 There are 10 subgates total. DR0–DR2 are complete; DR3–DR7 are implemented and CI-green but still need real ComfyUI runtime acceptance where applicable; DR8 remains the active engineering subgate and DR9 is the final packaged user acceptance.
