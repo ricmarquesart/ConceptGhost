@@ -123,3 +123,19 @@ The isolated RTX 2080 Ti runtime uses the SDXL ViT-H IP-Adapter pair:
 
 Do not pair `ip-adapter_sdxl.bin` with `models/image_encoder`: the former expects the SDXL ViT-bigG image encoder (1280 projection), while `models/image_encoder` is ViT-H (1024 projection). The installer self-test and runtime now fail closed if this pairing contract is violated.
 
+## r6 master prompt — MoGe geometry readability
+
+r6 changes the default generation objective from a generic conservative repaint to a **MoGe-oriented Geometry Assist master prompt**.
+
+The target is not photorealism or beauty rendering. The proxy must preserve camera, framing, perspective, composition, silhouettes, object positions, proportions, architecture, openings, and object layout while reinterpreting surface appearance only enough to reduce painterly ambiguity and improve monocular geometry readability.
+
+Installed positive prompt:
+
+`Geometry-assist proxy for monocular 3D estimation. Preserve camera, framing, perspective, composition, silhouettes, positions, proportions, architecture, openings, and object layout. Reduce painterly ambiguity; clarify planes, occlusions, materials, contact shadows, depth layering, and neutral readable lighting.`
+
+Installed negative prompt:
+
+`changed camera, changed FOV, crop, fisheye, moved objects, changed proportions, warped architecture, added or removed objects, new openings, hallucinated structures, cinematic relighting, fog, bloom, painterly abstraction, blurred boundaries, scene redesign, text, watermark`
+
+The prompt remains under the lexical safety margin and is still validated at install/runtime against both SDXL CLIP tokenizers.
+
