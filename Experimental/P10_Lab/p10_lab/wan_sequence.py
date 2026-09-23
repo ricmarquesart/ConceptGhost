@@ -311,6 +311,11 @@ def write_per_drone_gif_previews(
     max_width: int=640,
     route_plan_sha256: str | None=None,
     generation_context_sha256: str | None=None,
+    source_control_manifest_sha256: str | None=None,
+    run_id: str | None=None,
+    scene_contract_id: str | None=None,
+    source_run_id: str | None=None,
+    output_directory: str | Path | None=None,
 ) -> dict[str,object]:
     """Write one lightweight looping GIF from final composite frames per drone."""
 
@@ -365,6 +370,14 @@ def write_per_drone_gif_previews(
             optimize=False,
             disposal=2,
         )
+        gif_subfolder=None
+        if output_directory is not None:
+            try:
+                gif_subfolder=str(
+                    gif_path.parent.resolve().relative_to(Path(output_directory).resolve())
+                ).replace("\\","/")
+            except ValueError:
+                gif_subfolder=None
         entries.append({
             "drone_index":mission_index+1,
             "mission_name":name,
@@ -378,27 +391,103 @@ def write_per_drone_gif_previews(
             "preview_height":preview_height,
             "source_type":"GATE5_FINAL_COMPOSITE",
             "source_frame_set_sha256":_ordered_frame_set_sha256(source_paths),
+            "gif_filename":gif_name,
+            "gif_subfolder":gif_subfolder,
             "gif_path":str(gif_path.resolve()),
             "gif_sha256":_sha256_file(gif_path),
         })
 
+    index_path=preview_root/"drone_preview_index.json"
+    index_subfolder=None
+    if output_directory is not None:
+        try:
+            index_subfolder=str(
+                preview_root.resolve().relative_to(Path(output_directory).resolve())
+            ).replace("\\","/")
+        except ValueError:
+            index_subfolder=None
     index={
-        "schema":"ConceptGhost.P10DronePreviewIndex.v0.1",
+        "schema":"ConceptGhost.P10DronePreviewIndex.v0.2",
         "status":"PASS",
+        "run_id":run_id,
+        "scene_contract_id":scene_contract_id,
+        "source_run_id":source_run_id,
         "source_type":"GATE5_FINAL_COMPOSITE",
+        "source_control_manifest_sha256":source_control_manifest_sha256,
         "route_plan_sha256":route_plan_sha256,
         "generation_context_sha256":generation_context_sha256,
         "mission_order":[mission.mission_name for mission in missions],
+        "mission_modes":dict(mission_modes),
         "drone_count":len(entries),
         "fps":fps,
         "max_width":max_width,
         "loop":"INFINITE",
+        "index_filename":index_path.name,
+        "index_subfolder":index_subfolder,
+        "index_path":str(index_path.resolve()),
         "previews":entries,
     }
-    index_path=preview_root/"drone_preview_index.json"
-    index["index_path"]=str(index_path.resolve())
     index_path.write_text(json.dumps(index,indent=2,sort_keys=True),encoding="utf-8")
     return index
+
+
+def validate_drone_preview_index(
+    index: dict[str,object],
+    missions: tuple[MissionRange,...],
+    mission_modes: dict[str,object],
+    *,
+    route_plan_sha256: str | None,
+    generation_context_sha256: str | None,
+    source_control_manifest_sha256: str | None,
+) -> None:
+    """Fail closed if the published preview index does not describe current GIF bytes."""
+
+    if not isinstance(index,dict):
+        raise ContractError("Drone preview index must be a JSON object")
+    if index.get("schema")!="ConceptGhost.P10DronePreviewIndex.v0.2":
+        raise ContractError("Unsupported drone preview index schema")
+    expected_order=[mission.mission_name for mission in missions]
+    if index.get("mission_order")!=expected_order:
+        raise ContractError("Drone preview index mission_order mismatch")
+    if index.get("drone_count")!=len(missions):
+        raise ContractError("Drone preview index drone_count mismatch")
+    if index.get("route_plan_sha256")!=route_plan_sha256:
+        raise ContractError("Drone preview index route hash mismatch")
+    if index.get("generation_context_sha256")!=generation_context_sha256:
+        raise ContractError("Drone preview index generation-context mismatch")
+    if index.get("source_control_manifest_sha256")!=source_control_manifest_sha256:
+        raise ContractError("Drone preview index control-manifest mismatch")
+
+    previews=index.get("previews")
+    if not isinstance(previews,list) or len(previews)!=len(missions):
+        raise ContractError("Drone preview index previews list is inconsistent")
+
+    for preview,mission in zip(previews,missions):
+        if not isinstance(preview,dict):
+            raise ContractError("Drone preview entries must be JSON objects")
+        name=mission.mission_name
+        if preview.get("mission_name")!=name:
+            raise ContractError("Drone preview mission order/name mismatch")
+        if preview.get("mode")!=mission_modes.get(name):
+            raise ContractError(f"Drone preview mode mismatch for {name}")
+        if preview.get("frame_count")!=mission.length:
+            raise ContractError(f"Drone preview frame count mismatch for {name}")
+        if preview.get("global_frame_start")!=mission.start:
+            raise ContractError(f"Drone preview start index mismatch for {name}")
+        if preview.get("global_frame_end_exclusive")!=mission.end:
+            raise ContractError(f"Drone preview end index mismatch for {name}")
+        gif_path=Path(str(preview.get("gif_path") or ""))
+        if not gif_path.is_file():
+            raise ContractError(f"Drone preview GIF is missing: {gif_path}")
+        expected_hash=str(preview.get("gif_sha256") or "").strip().lower()
+        if len(expected_hash)!=64 or _sha256_file(gif_path)!=expected_hash:
+            raise ContractError(f"Drone preview GIF hash mismatch for {name}")
+        if not str(preview.get("gif_filename") or "").strip():
+            raise ContractError(f"Drone preview filename missing for {name}")
+
+    index_path=Path(str(index.get("index_path") or ""))
+    if not index_path.is_file():
+        raise ContractError(f"Drone preview index file is missing: {index_path}")
 
 
 def padded_wan_length(length: int) -> int:
@@ -498,12 +587,13 @@ class ConceptGhostP10WanSequentialSampler:
             },
         }
 
-    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
         "composite_preview",
         "generated_dir",
         "wan_manifest_path",
         "diagnostics_json",
+        "drone_preview_index_path",
     )
     FUNCTION = "sample"
     CATEGORY = "ConceptGhost/P10 Refined"
@@ -807,6 +897,22 @@ class ConceptGhostP10WanSequentialSampler:
             max_width=640,
             route_plan_sha256=control_payload.get("route_plan_sha256"),
             generation_context_sha256=generation_context_sha256,
+            source_control_manifest_sha256=source_control_sha256,
+            run_id=run_id,
+            scene_contract_id=control_payload.get("scene_contract_id"),
+            source_run_id=control_payload.get("source_run_id"),
+            output_directory=folder_paths.get_output_directory(),
+        )
+        validate_drone_preview_index(
+            drone_preview_index,
+            missions,
+            mission_modes,
+            route_plan_sha256=control_payload.get("route_plan_sha256"),
+            generation_context_sha256=generation_context_sha256,
+            source_control_manifest_sha256=source_control_sha256,
+        )
+        drone_preview_index_sha256=_sha256_file(
+            Path(drone_preview_index["index_path"])
         )
         wan_manifest = {
             "schema": "ConceptGhost.P10WanSequential.v0.2",
@@ -833,6 +939,8 @@ class ConceptGhostP10WanSequentialSampler:
                 for mission in missions
             ],
             "drone_previews": drone_preview_index,
+            "drone_preview_index_path": drone_preview_index["index_path"],
+            "drone_preview_index_sha256": drone_preview_index_sha256,
             "policy": WanRuntimeProfile(
                 width=effective_width,
                 height=effective_height,
@@ -896,17 +1004,30 @@ class ConceptGhostP10WanSequentialSampler:
             "generated_dir": str(output_root),
             "wan_manifest_path": str(wan_manifest_path),
             "drone_preview_index_path": drone_preview_index["index_path"],
+            "drone_preview_index_sha256": drone_preview_index_sha256,
             "drone_preview_count": drone_preview_index["drone_count"],
             "drone_previews": drone_preview_index["previews"],
             "known_pixels_replaced_by_wan": False,
             "sequential_only": True,
         }
+        gif_ui=[
+            {
+                "filename":preview["gif_filename"],
+                "subfolder":preview.get("gif_subfolder") or "",
+                "type":"output",
+            }
+            for preview in drone_preview_index["previews"]
+        ]
         return {
-            "ui": {"text": [json.dumps(diagnostics, indent=2, sort_keys=True)]},
+            "ui": {
+                "images": gif_ui,
+                "text": [json.dumps(diagnostics, indent=2, sort_keys=True)],
+            },
             "result": (
                 preview_batch,
                 str(output_root),
                 str(wan_manifest_path),
                 json.dumps(diagnostics, indent=2, sort_keys=True),
+                str(drone_preview_index["index_path"]),
             ),
         }
