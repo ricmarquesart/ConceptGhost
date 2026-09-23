@@ -73,7 +73,7 @@ Current state:
 - DR3 interactive ComfyUI editor — IMPLEMENTED, CI/runtime validation active;
 - DR4 multi-drone PATH/SPIN_360 UX — backend implemented, frontend controls implemented, runtime validation pending;
 - DR5 hold-last-safe-and-resume collision policy — backend prototype implemented;
-- DR6 Gate 4→5→6 authored-route integration — partially implemented;
+- DR6 Gate 4→5→6 authored-route integration — COMPLETED in code/CI; user runtime acceptance deferred to DR9;
 - DR7 persistence/hash-safe resume — pending;
 - DR8 diagnostics/tests — partially implemented;
 - DR9 packaged user acceptance — pending.
@@ -88,6 +88,26 @@ Production direction:
 - collision policy prevents emitted frames from simply crossing known P9 geometry.
 
 Gate 6 first-pass runtime acceptance remains valid. Gate 4R improves the evidence-camera authoring feeding Gate 5/Gate 6 and does not reopen the Gate 6 calibration fix.
+
+
+### Gate 4R DR6 checkpoint — authored route identity through Gate 6
+
+DR6 is complete at code/CI level.
+
+The route chain is now explicit and regression-tested:
+`P10DroneRouteAuthoring → P10RefinedEvidence → P10WanSequentialSampler → P10ReconstructionRuntime`.
+
+Authority/identity guarantees:
+- Gate 4 control + camera manifests use v0.2 route metadata;
+- exact mission order/modes/frame counts are preserved;
+- WAN tensor count/dimensions must equal the serialized Gate 4 control contract;
+- WAN cannot silently drop authored frames;
+- split WAN windows retain original `mission_name`;
+- Gate 6 requires matching route authority, route SHA-256 and mission order between WAN and camera manifests;
+- COLMAP dataset records the same route identity while camera pose authority remains P9-derived;
+- untouched route-editor seed is tagged `EDITABLE_SEED`; artist interaction promotes it to `ARTIST_AUTHORED`.
+
+GitHub Actions run 35811855641 completed SUCCESS across Ubuntu Python 3.12, Windows Python 3.12 and Windows Python 3.14.
 
 
 ## Gate 5 — 5 subgates
