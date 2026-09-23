@@ -104,6 +104,38 @@ class MeshClearanceRuntimeTests(unittest.TestCase):
         self.assertTrue(result.results[0].blocked)
         self.assertEqual(result.manifest()["blocked_mission_count"], 1)
 
+    def test_segment_clearance_detects_surface_between_safe_endpoints(self):
+        from p10_lab.path_planner import RelativeWaypoint
+        ClearanceCloud, _ = self._api()
+        cloud = ClearanceCloud(
+            points=((0.0, 0.0, 0.0),),
+            source_point_count=1,
+            retained_point_count=1,
+            sampling_stride=1,
+            grid_cell_size=0.25,
+        )
+        start=RelativeWaypoint(-1.0,0.0,0.0)
+        end=RelativeWaypoint(1.0,0.0,0.0)
+        self.assertGreaterEqual(cloud.query(start),0.9)
+        self.assertGreaterEqual(cloud.query(end),0.9)
+        self.assertTrue(
+            cloud.segment_is_blocked(
+                start,end,0.20,sample_step=0.05
+            )
+        )
+
+    def test_threshold_query_uses_spatial_buckets(self):
+        ClearanceCloud, _ = self._api()
+        cloud = ClearanceCloud(
+            points=((5.0, 2.0, 3.0),),
+            source_point_count=1,
+            retained_point_count=1,
+            sampling_stride=1,
+            grid_cell_size=0.25,
+        )
+        self.assertIsNone(cloud.clearance_below(0.0,0.0,0.0,0.2))
+        self.assertIsNotNone(cloud.clearance_below(5.1,2.0,3.0,0.2))
+
     def test_empty_cloud_fails_closed(self):
         ClearanceCloud, _ = self._api()
         with self.assertRaises(ValueError):
@@ -118,7 +150,7 @@ class MeshClearanceRuntimeTests(unittest.TestCase):
             sampling_stride=10,
         )
         manifest = cloud.manifest()
-        self.assertEqual(manifest["method"], "P9_PRIMARYMESH_VERTEX_CLEARANCE")
+        self.assertEqual(manifest["method"], "P9_PRIMARYMESH_VERTEX_PLUS_FACE_CENTROID_CLEARANCE")
         self.assertTrue(manifest["approximate"])
         self.assertEqual(manifest["retained_point_count"], 1)
 
