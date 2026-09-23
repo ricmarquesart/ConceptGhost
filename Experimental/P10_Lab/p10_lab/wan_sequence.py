@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 
@@ -294,6 +295,11 @@ def _ordered_frame_set_sha256(paths: tuple[Path,...]) -> str:
     return digest.hexdigest()
 
 
+def _safe_preview_name(name: str) -> str:
+    safe=re.sub(r"[^A-Za-z0-9._-]+","_",str(name or "").strip()).strip("._-")
+    return safe or "mission"
+
+
 def write_per_drone_gif_previews(
     records: list[dict] | tuple[dict,...],
     missions: tuple[MissionRange,...],
@@ -347,7 +353,7 @@ def write_per_drone_gif_previews(
         if not frames:
             raise ContractError(f"No final composite frames available for GIF mission {name}")
 
-        gif_name=f"drone_{mission_index+1:02d}_{name}_preview.gif"
+        gif_name=f"drone_{mission_index+1:02d}_{_safe_preview_name(name)}_preview.gif"
         gif_path=preview_root/gif_name
         frames[0].save(
             gif_path,
@@ -390,8 +396,8 @@ def write_per_drone_gif_previews(
         "previews":entries,
     }
     index_path=preview_root/"drone_preview_index.json"
-    index_path.write_text(json.dumps(index,indent=2,sort_keys=True),encoding="utf-8")
     index["index_path"]=str(index_path.resolve())
+    index_path.write_text(json.dumps(index,indent=2,sort_keys=True),encoding="utf-8")
     return index
 
 
