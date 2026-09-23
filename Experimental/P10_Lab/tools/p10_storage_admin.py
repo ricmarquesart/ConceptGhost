@@ -33,7 +33,7 @@ def main(argv=None):
         "action",
         choices=(
             "report","open","clean-route-editor","clean-failed-attempts",
-            "clean-all-attempts","reset-p10-state",
+            "clean-all-attempts","clean-route-handoff","reset-p10-state",
         ),
     )
     parser.add_argument("--confirm",default="")
@@ -86,6 +86,10 @@ def main(argv=None):
     if args.action=="clean-all-attempts":
         paths=[item["path"] for item in report.get("attempts",[])]
         _print(cleanup_p10_owned_cache(output,delete_attempt_paths=paths))
+        return 0
+
+    if args.action=="clean-route-handoff":
+        _print(cleanup_p10_owned_cache(output,delete_route_setup_state=True))
         return 0
 
     if args.action=="reset-p10-state":
