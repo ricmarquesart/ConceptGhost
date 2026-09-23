@@ -36,7 +36,7 @@ def main() -> int:
     assert cfg["host_policy"]["official_pipeline_mutation"] == "FORBIDDEN"
     assert cfg["defaults"]["strength"] <= 0.30
     assert cfg["defaults"]["control_hint_alignment"] == "EXACT_WORKING_SIZE"
-    assert cfg["schema"] == "ConceptGhost.GeometryAssistDiagnostic.Config.v3"
+    assert cfg["schema"] == "ConceptGhost.GeometryAssistDiagnostic.Config.v4"
     assert cfg["defaults"]["prompt_max_tokens"] == 77
     assert cfg["defaults"]["prompt_contract"] == "BOTH_SDXL_CLIP_TOKENIZERS"
     # Keep a large lexical safety margin. Runtime/self-test enforce the actual
@@ -46,6 +46,10 @@ def main() -> int:
     assert cfg["defaults"]["controlnet_scale"] >= 0.90
     assert cfg["models"]["controlnet"]["repo_id"] == "diffusers/controlnet-canny-sdxl-1.0-small"
     assert cfg["models"]["ip_adapter"]["repo_id"] == "h94/IP-Adapter"
+    assert cfg["models"]["ip_adapter"]["weight_name"] == "ip-adapter_sdxl_vit-h.safetensors"
+    assert cfg["models"]["ip_adapter"]["image_encoder_folder"] == "models/image_encoder"
+    assert cfg["models"]["ip_adapter"]["image_encoder_projection_dim"] == 1024
+    assert cfg["models"]["ip_adapter"]["pairing_contract"] == "SDXL_VIT_H_1024"
 
     installer = must("Installer/install_geometry_assist.ps1").read_text(encoding="utf-8")
     assert "ConceptGhost-GeometryAssistDiagnostic" in installer
@@ -71,6 +75,8 @@ def main() -> int:
         "CLIPTokenizer",
         "tokenizer_2",
         "prompt_tokenizers",
+        "IP-Adapter pairing",
+        "image_encoder_projection_dim",
         "CannyDetector",
         "02_geometry_assist_proxy.png",
         "03_side_by_side.png",
