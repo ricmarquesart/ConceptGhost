@@ -1,0 +1,60 @@
+{
+  "schema": "ConceptGhost.P10DR9RRouteEditorFrontendHotfixPackage.v0.13",
+  "package": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r13.zip",
+  "date": "2026-09-23",
+  "supersedes": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r12.zip",
+  "trigger": {
+    "runtime_observation": "Workflow 01 Run #1 completed successfully, but Step 2 showed a blank grey route_plan_json area with no map or drone/camera controls.",
+    "root_cause": "drone_route_editor.js contained malformed duplicated JavaScript declarations, preventing the frontend extension from parsing and mounting its DOM widget."
+  },
+  "correction": {
+    "malformed_declarations_removed": true,
+    "node_js_syntax_check": "PASS",
+    "dom_widget_contract": "PASS",
+    "controls_expected": [
+      "Drone selector",
+      "PATH/360",
+      "Aim",
+      "Editar alvo",
+      "Yaw",
+      "Pitch",
+      "+ Drone",
+      "- Drone",
+      "Excluir ponto",
+      "Desfazer",
+      "Limpar rota",
+      "Resetar rota",
+      "Enquadrar tudo"
+    ],
+    "views_expected": [
+      "Perspective",
+      "Top",
+      "Side",
+      "Front"
+    ],
+    "geometry_authority_changed": false
+  },
+  "p10_source_commit": "59724195a94a5614c5d7b853aa15589779ab9641",
+  "release_commit": "6bebe449053c96c37deab19271f7a84c38834831",
+  "zip": {
+    "bytes": 12248896,
+    "sha256": "98361c6857d629f8780db601316f946626b7cd890f8b649abff0b5bf002e68cd"
+  },
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "file_id": "13H212NYf04A_LGTpYCnOdpivmPn_g4oB"
+  },
+  "github": {
+    "tag": "p10-dr9r-r13",
+    "release_url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r13",
+    "asset_digest": "sha256:98361c6857d629f8780db601316f946626b7cd890f8b649abff0b5bf002e68cd"
+  },
+  "ci": {
+    "source_tests_at_fix": 35932811245,
+    "source_tests_status": "SUCCESS",
+    "publish_run": 35933125647,
+    "publish_status": "SUCCESS"
+  },
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "gate7": "BLOCKED_UNTIL_RUNTIME_ACCEPTANCE"
+}
