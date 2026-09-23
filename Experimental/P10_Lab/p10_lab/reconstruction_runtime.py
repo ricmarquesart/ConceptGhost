@@ -378,6 +378,8 @@ def run_reconstruction_pipeline(
         "gate":6,
         "subgate":"6.6",
         "run_id":run_id,
+        "p10_attempt_id":wan.get("p10_attempt_id"),
+        "p10_attempt_root":wan.get("p10_attempt_root"),
         "wan_manifest_path":str(wan_manifest_path),
         "camera_manifest_path":str(camera_manifest_path),
         "route_authority":wan.get("route_authority"),
@@ -407,4 +409,35 @@ def run_reconstruction_pipeline(
     out=output_root/"reconstruction_runtime_manifest.json"
     out.write_text(json.dumps(diagnostics,indent=2,sort_keys=True),encoding="utf-8")
     diagnostics["runtime_manifest_path"]=str(out)
+
+    attempt_root_value=str(wan.get("p10_attempt_root") or "").strip()
+    attempt_id=str(wan.get("p10_attempt_id") or "").strip()
+    if attempt_root_value and attempt_id:
+        attempt_root=Path(attempt_root_value).resolve()
+        attempt_manifest_path=attempt_root/"attempt_manifest.json"
+        if attempt_manifest_path.is_file():
+            attempt_manifest=_read_json(attempt_manifest_path,"P10 attempt manifest")
+            if str(attempt_manifest.get("p10_attempt_id") or "")!=attempt_id:
+                raise ContractError("P10 attempt manifest identity mismatch at Gate 6 closeout")
+            from datetime import datetime, timezone
+            attempt_manifest.update({
+                "status":(
+                    "COMPLETE_GEOMETRY_FAIL"
+                    if geometry_quality.get("status")=="FAIL"
+                    else "COMPLETE"
+                ),
+                "completed_at_utc":datetime.now(timezone.utc).isoformat(),
+                "runtime_status":"PASS",
+                "geometry_quality_status":geometry_quality.get("status"),
+                "geometry_quality_manifest_path":geometry_quality.get("manifest_path"),
+                "gate6_runtime_manifest_path":str(out),
+                "pre_fusion_mesh_path":diagnostics["pre_fusion_mesh_path"],
+            })
+            attempt_manifest_path.write_text(
+                json.dumps(attempt_manifest,indent=2,sort_keys=True),
+                encoding="utf-8",
+            )
+            diagnostics["attempt_manifest_path"]=str(attempt_manifest_path)
+
+    out.write_text(json.dumps(diagnostics,indent=2,sort_keys=True),encoding="utf-8")
     return diagnostics
