@@ -54,6 +54,14 @@ The ordered implementation list above records the original plan, but the impleme
 
 This refinement preserves the official topology `P9 (= Baseline) → P10` and does not reopen completed Gate 6.4/6.5 first-pass work as a blocker.
 
+## P9 acceptance lock and DR9R execution rule — 2026-09-23
+
+The current P9 output is accepted as the authoritative upstream scene for P10, including its monocular depth span and disconnected-shell structure. P10 must adapt to that world without reshaping P9 merely to simplify downstream reconstruction.
+
+DR9R therefore focuses on camera authoring, orientation authority, reconstruction diagnostics, multi-mission preservation, quality gates, explicit P9→P10 handoff and immutable P10 attempts.
+
+User runtime testing is deferred until the entire DR9R improvement set is complete. Every bounded DR9R subgate is still checkpointed to GitHub and Google Drive for recovery, but intermediate checkpoints are not user-test releases.
+
 ## Promotion gates
 
 - Baseline protection.
