@@ -98,3 +98,17 @@ The other warnings seen in the r1 run (missing optional MediaPipe, timm deprecat
 Existing r1 installations do **not** need to be uninstalled. Running the r2 installer reuses the isolated Python/models and replaces only the owned worker/config as needed.
 
 Distribution revision: **r2** — first runtime hotfix after RTX 2080 Ti hardware attempt.
+
+## r3 hotfix — real CLIP-token contract
+
+The second RTX 2080 Ti run proved the r2 geometry/control alignment fix: the Canny hint remained exactly 1024x768 and SDXL, ControlNet and IP-Adapter all loaded successfully. The run then stopped before denoising because the r2 positive prompt encoded to 96 CLIP tokens while the model context is 77.
+
+r3 fixes that packaging defect by:
+- replacing the positive and negative defaults with much shorter conservative prompts;
+- validating prompt length with both SDXL text tokenizers (tokenizer and tokenizer_2), not only the first tokenizer;
+- running the same tokenizer validation during the isolated self-test so installation/verification cannot report PASS with an invalid packaged prompt;
+- keeping the runtime fail-closed guard before diffusion.
+
+The MediaPipe/timm/TinyViT warnings remain non-fatal for the Canny-only diagnostic path.
+
+Distribution revision: **r3** — prompt-contract runtime hotfix after the second RTX 2080 Ti hardware attempt.
