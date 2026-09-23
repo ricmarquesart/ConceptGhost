@@ -8,8 +8,8 @@ class P10StorageLifecycleTests(unittest.TestCase):
         from p10_lab.storage_lifecycle import build_storage_report
         with tempfile.TemporaryDirectory() as tmp:
             report=build_storage_report(tmp)
-            self.assertTrue(report["roots"]["route_setup_root"].endswith("conceptghost/p10_route_setup"))
-            self.assertTrue(report["roots"]["attempts_root"].endswith("conceptghost/p10_attempts"))
+            self.assertEqual(Path(report["roots"]["route_setup_root"]).parts[-2:],("conceptghost","p10_route_setup"))
+            self.assertEqual(Path(report["roots"]["attempts_root"]).parts[-2:],("conceptghost","p10_attempts"))
             self.assertEqual(report["retention_policy"]["p9_run"],"NEVER_DELETE_FROM_P10_CLEANUP")
 
     def test_cleanup_deletes_only_p10_attempt(self):
