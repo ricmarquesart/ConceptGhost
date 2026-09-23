@@ -11,6 +11,7 @@ from .colmap_dataset import prepare_known_camera_colmap_dataset
 from .sparse_triangulation import run_sparse_triangulation
 from .dense_reconstruction import run_dense_reconstruction
 from .prefusion_mesh import run_prefusion_meshing
+from .p9_roundtrip_audit import run_p9_roundtrip_audit
 
 
 def standard_colmap_candidates(*, localappdata: str | None = None) -> tuple[Path, ...]:
@@ -159,6 +160,7 @@ def run_reconstruction_pipeline(
     *,
     colmap_executable: str | None = None,
     resume: bool = True,
+    p9_roundtrip_audit_enabled: bool = True,
 ) -> dict[str,object]:
     wan_manifest_path=Path(wan_manifest_path).resolve()
     camera_manifest_path=Path(camera_manifest_path).resolve()
@@ -175,6 +177,65 @@ def run_reconstruction_pipeline(
 
     dataset_root=output_root/"dataset"
     stages={}
+
+    p9_roundtrip=None
+    if p9_roundtrip_audit_enabled:
+        control_manifest_value=str(wan.get("source_control_manifest") or "").strip()
+        if control_manifest_value:
+            audit_root=output_root/"p9_roundtrip"
+            try:
+                p9_roundtrip=run_p9_roundtrip_audit(
+                    control_manifest_value,
+                    camera_manifest_path,
+                    audit_root,
+                    colmap_executable=colmap_executable,
+                    resume=bool(resume),
+                )
+                stages["p9_roundtrip_audit"]={
+                    "state":p9_roundtrip.get("execution_state","BUILT"),
+                    "runtime_status":p9_roundtrip.get("runtime_status"),
+                    "quality_status":p9_roundtrip.get("quality_status"),
+                    "manifest_path":p9_roundtrip.get("audit_manifest_path"),
+                }
+            except Exception as error:
+                audit_root.mkdir(parents=True,exist_ok=True)
+                failure={
+                    "schema":"ConceptGhost.P10P9RoundtripAudit.v0.1",
+                    "runtime_status":"FAIL",
+                    "quality_status":"FAIL",
+                    "alerts":["P9_ONLY_ROUNDTRIP_RUNTIME_FAILURE"],
+                    "error":f"{type(error).__name__}: {error}",
+                    "purpose":"ISOLATE_P10_CAMERA_AND_COLMAP_FROM_WAN_GENERATION",
+                    "p9_authority_changed":False,
+                    "source_control_manifest":control_manifest_value,
+                    "camera_manifest_path":str(camera_manifest_path),
+                }
+                failure_path=audit_root/"p9_roundtrip_audit.json"
+                failure_path.write_text(
+                    json.dumps(failure,indent=2,sort_keys=True),
+                    encoding="utf-8",
+                )
+                failure["audit_manifest_path"]=str(failure_path)
+                p9_roundtrip=failure
+                stages["p9_roundtrip_audit"]={
+                    "state":"FAILED_DIAGNOSTIC",
+                    "runtime_status":"FAIL",
+                    "quality_status":"FAIL",
+                    "manifest_path":str(failure_path),
+                }
+        else:
+            p9_roundtrip={
+                "schema":"ConceptGhost.P10P9RoundtripAudit.v0.1",
+                "runtime_status":"SKIPPED",
+                "quality_status":"WARN",
+                "alerts":["SOURCE_CONTROL_MANIFEST_MISSING"],
+                "p9_authority_changed":False,
+            }
+            stages["p9_roundtrip_audit"]={
+                "state":"SKIPPED",
+                "runtime_status":"SKIPPED",
+                "quality_status":"WARN",
+            }
 
     dataset_manifest_path=dataset_root/"dataset_manifest.json"
     dataset_manifest=_stage_manifest(dataset_manifest_path)
@@ -264,6 +325,8 @@ def run_reconstruction_pipeline(
         "mesh_preview_svg_path":str((dataset_root/"dense"/"pre_fusion_mesh_preview.svg").resolve()),
         "stages":stages,
         "mesh_health":final_mesh_manifest.get("mesh_health"),
+        "p9_roundtrip_audit":p9_roundtrip,
+        "p9_roundtrip_audit_enabled":bool(p9_roundtrip_audit_enabled),
         "checkpoint_resume_enabled":bool(resume),
     }
     out=output_root/"reconstruction_runtime_manifest.json"
