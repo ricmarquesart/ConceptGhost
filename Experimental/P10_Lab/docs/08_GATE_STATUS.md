@@ -5,6 +5,20 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 DR8A complete
+
+This is the newest authoritative development status.
+
+- Pre-DR8 recovery checkpoint is frozen in GitHub branch `checkpoint/p10-dr7-complete-20260923` at commit `8d15f63d24fff023bec47eeccb334beb4e615e90`; its GitHub Actions run `35815637530` is SUCCESS.
+- A matching Google Drive checkpoint folder exists under the P10 Lab with the r10 installer baseline, DR7 plan snapshot and checkpoint manifest.
+- DR8A — deterministic pre-WAN route diagnostics — is COMPLETED / CI PASS.
+- Gate 4 now writes `diagnostics/drone_route_diagnostics.json` before WAN.
+- The manifest includes mission order, active drone count, route/movement lengths, exact frame counts, collision hold/resume statistics, clearance and P9 coverage/hole metrics.
+- Status semantics are deterministic: PASS for an exact route/frame contract without collision hold; WARN for a valid route requiring collision hold or having no P9 coverage; FAIL for route/frame/diagnostic contract mismatch.
+- Low P9 coverage alone is not treated as failure because Gate 5/WAN is explicitly the missing-region completion stage.
+- GitHub Actions run `35816433877` completed SUCCESS on `efb7a39b0a53c2035ab8ae58ca34a26c339ea92a`.
+- **Next bounded development: DR8B — per-drone final-composite GIF previews.**
+
 ## Authoritative reconciliation — 2026-09-23 DR7 complete
 
 This is the newest authoritative development status.
