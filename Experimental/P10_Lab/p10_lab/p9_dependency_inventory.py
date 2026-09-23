@@ -35,8 +35,15 @@ def build_p9_dependency_inventory(run_dir: str | Path) -> dict[str,Any]:
         "official_outputs_contract":boundary.official_outputs_contract,
         "output_index":boundary.output_index,
     }
-    for key,path in boundary.optional.items():
-        critical.setdefault(key,path)
+    optional_available={
+        key:{
+            "relative_path":_relative(root,Path(path)),
+            "absolute_path":str(Path(path).resolve()),
+            "bytes":Path(path).stat().st_size,
+        }
+        for key,path in boundary.optional.items()
+        if key not in critical
+    }
 
     critical_rows={}
     for name,path in critical.items():
@@ -78,6 +85,7 @@ def build_p9_dependency_inventory(run_dir: str | Path) -> dict[str,Any]:
         "branch_mode":boundary.branch_mode,
         "p9_authority_policy":"REFERENCE_FULL_PERSISTED_RUN; DO_NOT_COPY_OR_REDUCE",
         "critical":critical_rows,
+        "optional_available":optional_available,
         "persisted_file_count":len(persisted)+len(root_level),
         "persisted_files":root_level+persisted,
         "scan_roots":list(_SCAN_ROOTS),
