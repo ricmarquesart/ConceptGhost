@@ -153,11 +153,13 @@ class ConceptGhostP10DroneRouteAuthoring:
             boundary.primary_mesh,
             camera,
             plan,
+            source_image=boundary.source_image,
         )
         base_preview,base_projection,base_diagnostics=render_route_authoring_preview(
             boundary.primary_mesh,
             camera,
             None,
+            source_image=boundary.source_image,
         )
 
         output_root=(
@@ -211,6 +213,8 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "side":"FORWARD + UP",
                 "front":"RIGHT + UP",
                 "same_3d_waypoint_shared_across_views":True,
+                "orthographic_metric_scale_preserved":True,
+                "downstream_updates_on_next_queue_prompt":True,
             },
         }
         rendered_diagnostics=_pretty(diagnostics)
@@ -232,7 +236,10 @@ class ConceptGhostP10DroneRouteAuthoring:
         }
         return {
             "ui":{
-                "images":[ui_metadata["preview"]],
+                # Do not expose the normal ComfyUI image widget here. The DOM
+                # editor already renders the authoritative scene background;
+                # a second image widget below it was a stale snapshot of the
+                # previous execution and looked like a second, frozen route.
                 "route_editor":[ui_metadata],
                 "text":[rendered_diagnostics],
             },
