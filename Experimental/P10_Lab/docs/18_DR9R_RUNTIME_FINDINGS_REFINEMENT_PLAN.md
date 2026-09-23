@@ -101,7 +101,7 @@ Add explicit per-mission orientation modes:
 The route workspace must display the target/direction/frustum so camera position and camera aim cannot be confused.
 
 #### DR9R-B3 — P9-Only Reconstruction Round-Trip Audit
-Status: **NEXT**
+Status: **COMPLETE / CI PASS / RUNTIME EVIDENCE DEFERRED**
 
 Run a diagnostic reconstruction using P9-rendered camera views without WAN generation:
 P9 PrimaryMesh → P10 known cameras → P9-only rendered frames → known-camera COLMAP → reconstructed cloud/mesh.
@@ -111,7 +111,7 @@ Purpose: isolate camera matrices, intrinsics, crop/resize mapping, ConceptGhost�
 This is diagnostic only. P9 remains accepted authority regardless of the audit result.
 
 #### DR9R-B4 — Multi-Mission / Per-Drone Reconstruction Audit
-Status: **PLANNED**
+Status: **ACTIVE**
 
 - stop treating only the largest match component as sufficient geometric evidence;
 - report contribution and match connectivity per mission;
@@ -216,3 +216,15 @@ GitHub authority:
 - Per-mission diagnostics now include orientation mode/target/direction without changing the DR8 diagnostics schema.
 - GitHub CI passed after the B2 implementation fixes; final B2 checkpoint includes the legacy-hash preservation follow-up.
 - User runtime test remains intentionally deferred.
+
+
+### DR9R-B3 implementation checkpoint — 2026-09-23
+
+- Gate-4 control and camera manifests now carry the immutable source P9 run directory.
+- WAN propagates the same P9 run authority downstream.
+- Added a dedicated P9-only known-camera COLMAP dataset path using Gate-4 P9-rendered control frames and zero WAN pixels.
+- The P9-only audit runs before the WAN-composite reconstruction inside Gate 6, in an isolated `p9_roundtrip` subtree.
+- Audit failures are non-blocking diagnostic evidence: they are persisted as FAIL evidence rather than silently aborting or modifying P9.
+- Audit source inputs are hash-bound to control/camera manifests and can be reused only when the exact context matches.
+- Unit/CI coverage validates dataset identity, camera mapping and WAN exclusion.
+- Runtime geometric evidence from the audit is intentionally deferred until the final DR9R-E user test; implementation/CI is complete.
