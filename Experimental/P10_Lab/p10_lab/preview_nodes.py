@@ -16,7 +16,7 @@ from .wan_sequence import ConceptGhostP10WanSequentialSampler
 from .reconstruction_node import ConceptGhostP10ReconstructionRuntime
 from .route_authoring_node import ConceptGhostP10DroneRouteAuthoring
 from .route_handoff import ConceptGhostP10RouteCommit, ConceptGhostP10ProductionEntryLoader
-from .moge_diagnostics import ConceptGhostMoGeDiagnosticsControl, ConceptGhostMoGeDepthDiagnostics
+from .moge_diagnostics import ConceptGhostMoGeDiagnosticsControl, ConceptGhostMoGeDiagnosticProfileTap, ConceptGhostMoGeDepthDiagnostics
 
 
 _CATEGORY = "ConceptGhost/P10 Lab"
@@ -328,6 +328,7 @@ class ConceptGhostP10RefinedEvidencePreview:
 
 NODE_CLASS_MAPPINGS = {
     "ConceptGhostMoGeDiagnosticsControl": ConceptGhostMoGeDiagnosticsControl,
+    "ConceptGhostMoGeDiagnosticProfileTap": ConceptGhostMoGeDiagnosticProfileTap,
     "ConceptGhostMoGeDepthDiagnostics": ConceptGhostMoGeDepthDiagnostics,
     "ConceptGhostP10WorkflowInstructions": ConceptGhostP10WorkflowInstructions,
     "ConceptGhostP10CompletionBundleBuilder": ConceptGhostP10CompletionBundleBuilder,
@@ -344,6 +345,7 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostMoGeDiagnosticsControl": "P9 · MoGe Depth Diagnostics · Controls",
+    "ConceptGhostMoGeDiagnosticProfileTap": "P9 · MoGe Depth Diagnostics · Per-Step Tap",
     "ConceptGhostMoGeDepthDiagnostics": "P9 · MoGe Depth Diagnostics · Export / Preview",
     "ConceptGhostP10WorkflowInstructions": "P10 · START HERE · Workflow Instructions",
     "ConceptGhostP10CompletionBundleBuilder": "P10 P9 Completion Bundle Builder",
