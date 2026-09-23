@@ -45,6 +45,9 @@ class ControlSequenceManifest:
     route_authority: str = "UNSPECIFIED"
     route_plan_schema: str | None = None
     route_plan_sha256: str | None = None
+    route_plan_file: str | None = None
+    scene_contract_id: str | None = None
+    source_run_id: str | None = None
     mission_modes: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
@@ -91,6 +94,9 @@ class ControlSequenceManifest:
             "route_authority": self.route_authority,
             "route_plan_schema": self.route_plan_schema,
             "route_plan_sha256": self.route_plan_sha256,
+            "route_plan_file": self.route_plan_file,
+            "scene_contract_id": self.scene_contract_id,
+            "source_run_id": self.source_run_id,
             "mission_order": mission_order,
             "missions": [
                 {
