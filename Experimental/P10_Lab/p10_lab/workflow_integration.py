@@ -14,6 +14,7 @@ _DEFAULT_GEOMETRY_PROFILE = "High Fidelity Split Clean"
 # These positions intentionally leave the proven v1.53 Baseline/Refined layout
 # untouched while arranging Gate 4 -> Gate 5 -> Gate 6 left-to-right.
 _P10_LAYOUT_POSITIONS = {
+    2097: (8720, 9300),
     2098: (9480, 9520),
     2099: (9460, 9600),
     2110: (10220, 9600),
@@ -673,6 +674,37 @@ def integrate_route_setup_refined_preview(workflow: dict) -> dict:
     )
     order=max((int(node.get("order") or 0) for node in nodes),default=0)
 
+    guide_text=(
+        "WORKFLOW 01 — ROUTE SETUP\n\n"
+        "RUN #1: clique Run uma vez para resolver/carregar o P9 e abrir o workspace de drones. "
+        "Este workflow PARA antes de WAN/Gate6. WAITING_FOR_ARTIST_ROUTE é esperado.\n\n"
+        "EDITE: use Perspective para inspeção e TOP/SIDE/FRONT para posicionar waypoints/alvo.\n\n"
+        "RUN #2: depois de editar, clique Run novamente NESTE MESMO workflow. "
+        "O P9 deve ficar em cache; a rota é commitada como ARTIST_AUTHORED.\n\n"
+        "Somente quando o commit mostrar READY / production_ready=true, abra "
+        "02_ConceptGhost_P10_PRODUCTION_r7.json."
+    )
+    guide={
+        "id":2097,
+        "type":"ConceptGhostP10WorkflowInstructions",
+        "pos":list(_P10_LAYOUT_POSITIONS[2097]),
+        "size":[760,360],
+        "flags":{},
+        "order":order+2,
+        "mode":0,
+        "inputs":[{
+            "name":"instructions",
+            "type":"STRING",
+            "widget":{"name":"instructions"},
+            "link":None,
+        }],
+        "outputs":[{"name":"instructions","type":"STRING","links":None,"slot_index":0}],
+        "properties":{"Node name for S&R":"ConceptGhostP10WorkflowInstructions"},
+        "widgets_values":[guide_text],
+        "title":"01 · START HERE · RUN #1 → EDIT DRONES → RUN #2 COMMIT",
+    }
+    nodes.append(guide)
+
     commit={
         "id":2110,
         "type":"ConceptGhostP10RouteCommit",
@@ -691,7 +723,7 @@ def integrate_route_setup_refined_preview(workflow: dict) -> dict:
         ],
         "properties":{"Node name for S&R":"ConceptGhostP10RouteCommit"},
         "widgets_values":[],
-        "title":"REFINED/P10 · ROUTE SETUP · COMMIT FOR PRODUCTION",
+        "title":"01 · STEP 3 · RUN #2 COMMIT · READY THEN OPEN WORKFLOW 02",
     }
     nodes.append(commit)
 
@@ -716,9 +748,19 @@ def integrate_route_setup_refined_preview(workflow: dict) -> dict:
     patched["last_link_id"]=next_link+1
     for item in nodes:
         if item.get("id")==68:
-            item["title"]="01 · RUN MODE · P10 ROUTE SETUP · P9 SOLVE + ARTIST ROUTE ONLY"
+            item["title"]="01 · ROUTE SETUP · RUN #1 P9 / RUN #2 COMMIT · NO WAN"
         elif item.get("id")==2:
-            item["title"]="01 · MASTER CONTROLS · P9 AUTHORITY FOR P10 ROUTE SETUP"
+            item["title"]="01 · P9 MASTER CONTROLS · UPSTREAM AUTHORITY"
+        elif item.get("id")==_ROUTE_AUTHOR_NODE_ID:
+            item["title"]="01 · STEP 2 · EDIT DRONES · PERSPECTIVE + TOP + SIDE + FRONT"
+    patched["extra"]=patched.get("extra") or {}
+    patched["extra"]["conceptghost"]={
+        **(patched["extra"].get("conceptghost") or {}),
+        "workflow_number":"01",
+        "workflow_role":"P10_ROUTE_SETUP",
+        "queue_sequence":["RUN_1_P9_AND_WORKSPACE","ARTIST_EDIT","RUN_2_COMMIT_ROUTE"],
+        "stops_before_wan_gate6":True,
+    }
     organize_p10_layout(patched)
     return patched
 
@@ -753,13 +795,44 @@ def integrate_p10_production_from_entry(workflow: dict) -> dict:
     if _EVIDENCE_NODE_ID not in by_id:
         raise ContractError("P10 Production workflow lost evidence node")
 
+    production_guide_text=(
+        "WORKFLOW 02 — P10 PRODUCTION\n\n"
+        "Pré-requisito: Workflow 01 terminou o RUN #2 com READY / production_ready=true.\n\n"
+        "Deixe production_entry_path = AUTO_LATEST para o fluxo normal. "
+        "Ao executar, o loader mostra o caminho absoluto do production_entry.json, "
+        "committed_route.json e P9 run_dir usados.\n\n"
+        "RUN #3: clique Run UMA VEZ. Este workflow NÃO contém solver P9. "
+        "Ele executa Evidence → WAN → Reconstruction → Geometry Quality.\n\n"
+        "Cada novo Run cria outro p10_attempt_id e não sobrescreve a tentativa anterior."
+    )
+    production_guide={
+        "id":2097,
+        "type":"ConceptGhostP10WorkflowInstructions",
+        "pos":list(_P10_LAYOUT_POSITIONS[2097]),
+        "size":[760,330],
+        "flags":{},
+        "order":0,
+        "mode":0,
+        "inputs":[{
+            "name":"instructions",
+            "type":"STRING",
+            "widget":{"name":"instructions"},
+            "link":None,
+        }],
+        "outputs":[{"name":"instructions","type":"STRING","links":None,"slot_index":0}],
+        "properties":{"Node name for S&R":"ConceptGhostP10WorkflowInstructions"},
+        "widgets_values":[production_guide_text],
+        "title":"02 · START HERE · AUTO_LATEST → RUN #3 P10 PRODUCTION",
+    }
+    kept_nodes.append(production_guide)
+
     loader={
         "id":2098,
         "type":"ConceptGhostP10ProductionEntryLoader",
         "pos":list(_P10_LAYOUT_POSITIONS[2098]),
         "size":[660,210],
         "flags":{},
-        "order":0,
+        "order":1,
         "mode":0,
         "inputs":[
             {
@@ -778,7 +851,7 @@ def integrate_p10_production_from_entry(workflow: dict) -> dict:
         ],
         "properties":{"Node name for S&R":"ConceptGhostP10ProductionEntryLoader"},
         "widgets_values":["AUTO_LATEST"],
-        "title":"P10 PRODUCTION · LOAD LATEST COMMITTED P9 + ARTIST ROUTE",
+        "title":"02 · STEP 1 · AUTO_LATEST HANDOFF · PATHS SHOWN AFTER RUN",
     }
     kept_nodes.append(loader)
     by_id[2098]=loader
@@ -815,11 +888,24 @@ def integrate_p10_production_from_entry(workflow: dict) -> dict:
     full["last_node_id"]=2301
     full["last_link_id"]=next_link+2
     full["groups"]=[]
+    for item in kept_nodes:
+        if item.get("id")==_EVIDENCE_NODE_ID:
+            item["title"]="02 · STEP 2 · P10 EVIDENCE · COMMITTED ROUTE + P9 RUN"
+        elif item.get("id")==2207:
+            item["title"]="02 · STEP 3 · WAN + SOURCE-PRESERVING COMPOSITE"
+        elif item.get("id")==2300:
+            item["title"]="02 · STEP 4 · KNOWN-CAMERA RECONSTRUCTION + GEOMETRY QUALITY"
+        elif item.get("id")==2301:
+            item["title"]="02 · RESULT · RECONSTRUCTED PRE-FUSION MESH"
+
     full["extra"]={
         "conceptghost":{
+            "workflow_number":"02",
             "workflow_role":"P10_PRODUCTION_FROM_EXISTING_P9",
             "p9_solver_present":False,
             "requires_production_entry":True,
+            "normal_loader_mode":"AUTO_LATEST",
+            "queue_sequence":["RUN_3_P10_PRODUCTION"],
         }
     }
     organize_p10_layout(full)
