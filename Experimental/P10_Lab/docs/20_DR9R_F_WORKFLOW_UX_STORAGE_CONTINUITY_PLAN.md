@@ -21,7 +21,7 @@ P9 remains accepted immutable upstream authority. DR9R-F does not reopen or modi
 
 ## F1 — Workflow ordering + embedded artist instructions
 
-Status: PLANNED
+Status: COMPLETE / CI PASS
 
 User-facing workflow names become:
 
@@ -41,7 +41,7 @@ Production must visibly state:
 
 ## F2 — Route workspace viewport + reset safety
 
-Status: PLANNED
+Status: COMPLETE / CI PASS / USER RUNTIME PENDING
 
 Replace the mixed static-image/dynamic rendering path with one dynamic scene renderer for all four panels.
 
@@ -63,7 +63,7 @@ The old destructive `Resetar cena` control is removed/redefined. New controls:
 
 ## F3 — Storage lifecycle + cleanup contract
 
-Status: PLANNED
+Status: COMPLETE FOR CURRENT P10 / FINAL AUTO-CLEANUP DEFERRED TO FINAL P10 CLOSEOUT
 
 Canonical local paths:
 
@@ -100,7 +100,7 @@ DR9R-F will add a visible storage report and a safe manual cleanup/open-storage 
 
 ## F4 — AUTO_LATEST observability
 
-Status: PLANNED
+Status: COMPLETE / CI PASS
 
 The Production Entry loader must visibly report, before/downstream of execution:
 
@@ -119,7 +119,7 @@ AUTO_LATEST is convenience only; the resolved path must never be hidden.
 
 ## F5 — P9 dependency closure audit
 
-Status: PLANNED
+Status: COMPLETE / CI PASS / FUTURE GATES FAIL-CLOSED ON MISSING P9 EVIDENCE
 
 The two-stage split does **not** mean P10 loses P9 data. Production Entry stores the P9 run directory as authority, and every P10 stage can reopen the full run from disk.
 
@@ -152,7 +152,7 @@ Gate 7 implementation is blocked if any required artifact is not persisted in th
 
 ## F6 — Dual Maya deliverable contract
 
-Status: ROADMAP LOCKED; implementation belongs to the later Maya/export gate
+Status: CONTRACT IMPLEMENTED / ACTUAL P10 MAYA EXPORT DEFERRED TO LATER MAYA/EXPORT GATE
 
 The existing P9 Maya file remains immutable and is never overwritten.
 
@@ -178,7 +178,7 @@ The P10 Maya exporter must fail closed if its output path resolves to the P9 May
 
 ## F7 — Current-only installer cleanup
 
-Status: PLANNED
+Status: COMPLETE IN r7 PACKAGE
 
 The final DR9R-F bundle must install only workflows 01 and 02 as user-facing current workflows.
 
@@ -186,7 +186,7 @@ The legacy `ConceptGhost_Master_v1.53.0.json` may remain inside the bundle only 
 
 ## F8 — Regression + package acceptance
 
-Status: PLANNED
+Status: COMPLETE / r7 PUBLISHED / USER RUNTIME ACCEPTANCE PENDING
 
 Release-blocking checks:
 - reset-route preserves scene + valid numeric widgets;
@@ -203,3 +203,36 @@ Release-blocking checks:
 - all existing DR9R tests remain PASS.
 
 No user runtime retest is requested until F1–F8 are complete and a replacement bundle is published.
+
+
+## r7 final package checkpoint — 2026-09-23
+
+Final bundle:
+`ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r7.zip`
+
+Published locations:
+- Google Drive Evaluation_Builds file id: `1hAp4qqbCVxUyHLXrKuWQUPHERLcFNFWR`
+- GitHub Release tag: `p10-dr9r-r7`
+
+Integrity:
+- bytes: `12,234,655`
+- SHA-256: `0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756`
+- runtime source commit: `2b35f61057c1131520d21059c183ab02fbdca635`
+- GitHub source CI run `35897710951`: SUCCESS
+- JavaScript syntax: PASS
+- static runtime verifier: PASS
+- bundle test: PASS
+- extracted SHA256SUMS: PASS
+- Drive re-download digest: PASS
+- GitHub release asset digest: PASS
+
+The r7 package installs only:
+1. `01_ConceptGhost_P10_ROUTE_SETUP_r7.json`
+2. `02_ConceptGhost_P10_PRODUCTION_r7.json`
+
+The legacy Master v1.53 remains only as a private compatibility fixture inside the ZIP because the inherited base installer still uses it during setup; r7 removes it from the user's workflow folder before installation completes.
+
+Storage utility:
+`06_P10_STORAGE_AND_CLEANUP.bat`
+
+Runtime acceptance remains PENDING. Gate 7 remains blocked until the user validates r7 in ComfyUI.
