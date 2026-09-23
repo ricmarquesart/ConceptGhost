@@ -233,7 +233,10 @@ class ConceptGhostP10RefinedEvidencePreview:
                 "panorama_width": ("INT", {"default": 1024, "min": 512, "max": 4096, "step": 2}),
                 "view_width": ("INT", {"default": 640, "min": 320, "max": 1280, "step": 16}),
                 "steps_per_segment": ("INT", {"default": 4, "min": 1, "max": 12, "step": 1}),
-            }
+            },
+            "optional": {
+                "route_plan_json": ("STRING", {"forceInput": True}),
+            },
         }
 
     RETURN_TYPES = ("IMAGE", "IMAGE", "MASK", "IMAGE", "MASK", "IMAGE", "STRING", "STRING", "STRING", "STRING")
@@ -253,7 +256,14 @@ class ConceptGhostP10RefinedEvidencePreview:
     CATEGORY = "ConceptGhost/P10 Refined"
     OUTPUT_NODE = True
 
-    def preview(self, run_dir: str, panorama_width: int, view_width: int, steps_per_segment: int):
+    def preview(
+        self,
+        run_dir: str,
+        panorama_width: int,
+        view_width: int,
+        steps_per_segment: int,
+        route_plan_json: str = "",
+    ):
         from .refined_evidence import build_refined_evidence
 
         evidence = build_refined_evidence(
@@ -261,6 +271,7 @@ class ConceptGhostP10RefinedEvidencePreview:
             panorama_width=panorama_width,
             view_width=view_width,
             steps_per_segment=steps_per_segment,
+            route_plan_json=route_plan_json,
         )
         rendered = _pretty(evidence.diagnostics)
         ui = {"text": [rendered]}
