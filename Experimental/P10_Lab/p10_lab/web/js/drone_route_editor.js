@@ -77,6 +77,12 @@ function statusForPlan(plan) {
         if (mission.mode !== "SPIN_360" && points.length < 2) {
             return { ok: false, text: `${mission.name}: PATH precisa de pelo menos 2 pontos.` };
         }
+        if (mission.mode !== "SPIN_360" && mission.orientation_mode === "LOOK_AT_TARGET" && !mission.look_target) {
+            return { ok: false, text: `${mission.name}: LOOK_AT_TARGET precisa de alvo.` };
+        }
+        if (mission.mode !== "SPIN_360" && mission.orientation_mode === "MANUAL_DIRECTION" && !mission.manual_direction) {
+            return { ok: false, text: `${mission.name}: MANUAL_DIRECTION precisa de direção.` };
+        }
     }
     return { ok: true, text: `${active.length} drone(s) ativo(s) · plano válido` };
 }
@@ -217,6 +223,7 @@ function setupEditor(node) {
         orbitDragging: false,
         orbitLast: null,
         editingTarget: false,
+        targetDragging: false,
     };
 
     function pushHistory() {
@@ -761,6 +768,9 @@ function setupEditor(node) {
             mission.look_target = pointFromPanel(panel, xy.x, xy.y, base);
             mission.orientation_mode = "LOOK_AT_TARGET";
             state.selectedPoint = null;
+            state.targetDragging = true;
+            state.dragHistoryPushed = true;
+            canvas.setPointerCapture?.(event.pointerId);
             persist();
             return;
         }
@@ -805,16 +815,12 @@ function setupEditor(node) {
             draw();
             return;
         }
-        if (!state.dragging && !state.editingTarget) return;
-        if (!state.editingTarget && state.selectedPoint == null) return;
+        if (!state.dragging && !state.targetDragging) return;
+        if (!state.targetDragging && state.selectedPoint == null) return;
         const panel = panelAt(xy.x, xy.y);
         if (!panel) return;
         const mission = activeMission();
-        if (state.editingTarget && mission?.look_target) {
-            if (!state.dragHistoryPushed) {
-                pushHistory();
-                state.dragHistoryPushed = true;
-            }
+        if (state.targetDragging && mission?.look_target) {
             mission.look_target = pointFromPanel(panel, xy.x, xy.y, mission.look_target);
             persist();
             return;
@@ -831,8 +837,9 @@ function setupEditor(node) {
     });
 
     const stopDrag = (event) => {
-        if (!state.dragging) return;
+        if (!state.dragging && !state.targetDragging && !state.orbitDragging) return;
         state.dragging = false;
+        state.targetDragging = false;
         state.dragHistoryPushed = false;
         state.orbitDragging = false;
         state.orbitLast = null;
@@ -884,6 +891,7 @@ function setupEditor(node) {
         mission.orientation_mode = "LOOK_AT_TARGET";
         if (!mission.look_target) mission.look_target = defaultPoint(state.projection);
         state.editingTarget = !state.editingTarget;
+        state.targetDragging = false;
         state.selectedPoint = null;
         persist();
     });
