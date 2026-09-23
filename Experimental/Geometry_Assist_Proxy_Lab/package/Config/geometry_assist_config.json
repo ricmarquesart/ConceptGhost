@@ -1,0 +1,49 @@
+{
+  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v1",
+  "runtime_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic",
+  "outputs_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic\\Outputs",
+  "hardware_target": "RTX 2080 Ti 11GB",
+  "python": {
+    "version": "3.10.11",
+    "embed_url": "https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip"
+  },
+  "models": {
+    "base": {
+      "repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
+      "subdir": "Models/sdxl_base"
+    },
+    "controlnet": {
+      "repo_id": "diffusers/controlnet-canny-sdxl-1.0-small",
+      "subdir": "Models/controlnet_canny_sdxl_small"
+    },
+    "ip_adapter": {
+      "repo_id": "h94/IP-Adapter",
+      "subdir": "Models/ip_adapter",
+      "subfolder": "sdxl_models",
+      "weight_name": "ip-adapter_sdxl.bin",
+      "image_encoder_folder": "models/image_encoder"
+    }
+  },
+  "defaults": {
+    "profile": "GEOMETRY_ASSIST_CONSERVATIVE",
+    "max_dimension": 1024,
+    "strength": 0.24,
+    "controlnet_scale": 0.95,
+    "ip_adapter_scale": 0.8,
+    "guidance_scale": 4.0,
+    "steps": 24,
+    "seed": 1701,
+    "canny_low": 100,
+    "canny_high": 200,
+    "jpeg_quality": 95
+  },
+  "prompt": "Create a geometry-assist proxy of the exact same scene. Preserve the exact camera, perspective, composition, silhouettes, object layout, architectural proportions, positions, scale relationships, openings, doors, windows, stairs, roofs, street elements and major surface boundaries. Do not redesign the scene. Do not add, remove, move or duplicate objects. Reduce painterly ambiguity. Make materials, lighting, cast shadows, occlusion boundaries, planar surfaces and foreground/midground/background separation physically legible and realistic. Use neutral plausible lighting and realistic material response only where it helps clarify the existing structure. Preserve every major edge and structural relationship from the input. Avoid inventing unseen details.",
+  "negative_prompt": "changed camera, changed perspective, changed framing, crop, fisheye, altered architecture, extra windows, extra doors, added objects, removed objects, moved objects, duplicated objects, changed proportions, warped geometry, dramatic lighting, fantasy lighting, heavy stylization, painterly effect, blurred edges, melted structure, simplified scene, invented structures, hallucinated background, text, watermark",
+  "host_policy": {
+    "shared_comfy_mutation": "FORBIDDEN",
+    "shared_python_pip_install": "FORBIDDEN",
+    "shared_model_install": "FORBIDDEN",
+    "official_pipeline_mutation": "FORBIDDEN",
+    "allowed_write_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic"
+  }
+}
