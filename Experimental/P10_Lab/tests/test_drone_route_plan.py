@@ -31,6 +31,116 @@ class DroneRoutePlanTests(unittest.TestCase):
         self.assertAlmostEqual(path.waypoints[-1].forward,10.0)
         self.assertTrue(all(p.look_forward>0.99 for p in path.waypoints))
 
+    def test_look_at_target_tracks_fixed_scene_target(self):
+        from p10_lab.drone_route_plan import DroneMission, DroneWaypoint, sample_mission
+
+        mission=DroneMission(
+            "drone_target",
+            "PATH",
+            (DroneWaypoint(-2,0,0),DroneWaypoint(2,0,0)),
+            orientation_mode="LOOK_AT_TARGET",
+            look_target=DroneWaypoint(0,0,5),
+        )
+        path=sample_mission(mission,5)
+        self.assertEqual(len(path.waypoints),5)
+        self.assertGreater(path.waypoints[0].look_right,0.0)
+        self.assertAlmostEqual(path.waypoints[2].look_right,0.0,places=6)
+        self.assertLess(path.waypoints[-1].look_right,0.0)
+        self.assertTrue(all(p.look_forward>0.8 for p in path.waypoints))
+
+    def test_manual_direction_is_constant_for_path(self):
+        from p10_lab.drone_route_plan import DroneMission, DroneWaypoint, sample_mission
+
+        mission=DroneMission(
+            "drone_manual",
+            "PATH",
+            (DroneWaypoint(0,0,0),DroneWaypoint(0,0,10)),
+            orientation_mode="MANUAL_DIRECTION",
+            manual_direction=DroneWaypoint(1,1,0),
+        )
+        path=sample_mission(mission,7)
+        expected=2**-0.5
+        for point in path.waypoints:
+            self.assertAlmostEqual(point.look_right,expected,places=6)
+            self.assertAlmostEqual(point.look_up,expected,places=6)
+            self.assertAlmostEqual(point.look_forward,0.0,places=6)
+
+    def test_reorient_after_collision_hold_preserves_look_at_target(self):
+        from p10_lab.drone_route_plan import (
+            DroneMission,DroneWaypoint,apply_hold_and_resume_clearance,
+            reorient_path_for_mission,sample_mission,
+        )
+
+        mission=DroneMission(
+            "drone_target","PATH",
+            (DroneWaypoint(-2,0,0),DroneWaypoint(2,0,0)),
+            orientation_mode="LOOK_AT_TARGET",
+            look_target=DroneWaypoint(0,0,5),
+        )
+        sampled=sample_mission(mission,5)
+        safe,_=apply_hold_and_resume_clearance(
+            sampled,
+            lambda point: 0.0 if -0.1<=point.right<=1.1 else 1.0,
+            min_clearance=0.5,
+        )
+        oriented=reorient_path_for_mission(mission,safe)
+        for point in oriented.waypoints:
+            dx=-point.right
+            dz=5.0-point.forward
+            length=(dx*dx+dz*dz)**0.5
+            self.assertAlmostEqual(point.look_right,dx/length,places=6)
+            self.assertAlmostEqual(point.look_forward,dz/length,places=6)
+
+    def test_legacy_v01_bound_hash_migrates_to_v02(self):
+        from p10_lab.drone_route_plan import (
+            DroneMission,DroneRoutePlan,DroneWaypoint,_legacy_v01_route_hash,
+            parse_bound_route_plan,
+        )
+
+        plan=DroneRoutePlan(
+            missions=(DroneMission(
+                "drone_1","PATH",
+                (DroneWaypoint(0,0,0),DroneWaypoint(0,0,5)),
+            ),),
+        )
+        payload={
+            "schema":"ConceptGhost.P10DroneRoutePlan.v0.1",
+            "binding_schema":"ConceptGhost.P10BoundDroneRoutePlan.v0.1",
+            "coordinate_space":"P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+            "maximum_drone_count":7,
+            "frames_per_drone":30,
+            "collision_mode":"HOLD_AND_RESUME",
+            "min_clearance_m":0.20,
+            "missions":[{
+                "name":"drone_1",
+                "mode":"PATH",
+                "enabled":True,
+                "waypoints":[
+                    {"right":0.0,"up":0.0,"forward":0.0},
+                    {"right":0.0,"up":0.0,"forward":5.0},
+                ],
+            }],
+            "scene_contract_id":"scene",
+            "source_run_id":"run",
+            "route_authority":"ARTIST_AUTHORED",
+        }
+        payload["route_plan_sha256"]=_legacy_v01_route_hash(
+            plan,
+            scene_contract_id="scene",
+            source_run_id="run",
+            route_authority="ARTIST_AUTHORED",
+        )
+        restored,authority,new_hash=parse_bound_route_plan(
+            payload,
+            expected_scene_contract_id="scene",
+            expected_source_run_id="run",
+            require_hash=True,
+        )
+        self.assertEqual(restored.missions[0].orientation_mode,"LOOK_ALONG_PATH")
+        self.assertEqual(authority,"ARTIST_AUTHORED")
+        self.assertEqual(len(new_hash),64)
+        self.assertNotEqual(new_hash,payload["route_plan_sha256"])
+
     def test_spin_360_stays_fixed_and_rotates_full_yaw(self):
         from p10_lab.drone_route_plan import DroneMission, DroneWaypoint, sample_mission
 
