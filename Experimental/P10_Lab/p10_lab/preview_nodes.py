@@ -14,6 +14,7 @@ from .panorama_projection import build_projection_plan
 from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
 from .wan_sequence import ConceptGhostP10WanSequentialSampler
 from .reconstruction_node import ConceptGhostP10ReconstructionRuntime
+from .route_authoring_node import ConceptGhostP10DroneRouteAuthoring
 
 
 _CATEGORY = "ConceptGhost/P10 Lab"
@@ -287,6 +288,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10BundleLoader": ConceptGhostP10BundleLoader,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
+    "ConceptGhostP10DroneRouteAuthoring": ConceptGhostP10DroneRouteAuthoring,
     "ConceptGhostP10WanMaskedConditioning": ConceptGhostP10WanMaskedConditioning,
     "ConceptGhostP10WanSequentialSampler": ConceptGhostP10WanSequentialSampler,
     "ConceptGhostP10ReconstructionRuntime": ConceptGhostP10ReconstructionRuntime,
@@ -297,6 +299,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10BundleLoader": "P10 P9 Bundle Loader / Validator",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
+    "ConceptGhostP10DroneRouteAuthoring": "P10 Refined · Artist Drone Route Authoring",
     "ConceptGhostP10WanMaskedConditioning": "P10 Refined · WAN Masked Conditioning",
     "ConceptGhostP10WanSequentialSampler": "P10 Refined · Sequential WAN + Source Composite",
     "ConceptGhostP10ReconstructionRuntime": "P10 Refined · Reconstruction Runtime + Mesh Preview",
