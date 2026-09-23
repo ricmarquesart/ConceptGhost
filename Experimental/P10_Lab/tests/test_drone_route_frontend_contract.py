@@ -42,6 +42,15 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'orbitDragging',
             'wheel',
             'inspection only',
+            '"LOOK_AT_TARGET"',
+            '"LOOK_ALONG_PATH"',
+            '"MANUAL_DIRECTION"',
+            '"Editar alvo"',
+            'orientationSelect',
+            'look_target',
+            'manual_direction',
+            'targetDragging',
+            'orientationTip',
         ):
             self.assertIn(required, source)
 
