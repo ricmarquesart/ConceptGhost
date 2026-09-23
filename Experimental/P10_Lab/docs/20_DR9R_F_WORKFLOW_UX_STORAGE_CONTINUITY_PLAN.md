@@ -240,7 +240,7 @@ Runtime acceptance remains PENDING. Gate 7 remains blocked until the user valida
 
 ## F9 — Optional MoGe Depth Diagnostics
 
-Status: IMPLEMENTED / CI VALIDATION IN PROGRESS
+Status: **IMPLEMENTED / CI PASS / r8 PACKAGE PUBLISHED**
 
 Add a diagnostic-only Refined/P9 MoGe side lane, OFF by default, inside Workflow 01.
 
@@ -257,3 +257,23 @@ Requirements locked:
 - existing official P9 Primary Master remains the authoritative mesh preview.
 
 Detailed spec: `docs/21_P9_MOGE_DEPTH_DIAGNOSTICS.md`.
+
+
+### F9 package checkpoint — 2026-09-23
+
+- Source authority commit for r8 payload: `e6823e4617c394aedec4796a2e277d8f9bf4429b`.
+- CI: ConceptGhost Tests run `35900795172` — SUCCESS.
+- Source snapshot run `35900795335` — SUCCESS.
+- Final package: `ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r8.zip`.
+- ZIP size: 12,752,338 bytes.
+- SHA-256: `9774a887e397e18d9dcb76c65dea29ce4496ec95f0fa75570b400238dad0139c`.
+- Google Drive file id: `1wyRBo_RqXJQXm8JCmRUpMyaPHk11X0Vr`.
+- GitHub release tag: `p10-dr9r-r8`; release asset digest matches the same SHA-256.
+- r8 installs only stable numbered user workflows:
+  - `01_ConceptGhost_P10_ROUTE_SETUP.json`
+  - `02_ConceptGhost_P10_PRODUCTION.json`
+- Diagnostic group lives only in Workflow 01 and remains OFF by default.
+- Extracted bundle SHA256SUMS: PASS.
+- Static runtime verifier: PASS.
+- Bundle contract test: PASS.
+- User runtime diagnostic acceptance remains pending.
