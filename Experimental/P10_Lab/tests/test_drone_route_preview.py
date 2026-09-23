@@ -34,7 +34,7 @@ class DroneRoutePreviewTests(unittest.TestCase):
         self.assertEqual((panels["TOP"]["x_axis"],panels["TOP"]["y_axis"]),("right","forward"))
         self.assertEqual((panels["SIDE"]["x_axis"],panels["SIDE"]["y_axis"]),("forward","up"))
         self.assertEqual((panels["FRONT"]["x_axis"],panels["FRONT"]["y_axis"]),("right","up"))
-        self.assertEqual(projection["projection_mode"],"ORTHOGRAPHIC_ISOTROPIC")
+        self.assertEqual(projection["projection_mode"],"PERSPECTIVE_PLUS_ORTHOGRAPHIC_ISOTROPIC")
         for panel in panels.values():
             self.assertEqual(panel["projection_mode"],"ORTHOGRAPHIC_ISOTROPIC")
             ppm=panel["pixels_per_meter"]
