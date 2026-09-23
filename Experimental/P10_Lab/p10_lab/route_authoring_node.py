@@ -118,6 +118,11 @@ class ConceptGhostP10DroneRouteAuthoring:
             camera,
             plan,
         )
+        base_preview,base_projection,base_diagnostics=render_route_authoring_preview(
+            boundary.primary_mesh,
+            camera,
+            None,
+        )
 
         output_root=(
             Path(folder_paths.get_output_directory())
@@ -128,6 +133,11 @@ class ConceptGhostP10DroneRouteAuthoring:
         png_path=output_root/filename
         array=(preview[0].detach().cpu().numpy()*255.0).clip(0,255).astype("uint8")
         Image.fromarray(array).save(png_path)
+
+        base_filename="drone_route_triview_base.png"
+        base_png_path=output_root/base_filename
+        base_array=(base_preview[0].detach().cpu().numpy()*255.0).clip(0,255).astype("uint8")
+        Image.fromarray(base_array).save(base_png_path)
 
         serialized=plan.to_dict()
         serialized["scene_contract_id"]=boundary.scene_contract_id
@@ -148,7 +158,9 @@ class ConceptGhostP10DroneRouteAuthoring:
             "min_clearance_m":plan.min_clearance_m,
             "scene_footprint":footprint_evidence,
             "preview":render_diagnostics,
+            "base_preview":base_diagnostics,
             "preview_png_path":str(png_path.resolve()),
+            "base_preview_png_path":str(base_png_path.resolve()),
             "interaction_contract":{
                 "top":"RIGHT + FORWARD",
                 "side":"FORWARD + UP",
@@ -162,6 +174,11 @@ class ConceptGhostP10DroneRouteAuthoring:
             "projection":projection,
             "preview":{
                 "filename":filename,
+                "subfolder":f"conceptghost/p10_route_editor/{boundary.run_id}",
+                "type":"output",
+            },
+            "editor_base_preview":{
+                "filename":base_filename,
                 "subfolder":f"conceptghost/p10_route_editor/{boundary.run_id}",
                 "type":"output",
             },
