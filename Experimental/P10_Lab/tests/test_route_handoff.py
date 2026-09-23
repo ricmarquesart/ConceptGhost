@@ -92,6 +92,21 @@ class RouteHandoffTests(unittest.TestCase):
             self.assertEqual(pointer["p10_attempt_id"],second["p10_attempt_id"])
             self.assertTrue(Path(first["attempt_manifest_path"]).is_file())
 
+    def test_auto_latest_resolves_committed_entry(self):
+        from p10_lab.route_handoff import _resolve_production_entry_path
+        with tempfile.TemporaryDirectory() as tmp:
+            output=Path(tmp)
+            target=output/"conceptghost"/"p10_route_setup"/"run1"/"production_entry.json"
+            target.parent.mkdir(parents=True)
+            target.write_text("{}",encoding="utf-8")
+            pointer=output/"conceptghost"/"p10_route_setup"/"LATEST_PRODUCTION_ENTRY.json"
+            pointer.write_text(json.dumps({
+                "schema":"ConceptGhost.P10LatestProductionEntryPointer.v0.1",
+                "production_entry_path":str(target),
+                "pointer_only":True,
+            }),encoding="utf-8")
+            self.assertEqual(_resolve_production_entry_path("AUTO_LATEST",output),target.resolve())
+
 
 class TwoStageWorkflowTests(unittest.TestCase):
     def _base(self):
