@@ -64,11 +64,22 @@ class RefinedEvidencePreviewTests(unittest.TestCase):
         self.assertEqual(incoming[0][1], 1015)
         self.assertNotEqual(incoming[0][1], 15)
         self.assertIn(incoming[0][0], patched["nodes"][0]["outputs"][0]["links"])
+        route_author = next(
+            node for node in patched["nodes"]
+            if node["type"] == "ConceptGhostP10DroneRouteAuthoring"
+        )
+        route_links = [
+            link for link in patched["links"]
+            if link[1] == route_author["id"] and link[3] == evidence["id"]
+        ]
+        self.assertEqual(len(route_links), 1)
+        self.assertEqual(route_links[0][2], 1)
+        self.assertEqual(route_links[0][4], 4)
         self.assertEqual(patched["last_node_id"], evidence["id"])
         self.assertEqual(evidence["widgets_values"], [1024, 640, 4])
         self.assertEqual(
             [item["name"] for item in evidence["inputs"]],
-            ["run_dir", "panorama_width", "view_width", "steps_per_segment"],
+            ["run_dir", "panorama_width", "view_width", "steps_per_segment", "route_plan_json"],
         )
 
 
