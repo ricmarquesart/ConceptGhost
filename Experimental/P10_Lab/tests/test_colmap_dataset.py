@@ -13,6 +13,8 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
 
         wan = {
             "run_id": "run1",
+            "scene_contract_id":"scene1",
+            "source_run_id":"run1",
             "route_authority":"ARTIST_AUTHORED",
             "route_plan_sha256":"routehash",
             "mission_order":["a"],
@@ -52,6 +54,7 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
             })
         cameras = {
             "scene_contract_id": "scene1",
+            "source_run_id":"run1",
             "route_authority":"ARTIST_AUTHORED",
             "route_plan_sha256":"routehash",
             "mission_order":["a"],
