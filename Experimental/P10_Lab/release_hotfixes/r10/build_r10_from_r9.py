@@ -42,13 +42,14 @@ def replace_required(text: str, old: str, new: str, label: str) -> str:
 
 
 def patch_versions(root: Path) -> None:
-    # Preserve BAT CRLF while changing only release labels.
+    # Normalize user-facing BAT entrypoints to Windows CRLF while changing release labels.
     for rel in ("03_INSTALL_ALL.bat", "04_VERIFY_INSTALL.bat"):
         p = root / rel
-        raw = p.read_bytes()
-        if b"r9" not in raw:
+        text = read_text(p)
+        if "r9" not in text:
             raise RuntimeError(f"expected r9 label missing in {rel}")
-        p.write_bytes(raw.replace(b"r9", b"r10"))
+        text = text.replace("r9", "r10").replace("\r\n", "\n").replace("\r", "\n")
+        p.write_bytes(text.replace("\n", "\r\n").encode("utf-8"))
 
     p = root / "Installer" / "install_dr9.ps1"
     s = read_text(p)
