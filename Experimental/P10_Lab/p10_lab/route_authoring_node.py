@@ -154,6 +154,7 @@ class ConceptGhostP10DroneRouteAuthoring:
         serialized=plan.to_dict()
         serialized["scene_contract_id"]=boundary.scene_contract_id
         serialized["source_run_id"]=boundary.run_id
+        serialized["route_authority"]=source
         rendered_plan=_pretty(serialized)
         rendered_projection=_pretty(projection)
         diagnostics={
