@@ -1,4 +1,6 @@
 from pathlib import Path
+import shutil
+import subprocess
 import unittest
 
 
@@ -73,6 +75,33 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertNotIn('"Resetar cena"',source)
         self.assertIn('"Resetar rota"',source)
         self.assertEqual(source.count('chainCallback(node, "onExecuted"'),1)
+
+
+    def test_frontend_has_no_duplicate_or_malformed_declarations(self):
+        import p10_lab
+
+        path=Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js"
+        source=path.read_text(encoding="utf-8")
+        self.assertNotIn("function pushHistory()    };", source)
+        self.assertEqual(source.count("function pushHistory() {"), 1)
+        self.assertEqual(source.count("function perspectivePanel() {"), 1)
+        self.assertEqual(source.count("function eventCoordinates(event) {"), 1)
+        self.assertEqual(source.count('droneSelect.addEventListener("change", () => {'), 1)
+
+    def test_frontend_javascript_parses_when_node_is_available(self):
+        import p10_lab
+
+        node=shutil.which("node")
+        if not node:
+            self.skipTest("node executable unavailable")
+        path=Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js"
+        result=subprocess.run(
+            [node, "--check", str(path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_route_authoring_node_is_registered(self):
         import p10_lab
