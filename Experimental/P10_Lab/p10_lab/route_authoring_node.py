@@ -79,9 +79,8 @@ class ConceptGhostP10DroneRouteAuthoring:
     ):
         try:
             import folder_paths
-            from PIL import Image
         except ImportError as error:
-            raise RuntimeError("P10 route authoring requires ComfyUI folder_paths and Pillow") from error
+            raise RuntimeError("P10 route authoring requires ComfyUI folder_paths") from error
 
         boundary=validate_official_run(run_dir)
         camera=CameraAuthority.from_json(
@@ -166,23 +165,17 @@ class ConceptGhostP10DroneRouteAuthoring:
             boundary.primary_mesh,
             camera,
             source_image=boundary.source_image,
-            max_points=12000,
+            max_points=30000,
         )
 
+        # DR9R-F: the four-view editor is rendered dynamically from preview_geometry.
+        # Do not persist static route-editor PNGs that can become stale, duplicate
+        # the Perspective geometry, or accumulate as disposable cache.
         output_root=(
             Path(folder_paths.get_output_directory())
             /"conceptghost"/"p10_route_editor"/boundary.run_id
         )
         output_root.mkdir(parents=True,exist_ok=True)
-        filename="drone_route_fourview.png"
-        png_path=output_root/filename
-        array=(preview[0].detach().cpu().numpy()*255.0).clip(0,255).astype("uint8")
-        Image.fromarray(array).save(png_path)
-
-        base_filename="drone_route_fourview_base.png"
-        base_png_path=output_root/base_filename
-        base_array=(base_preview[0].detach().cpu().numpy()*255.0).clip(0,255).astype("uint8")
-        Image.fromarray(base_array).save(base_png_path)
 
         serialized=bind_route_plan(
             plan,
@@ -213,33 +206,29 @@ class ConceptGhostP10DroneRouteAuthoring:
             "scene_footprint":footprint_evidence,
             "preview":render_diagnostics,
             "base_preview":base_diagnostics,
-            "preview_png_path":str(png_path.resolve()),
-            "base_preview_png_path":str(base_png_path.resolve()),
+            "preview_png_path":None,
+            "base_preview_png_path":None,
+            "workspace_rendering":"DYNAMIC_GEOMETRY_NO_STATIC_BACKGROUND",
+            "preview_point_budget":preview_geometry["point_count"],
+            "route_editor_cache_path":str(output_root.resolve()),
             "interaction_contract":{
-                "perspective":"ORBIT_ZOOM_INSPECTION_ONLY",
-                "top":"RIGHT + FORWARD",
-                "side":"FORWARD + UP",
-                "front":"RIGHT + UP",
+                "perspective":"ORBIT_PAN_ZOOM_INSPECTION_ONLY",
+                "top":"RIGHT + FORWARD · AXIS_LOCKED · PAN_ZOOM",
+                "side":"FORWARD + UP · AXIS_LOCKED · PAN_ZOOM",
+                "front":"RIGHT + UP · AXIS_LOCKED · PAN_ZOOM",
                 "same_3d_waypoint_shared_across_views":True,
                 "orthographic_metric_scale_preserved":True,
                 "perspective_uses_same_p9_local_geometry":True,
                 "downstream_updates_on_next_queue_prompt":True,
+                "reset_route_preserves_scene":True,
+                "viewport_reset_preserves_route":True,
+                "static_background_used":False,
             },
         }
         rendered_diagnostics=_pretty(diagnostics)
         ui_metadata={
             "plan":serialized,
             "projection":projection,
-            "preview":{
-                "filename":filename,
-                "subfolder":f"conceptghost/p10_route_editor/{boundary.run_id}",
-                "type":"output",
-            },
-            "editor_base_preview":{
-                "filename":base_filename,
-                "subfolder":f"conceptghost/p10_route_editor/{boundary.run_id}",
-                "type":"output",
-            },
             "collision_preflight":collision_report.to_dict(),
             "preview_geometry":preview_geometry,
             "diagnostics":diagnostics,
