@@ -69,6 +69,36 @@ class DroneRoutePlanTests(unittest.TestCase):
         self.assertTrue(all(not (4.0<=p.forward<=6.0) for p in safe.waypoints))
         self.assertGreaterEqual(report.minimum_output_clearance,0.5)
 
+    def test_hold_resume_does_not_teleport_across_blocked_segment(self):
+        from p10_lab.drone_route_plan import (
+            DroneMission,
+            DroneWaypoint,
+            apply_hold_and_resume_clearance,
+            sample_mission,
+        )
+
+        mission=DroneMission(
+            "drone_1","PATH",
+            (DroneWaypoint(-2,0,0),DroneWaypoint(2,0,0)),
+        )
+        path=sample_mission(mission,5)
+
+        def point_clearance(point):
+            return 1.0
+
+        def segment_blocked(start,end):
+            return min(start.right,end.right)<0.0<max(start.right,end.right)
+
+        safe,report=apply_hold_and_resume_clearance(
+            path,
+            point_clearance,
+            min_clearance=0.5,
+            segment_is_blocked=segment_blocked,
+        )
+        rights=[p.right for p in safe.waypoints]
+        self.assertTrue(all(value<=0.0 for value in rights))
+        self.assertGreater(report.held_frame_count,0)
+
     def test_hold_fails_closed_when_route_starts_inside_geometry(self):
         from p10_lab.drone_route_plan import (
             DroneMission,
