@@ -75,6 +75,29 @@ class Gate5WorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(sampler["inputs"][12]["name"], "steps")
         self.assertEqual(sampler["inputs"][13]["name"], "cfg")
 
+    def test_gate5_sampler_surfaces_preview_index_output(self):
+        from p10_lab.workflow_integration import integrate_gate5_refined_preview
+        patched=integrate_gate5_refined_preview(self._base())
+        sampler=next(
+            node for node in patched["nodes"]
+            if node["type"]=="ConceptGhostP10WanSequentialSampler"
+        )
+        self.assertEqual(
+            [output["name"] for output in sampler["outputs"]],
+            [
+                "composite_preview",
+                "generated_dir",
+                "wan_manifest_path",
+                "diagnostics_json",
+                "drone_preview_index_path",
+            ],
+        )
+        from p10_lab.wan_sequence import ConceptGhostP10WanSequentialSampler
+        self.assertEqual(
+            ConceptGhostP10WanSequentialSampler.RETURN_NAMES[-1],
+            "drone_preview_index_path",
+        )
+
     def test_wan_seed_name_avoids_comfy_implicit_seed_control(self):
         from p10_lab.wan_sequence import ConceptGhostP10WanSequentialSampler
         required = ConceptGhostP10WanSequentialSampler.INPUT_TYPES()["required"]
