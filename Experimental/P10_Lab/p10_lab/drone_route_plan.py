@@ -170,7 +170,7 @@ class CollisionHoldReport:
     resumed_frame_count: int
     minimum_candidate_clearance: float | None
     minimum_output_clearance: float | None
-    policy: str = "P9_CLEARANCE_HOLD_LAST_SAFE_UNTIL_ROUTE_REEMERGES"
+    policy: str = "P9_SURFACE_CLEARANCE_HOLD_LAST_SAFE_UNTIL_REACHABLE_ROUTE_REEMERGES"
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -277,6 +277,7 @@ def apply_hold_and_resume_clearance(
     clearance_query,
     *,
     min_clearance: float,
+    segment_is_blocked=None,
 ) -> tuple[CameraPath, CollisionHoldReport]:
     """Keep the camera at the last safe point while the authored route is blocked.
 
@@ -310,6 +311,14 @@ def apply_hold_and_resume_clearance(
         if isfinite(clearance):
             candidate_clearances.append(clearance)
         safe = isfinite(clearance) and clearance >= threshold
+
+        # Endpoint-only clearance can miss a thin wall between two valid camera
+        # frames. When a segment callback is available, every translation from
+        # the last emitted safe position to the requested candidate must also
+        # be collision-free. During a hold this prevents "teleporting" through
+        # a facade when the authored route later emerges on the other side.
+        if safe and last_safe is not None and segment_is_blocked is not None:
+            safe = not bool(segment_is_blocked(last_safe, candidate))
 
         if safe:
             if was_holding:
