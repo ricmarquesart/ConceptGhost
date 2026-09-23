@@ -373,3 +373,18 @@ Final r7 SHA-256:
 `0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756`
 
 Runtime acceptance remains PENDING.
+
+
+## DR9R-F9 MoGe diagnostics package — 2026-09-23
+
+Optional MoGe Depth Diagnostics is implemented as a fail-open diagnostic side branch in Workflow 01, OFF by default. It does not feed official P9/P10 geometry.
+
+Published package:
+`ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r8.zip`
+
+SHA-256:
+`9774a887e397e18d9dcb76c65dea29ce4496ec95f0fa75570b400238dad0139c`
+
+The diagnostic branch can expose/save native MoGe depth, points, normals, mask, intrinsics and per-step evidence where returned, plus derived depth grayscale/heatmap/inverse/bands/contours/discontinuities, point-cloud preview/PLY and comparison mosaic.
+
+Detailed authority: `docs/21_P9_MOGE_DEPTH_DIAGNOSTICS.md`.
