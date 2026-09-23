@@ -238,7 +238,7 @@ def _projection_manifest(bounds: RoutePreviewBounds, panel_width: int, panel_hei
             "y_extent":y_extent.to_dict(),
             "y_screen_inverted":True,
             "pixels_per_meter":float(pixels_per_meter),
-            "projection_mode":"PERSPECTIVE_PLUS_ORTHOGRAPHIC_ISOTROPIC",
+            "projection_mode":"ORTHOGRAPHIC_ISOTROPIC",
         }
 
     perspective={
@@ -427,7 +427,7 @@ def render_route_authoring_preview(
         "rendered_geometry_points":int(points.shape[0]),
         "geometry_sampling_stride":int(stride),
         "source_color_preview":bool(point_colors is not None),
-        "projection_mode":"ORTHOGRAPHIC_ISOTROPIC",
+        "projection_mode":"PERSPECTIVE_PLUS_ORTHOGRAPHIC_ISOTROPIC",
         "bounds":bounds.to_dict(),
         "projection":projection,
         "route_plan":plan.to_dict() if plan is not None else None,
