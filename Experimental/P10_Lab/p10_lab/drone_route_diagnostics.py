@@ -222,7 +222,7 @@ def build_drone_route_diagnostics(
         global_alerts.append("ONE_OR_MORE_MISSIONS_REQUIRED_COLLISION_HOLD")
 
     return {
-        "schema":"ConceptGhost.P10DroneRouteDiagnostics.v0.2",
+        "schema":"ConceptGhost.P10DroneRouteDiagnostics.v0.1",
         "status":global_status,
         "alerts":global_alerts,
         "route_authority":authority,
