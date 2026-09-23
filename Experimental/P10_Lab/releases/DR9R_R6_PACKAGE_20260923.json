@@ -29,5 +29,11 @@
     "PowerShell workflow source Join-Path corrected",
     "verify_p10_dr9.py newline syntax corrected",
     "installer Python compile checks added"
-  ]
+  ],
+  "github": {
+    "release_tag": "p10-dr9r-r6",
+    "release_url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r6",
+    "asset_url": "https://github.com/ricmarquesart/ConceptGhost/releases/download/p10-dr9r-r6/ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r6.zip",
+    "asset_digest": "sha256:be3e3fc5ef84f404a41cd7177b16a5aa9331ba0420c6013397a4f641413226d5"
+  }
 }
