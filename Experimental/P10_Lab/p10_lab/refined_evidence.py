@@ -16,6 +16,8 @@ from .camera_sequence import CameraFrameRecord, CameraSequenceManifest
 from .drone_route_plan import (
     DroneRoutePlan,
     apply_hold_and_resume_clearance,
+    bind_route_plan,
+    parse_bound_route_plan,
     sample_route_plan,
 )
 from .p9_boundary import validate_official_run
@@ -373,6 +375,8 @@ def _save_evidence_images(
     route_authority,
     route_plan_schema,
     route_plan_sha256,
+    route_plan_payload,
+    source_run_id,
     mission_modes,
     np,
     Image,
@@ -471,8 +475,23 @@ def _save_evidence_images(
     control_root = root / "control_sequence"
     frame_root = control_root / "frames"
     mask_root = control_root / "masks"
-    frame_root.mkdir(parents=True, exist_ok=True)
-    mask_root.mkdir(parents=True, exist_ok=True)
+
+    # These folders are ConceptGhost-owned derived state. Rebuild them exactly
+    # so a shorter edited route cannot leave stale frames from an older plan.
+    import shutil
+    for owned in (frame_root, mask_root):
+        if owned.exists():
+            shutil.rmtree(owned)
+        owned.mkdir(parents=True, exist_ok=True)
+
+    route_plan_path = control_root / "route_plan.json"
+    if route_plan_payload is not None:
+        route_plan_path.write_text(
+            json.dumps(route_plan_payload, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    elif route_plan_path.exists():
+        route_plan_path.unlink()
 
     records = []
     for global_index, raw in enumerate(flight_frames):
@@ -503,6 +522,9 @@ def _save_evidence_images(
         route_authority=route_authority,
         route_plan_schema=route_plan_schema,
         route_plan_sha256=route_plan_sha256,
+        route_plan_file=("route_plan.json" if route_plan_payload is not None else None),
+        scene_contract_id=scene_contract_id,
+        source_run_id=source_run_id,
         mission_modes=tuple(mission_modes),
     )
     control_manifest_path = control_root / "manifest.json"
@@ -517,6 +539,8 @@ def _save_evidence_images(
         route_authority=route_authority,
         route_plan_schema=route_plan_schema,
         route_plan_sha256=route_plan_sha256,
+        route_plan_file=("route_plan.json" if route_plan_payload is not None else None),
+        source_run_id=source_run_id,
         mission_modes=tuple(mission_modes),
     )
     camera_manifest_path = control_root / "camera_manifest.json"
@@ -575,16 +599,14 @@ def build_refined_evidence(
     if authored_payload:
         try:
             authored_route_payload = json.loads(authored_payload)
-            authored_route_plan = DroneRoutePlan.from_dict(authored_route_payload)
+            authored_route_plan,declared_route_authority,route_plan_sha256 = parse_bound_route_plan(
+                authored_route_payload,
+                expected_scene_contract_id=boundary.scene_contract_id,
+                expected_source_run_id=boundary.run_id,
+                require_hash=False,
+            )
         except (json.JSONDecodeError, ContractError) as error:
             raise ContractError(f"Artist drone route plan is invalid: {error}") from error
-        declared_route_authority=str(
-            authored_route_payload.get("route_authority") or "ARTIST_AUTHORED"
-        ).strip().upper()
-        if declared_route_authority not in {"ARTIST_AUTHORED","EDITABLE_SEED"}:
-            raise ContractError(
-                f"Unsupported authored route authority: {declared_route_authority}"
-            )
 
         sampled_paths = sample_route_plan(authored_route_plan)
         if authored_route_plan.collision_mode == "HOLD_AND_RESUME":
@@ -625,18 +647,20 @@ def build_refined_evidence(
         route_authority = "AUTOMATIC_SEED_FALLBACK"
 
     if authored_route_plan is not None:
-        canonical_route_payload=json.dumps(
-            authored_route_plan.to_dict(),
-            sort_keys=True,
-            separators=(",",":"),
-        ).encode("utf-8")
-        route_plan_schema="ConceptGhost.P10DroneRoutePlan.v0.1"
-        route_plan_sha256=hashlib.sha256(canonical_route_payload).hexdigest()
+        route_plan_payload=bind_route_plan(
+            authored_route_plan,
+            scene_contract_id=boundary.scene_contract_id,
+            source_run_id=boundary.run_id,
+            route_authority=route_authority,
+        )
+        route_plan_schema=str(route_plan_payload.get("schema") or "")
+        route_plan_sha256=str(route_plan_payload["route_plan_sha256"])
         mission_modes=tuple(
             (mission.name,mission.mode)
             for mission in authored_route_plan.active_missions
         )
     else:
+        route_plan_payload=None
         route_plan_schema=None
         route_plan_sha256=None
         mission_modes=tuple((path.name,"AUTO") for path in active_paths)
@@ -744,6 +768,8 @@ def build_refined_evidence(
         route_authority=route_authority,
         route_plan_schema=route_plan_schema,
         route_plan_sha256=route_plan_sha256,
+        route_plan_payload=route_plan_payload,
+        source_run_id=boundary.run_id,
         mission_modes=mission_modes,
         np=np,
         Image=Image,
@@ -772,8 +798,10 @@ def build_refined_evidence(
         "route_plan_sha256": route_plan_sha256,
         "mission_order": [name for name,_mode in mission_modes],
         "mission_modes": {name:mode for name,mode in mission_modes},
-        "artist_route_plan": (
-            authored_route_plan.to_dict() if authored_route_plan is not None else None
+        "artist_route_plan": route_plan_payload,
+        "route_plan_file": (
+            str((Path(control_manifest_path).parent / "route_plan.json").resolve())
+            if route_plan_payload is not None else None
         ),
         "flight_plan": flight_plan.manifest() if flight_plan is not None else None,
         "clearance": {
