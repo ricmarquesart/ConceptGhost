@@ -19,6 +19,9 @@ jobs:
       - name: Static contract
         run: python Experimental/Geometry_Assist_Proxy_Lab/Tests/test_static_contract.py
 
+      - name: Prompt contract regression
+        run: python Experimental/Geometry_Assist_Proxy_Lab/Tests/test_prompt_contract.py
+
       - name: Compile workers
         run: python -m compileall -q Experimental/Geometry_Assist_Proxy_Lab/package/Runtime/worker
 
@@ -34,7 +37,7 @@ jobs:
               pyc.unlink()
           out = Path("dist")
           out.mkdir(exist_ok=True)
-          base = out / "ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r3"
+          base = out / "ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r4"
           zip_path = Path(shutil.make_archive(str(base), "zip", root_dir=src))
           h = hashlib.sha256(zip_path.read_bytes()).hexdigest()
           (out / "SHA256.txt").write_text(f"{h}  {zip_path.name}\n", encoding="utf-8")
@@ -44,9 +47,9 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r3
+          name: ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r4
           path: |
-            dist/ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r3.zip
+            dist/ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r4.zip
             dist/SHA256.txt
           if-no-files-found: error
           retention-days: 30
