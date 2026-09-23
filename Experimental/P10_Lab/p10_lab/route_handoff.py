@@ -4,6 +4,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+import uuid
 
 from .contracts import ContractError
 from .drone_route_plan import parse_bound_route_plan
@@ -145,6 +146,70 @@ def load_production_entry(entry_path: str | Path) -> dict[str,object]:
     }
 
 
+def create_p10_attempt(
+    loaded_entry: dict[str,object],
+    comfy_output_root: str | Path,
+) -> dict[str,object]:
+    """Create an immutable P10 attempt directory under one accepted P9 run."""
+
+    if not bool(loaded_entry.get("validated")):
+        raise ContractError("P10 attempt requires a validated production entry")
+    p9_run_id=str(loaded_entry.get("source_run_id") or "").strip()
+    scene_contract_id=str(loaded_entry.get("scene_contract_id") or "").strip()
+    route_hash=str(loaded_entry.get("route_plan_sha256") or "").strip().lower()
+    if not p9_run_id or not scene_contract_id or len(route_hash)!=64:
+        raise ContractError("Validated production entry is missing P9/route identity")
+
+    now=datetime.now(timezone.utc)
+    stamp=now.strftime("%Y%m%dT%H%M%S_%fZ")
+    attempt_id=f"{stamp}_{route_hash[:8]}_{uuid.uuid4().hex[:8]}"
+    base=(
+        Path(comfy_output_root).resolve()
+        /"conceptghost"/"p10_attempts"/p9_run_id
+    )
+    attempt_root=base/attempt_id
+    attempt_root.mkdir(parents=True,exist_ok=False)
+    for name in ("gate4","gate5","gate6","diagnostics"):
+        (attempt_root/name).mkdir()
+
+    manifest={
+        "schema":"ConceptGhost.P10Attempt.v0.1",
+        "status":"ACTIVE",
+        "p10_attempt_id":attempt_id,
+        "created_at_utc":now.isoformat(),
+        "attempt_root":str(attempt_root),
+        "parent_p9_run_id":p9_run_id,
+        "scene_contract_id":scene_contract_id,
+        "source_p9_run_dir":str(loaded_entry["source_p9_run_dir"]),
+        "production_entry_path":str(loaded_entry["production_entry_path"]),
+        "route_plan_sha256":route_hash,
+        "route_authority":loaded_entry.get("route_authority"),
+        "immutable_attempt_directory":True,
+        "overwrite_policy":"NEVER_OVERWRITE_PRIOR_P10_ATTEMPT",
+    }
+    manifest_path=attempt_root/"attempt_manifest.json"
+    manifest_path.write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding="utf-8")
+    manifest["attempt_manifest_path"]=str(manifest_path)
+
+    pointer={
+        "schema":"ConceptGhost.P10LatestAttemptPointer.v0.1",
+        "p10_attempt_id":attempt_id,
+        "attempt_root":str(attempt_root),
+        "attempt_manifest_path":str(manifest_path),
+        "parent_p9_run_id":p9_run_id,
+        "scene_contract_id":scene_contract_id,
+        "route_plan_sha256":route_hash,
+        "updated_at_utc":now.isoformat(),
+        "pointer_only":True,
+    }
+    pointer_path=base/"LATEST_P10_RUN.json"
+    temp_path=base/"LATEST_P10_RUN.json.tmp"
+    temp_path.write_text(json.dumps(pointer,indent=2,sort_keys=True),encoding="utf-8")
+    temp_path.replace(pointer_path)
+    manifest["latest_pointer_path"]=str(pointer_path)
+    return manifest
+
+
 class ConceptGhostP10RouteCommit:
     @classmethod
     def INPUT_TYPES(cls):
@@ -188,26 +253,30 @@ class ConceptGhostP10ProductionEntryLoader:
             }
         }
 
-    RETURN_TYPES=("STRING","STRING","STRING")
-    RETURN_NAMES=("run_dir","route_plan_json","diagnostics_json")
+    RETURN_TYPES=("STRING","STRING","STRING","STRING","STRING")
+    RETURN_NAMES=("run_dir","route_plan_json","p10_attempt_root","p10_attempt_id","diagnostics_json")
     FUNCTION="load"
     CATEGORY="ConceptGhost/P10 Refined"
 
     @classmethod
     def IS_CHANGED(cls,production_entry_path):
-        path=Path(str(production_entry_path or "")).expanduser()
-        if not path.is_file():
-            return str(production_entry_path or "")
-        return _sha256_file(path)
+        # Every explicit P10 Production queue is a new immutable attempt.
+        # NaN tells ComfyUI not to reuse this loader from cache.
+        return float("nan")
 
     def load(self,production_entry_path):
+        import folder_paths
         result=load_production_entry(production_entry_path)
-        rendered=json.dumps(
-            {key:value for key,value in result.items() if key!="route_plan_json"},
-            indent=2,sort_keys=True,
-        )
+        attempt=create_p10_attempt(result,folder_paths.get_output_directory())
+        diagnostics={
+            **{key:value for key,value in result.items() if key!="route_plan_json"},
+            "attempt":attempt,
+        }
+        rendered=json.dumps(diagnostics,indent=2,sort_keys=True)
         return (
             str(result["source_p9_run_dir"]),
             str(result["route_plan_json"]),
+            str(attempt["attempt_root"]),
+            str(attempt["p10_attempt_id"]),
             rendered,
         )
