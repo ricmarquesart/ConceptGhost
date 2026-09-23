@@ -5,6 +5,26 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 DR7 complete
+
+This is the newest authoritative development status.
+
+- Gate 6 first-pass remains PASS and is not reopened.
+- Gate 4R remains the active bounded refinement before required Gate 7.
+- DR0–DR2 are complete.
+- DR3–DR5 are implemented/CI-green with user runtime acceptance deferred to DR9.
+- DR6 artist-route Gate 4 → WAN → Gate 6 integration is complete at code/CI level.
+- **DR7 persistence / resume / deterministic identity is COMPLETED at code/CI level.**
+- Routes are now bound to `scene_contract_id + source_run_id + route_authority` and carry a deterministic SHA-256.
+- An artist-authored route cannot be silently reused on another scene/run. An untouched editable seed may be regenerated instead.
+- Gate 4 persists `control_sequence/route_plan.json`; control/camera manifests bind that file/hash to the source scene/run.
+- Gate 5 verifies the persisted route before generation and invalidates prior WAN output when route/control/WAN settings change.
+- Gate 6 resume verifies WAN/camera manifests plus hashes of every source composite image and the ordered image set; changed/missing image bytes force rebuild.
+- Editor changes deliberately invalidate the previous route hash; the next execution rebinds the edited plan. `Resetar cena` explicitly discards saved route state.
+- GitHub Actions run `35813649004` completed SUCCESS on `02c72585a312e26fda011e128e27dd9eae4f1cc2`.
+- **Next bounded development: DR8 — diagnostics / quality controls / final regression coverage.**
+- DR9 remains the complete installer/workflow + real ComfyUI user acceptance.
+
 ## Authoritative reconciliation — 2026-09-23 DR6 complete
 
 This is the newest authoritative development status.
