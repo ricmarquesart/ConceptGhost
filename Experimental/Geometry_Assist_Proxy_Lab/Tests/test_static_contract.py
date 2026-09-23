@@ -35,6 +35,10 @@ def main() -> int:
     assert cfg["host_policy"]["shared_model_install"] == "FORBIDDEN"
     assert cfg["host_policy"]["official_pipeline_mutation"] == "FORBIDDEN"
     assert cfg["defaults"]["strength"] <= 0.30
+    assert cfg["defaults"]["control_hint_alignment"] == "EXACT_WORKING_SIZE"
+    assert cfg["defaults"]["prompt_max_tokens"] == 77
+    assert len(cfg["prompt"].split()) < 70
+    assert len(cfg["negative_prompt"].split()) < 70
     assert cfg["defaults"]["controlnet_scale"] >= 0.90
     assert cfg["models"]["controlnet"]["repo_id"] == "diffusers/controlnet-canny-sdxl-1.0-small"
     assert cfg["models"]["ip_adapter"]["repo_id"] == "h94/IP-Adapter"
@@ -53,6 +57,12 @@ def main() -> int:
         "StableDiffusionXLControlNetImg2ImgPipeline",
         "ControlNetModel",
         "load_ip_adapter",
+        "detect_resolution=control_resolution",
+        "image_resolution=control_resolution",
+        "height=work.height",
+        "width=work.width",
+        "Control hint alignment failed",
+        "Prompt contract exceeded CLIP context",
         "CannyDetector",
         "02_geometry_assist_proxy.png",
         "03_side_by_side.png",
