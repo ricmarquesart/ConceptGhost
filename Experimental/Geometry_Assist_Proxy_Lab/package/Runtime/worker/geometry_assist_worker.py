@@ -70,7 +70,7 @@ def self_test(root: Path) -> int:
         root / "Models" / "sdxl_base" / "unet" / "diffusion_pytorch_model.fp16.safetensors",
         root / "Models" / "controlnet_canny_sdxl_small" / "config.json",
         root / "Models" / "controlnet_canny_sdxl_small" / "diffusion_pytorch_model.fp16.safetensors",
-        root / "Models" / "ip_adapter" / "sdxl_models" / "ip-adapter_sdxl.bin",
+        root / "Models" / "ip_adapter" / "sdxl_models" / "ip-adapter_sdxl_vit-h.safetensors",
         root / "Models" / "ip_adapter" / "models" / "image_encoder" / "model.safetensors",
         root / "Models" / "sdxl_base" / "tokenizer" / "tokenizer_config.json",
         root / "Models" / "sdxl_base" / "tokenizer_2" / "tokenizer_config.json",
@@ -100,6 +100,29 @@ def self_test(root: Path) -> int:
         return 3
 
     try:
+        cfg = load_json(root / "Manifests" / "geometry_assist_config.json")
+        adapter_cfg = cfg["models"]["ip_adapter"]
+        encoder_cfg = load_json(root / "Models" / "ip_adapter" / adapter_cfg["image_encoder_folder"] / "config.json")
+        expected_projection = int(adapter_cfg["image_encoder_projection_dim"])
+        actual_projection = int(encoder_cfg.get("projection_dim", -1))
+        expected_weight = "ip-adapter_sdxl_vit-h.safetensors"
+        if adapter_cfg.get("pairing_contract") != "SDXL_VIT_H_1024":
+            raise RuntimeError(f"Unexpected IP-Adapter pairing contract: {adapter_cfg.get('pairing_contract')}")
+        if adapter_cfg.get("weight_name") != expected_weight:
+            raise RuntimeError(f"Unexpected IP-Adapter weight for ViT-H contract: {adapter_cfg.get('weight_name')}")
+        if actual_projection != expected_projection:
+            raise RuntimeError(
+                f"IP-Adapter image encoder projection mismatch: actual={actual_projection}, expected={expected_projection}"
+            )
+        print(
+            f"IP-Adapter pairing: PASS weight={adapter_cfg['weight_name']} "
+            f"encoder={adapter_cfg['image_encoder_family']} projection={actual_projection}"
+        )
+    except Exception as exc:
+        print(f"ERROR: IP-Adapter pairing self-test failed: {type(exc).__name__}: {exc}")
+        return 4
+
+    try:
         from transformers import CLIPTokenizer
         cfg = load_json(root / "Manifests" / "geometry_assist_config.json")
         configured_max = int(cfg["defaults"].get("prompt_max_tokens", 77))
@@ -122,7 +145,7 @@ def self_test(root: Path) -> int:
         print(json.dumps(prompt_contract, indent=2))
     except Exception as exc:
         print(f"ERROR: prompt contract self-test failed: {type(exc).__name__}: {exc}")
-        return 4
+        return 5
     return 0
 
 def fit_work_size(w: int, h: int, max_dim: int) -> tuple[int, int]:
@@ -288,6 +311,17 @@ def run(root: Path, input_path: Path) -> int:
             subfolder=cfg["models"]["ip_adapter"]["subfolder"],
             weight_name=cfg["models"]["ip_adapter"]["weight_name"],
             image_encoder_folder=cfg["models"]["ip_adapter"]["image_encoder_folder"],
+        )
+        adapter_cfg = cfg["models"]["ip_adapter"]
+        expected_projection = int(adapter_cfg["image_encoder_projection_dim"])
+        actual_projection = int(getattr(pipe.image_encoder.config, "projection_dim", -1))
+        if actual_projection != expected_projection:
+            raise RuntimeError(
+                f"IP-Adapter runtime projection mismatch: actual={actual_projection}, expected={expected_projection}"
+            )
+        log(
+            f"IP-Adapter pairing: {adapter_cfg['weight_name']} + "
+            f"{adapter_cfg['image_encoder_family']} projection={actual_projection}"
         )
         pipe.set_ip_adapter_scale(float(d["ip_adapter_scale"]))
         pipe.enable_vae_slicing()
