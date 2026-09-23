@@ -161,6 +161,19 @@ def build_reconstruction_input_manifest(
             "Gate 6 route-plan identity mismatch between WAN and camera manifests"
         )
 
+    wan_attempt_id=str(wan.get("p10_attempt_id") or "").strip()
+    camera_attempt_id=str(cameras.get("p10_attempt_id") or "").strip()
+    wan_attempt_root=str(wan.get("p10_attempt_root") or "").strip()
+    camera_attempt_root=str(cameras.get("p10_attempt_root") or "").strip()
+    if bool(wan_attempt_id) != bool(camera_attempt_id):
+        raise ContractError("Gate 6 attempt identity is present on only one manifest")
+    if wan_attempt_id and wan_attempt_id!=camera_attempt_id:
+        raise ContractError("Gate 6 P10 attempt id mismatch between WAN and camera manifests")
+    if bool(wan_attempt_root) != bool(camera_attempt_root):
+        raise ContractError("Gate 6 attempt root is present on only one manifest")
+    if wan_attempt_root and Path(wan_attempt_root).resolve()!=Path(camera_attempt_root).resolve():
+        raise ContractError("Gate 6 P10 attempt root mismatch between WAN and camera manifests")
+
     wan_mission_order=wan.get("mission_order")
     camera_mission_order=cameras.get("mission_order")
     if not isinstance(wan_mission_order,list) or not wan_mission_order:
@@ -283,6 +296,8 @@ def build_reconstruction_input_manifest(
         "run_id":wan.get("run_id"),
         "scene_contract_id":camera_scene_contract_id,
         "source_run_id":camera_source_run_id,
+        "p10_attempt_id":wan_attempt_id or None,
+        "p10_attempt_root":wan_attempt_root or None,
         "source_wan_manifest":str(wan_path.resolve()),
         "source_camera_manifest":str(camera_path.resolve()),
         "frame_count":len(frames),
