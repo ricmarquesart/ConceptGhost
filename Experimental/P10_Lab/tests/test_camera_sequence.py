@@ -22,11 +22,21 @@ class CameraSequenceTests(unittest.TestCase):
                 (0.0,0.0,0.0,1.0),
             ),
         )
-        payload=CameraSequenceManifest(frames=(frame,)).to_dict()
+        payload=CameraSequenceManifest(
+            frames=(frame,),
+            route_authority="ARTIST_AUTHORED",
+            route_plan_schema="ConceptGhost.P10DroneRoutePlan.v0.1",
+            route_plan_sha256="abc",
+            mission_modes=(("entry_micro_orbit_360","SPIN_360"),),
+        ).to_dict()
         self.assertEqual(payload["frame_count"],1)
         self.assertEqual(payload["frames"][0]["path_name"],"entry_micro_orbit_360")
         self.assertEqual(payload["frames"][0]["camera"]["model"],"PINHOLE")
         self.assertEqual(payload["frames"][0]["camera"]["world_matrix"][2][3],3.0)
+        self.assertEqual(payload["schema"],"ConceptGhost.P10CameraSequence.v0.2")
+        self.assertEqual(payload["route_plan_sha256"],"abc")
+        self.assertEqual(payload["mission_order"],["entry_micro_orbit_360"])
+        self.assertEqual(payload["missions"][0]["mode"],"SPIN_360")
 
     def test_global_indexes_must_be_contiguous(self):
         from p10_lab.camera_sequence import CameraFrameRecord, CameraSequenceManifest
