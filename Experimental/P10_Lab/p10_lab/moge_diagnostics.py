@@ -352,6 +352,38 @@ def _array_record(arr: np.ndarray) -> dict[str,Any]:
     return record
 
 
+class ConceptGhostMoGeDiagnosticProfileTap:
+    """Request optional MoGe per-step evidence without changing official profile fields."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required":{
+            "profile_config":("CG_GEOMETRY_PROFILE",),
+            "enable_moge_diagnostics":("BOOLEAN",{"forceInput":True}),
+        }}
+
+    RETURN_TYPES=("CG_GEOMETRY_PROFILE","STRING")
+    RETURN_NAMES=("profile_config","tap_report")
+    FUNCTION="apply"
+    CATEGORY="ConceptGhost/P9 Diagnostics"
+
+    def apply(self,profile_config,enable_moge_diagnostics):
+        original=dict(profile_config or {})
+        tapped=dict(original)
+        existing=bool(original.get("diagnostic_return_per_step",False))
+        tapped["diagnostic_return_per_step"]=bool(existing or enable_moge_diagnostics)
+        report={
+            "schema":"ConceptGhost.MoGeDiagnosticProfileTap.v0.1",
+            "enabled":bool(enable_moge_diagnostics),
+            "existing_extra_diagnostics":existing,
+            "return_per_step_requested":bool(tapped["diagnostic_return_per_step"]),
+            "official_profile_fields_changed":False,
+            "official_geometry_impact":False,
+            "policy":"DIAGNOSTIC_RETURN_EVIDENCE_ONLY",
+        }
+        return (tapped,json.dumps(report,indent=2,sort_keys=True))
+
+
 class ConceptGhostMoGeDiagnosticsControl:
     @classmethod
     def INPUT_TYPES(cls):
