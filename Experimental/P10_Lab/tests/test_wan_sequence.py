@@ -91,6 +91,52 @@ class WanSequentialSamplerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_control_batch_contract(payload,(2,480,832,3),(2,480,832))
 
+    def test_read_control_manifest_verifies_persisted_bound_route(self):
+        from p10_lab.drone_route_plan import (
+            DroneMission,DroneRoutePlan,DroneWaypoint,bind_route_plan
+        )
+        from p10_lab.wan_sequence import read_control_manifest
+
+        plan=DroneRoutePlan(
+            missions=(DroneMission("drone_1","PATH",(
+                DroneWaypoint(0,0,0),DroneWaypoint(0,0,3)
+            )),),
+            frames_per_drone=2,
+        )
+        bound=bind_route_plan(
+            plan,scene_contract_id="scene",source_run_id="run",
+            route_authority="ARTIST_AUTHORED",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            route=root/"route_plan.json"
+            route.write_text(json.dumps(bound),encoding="utf-8")
+            manifest={
+                "frame_count":2,"width":640,"height":360,
+                "route_authority":"ARTIST_AUTHORED",
+                "route_plan_sha256":bound["route_plan_sha256"],
+                "route_plan_file":"route_plan.json",
+                "scene_contract_id":"scene",
+                "source_run_id":"run",
+                "mission_order":["drone_1"],
+                "missions":[{"name":"drone_1","mode":"PATH","frame_count":2}],
+                "frames":[
+                    {"global_frame_index":0,"path_name":"drone_1"},
+                    {"global_frame_index":1,"path_name":"drone_1"},
+                ],
+            }
+            path=root/"manifest.json"
+            path.write_text(json.dumps(manifest),encoding="utf-8")
+            _path,payload,ranges=read_control_manifest(path)
+            self.assertEqual(payload["route_plan_sha256"],bound["route_plan_sha256"])
+            self.assertEqual([r.mission_name for r in ranges],["drone_1"])
+
+            tampered=dict(bound)
+            tampered["frames_per_drone"]=3
+            route.write_text(json.dumps(tampered),encoding="utf-8")
+            with self.assertRaises(ValueError):
+                read_control_manifest(path)
+
     def test_manifest_groups_contiguous_frames_by_mission(self):
         from p10_lab.wan_sequence import mission_ranges_from_manifest
         payload = {
