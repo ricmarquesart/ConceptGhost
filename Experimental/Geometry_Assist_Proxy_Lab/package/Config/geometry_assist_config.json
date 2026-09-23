@@ -1,5 +1,5 @@
 {
-  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v4",
+  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v5",
   "runtime_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic",
   "outputs_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic\\Outputs",
   "hardware_target": "RTX 2080 Ti 11GB",
@@ -28,7 +28,7 @@
     }
   },
   "defaults": {
-    "profile": "GEOMETRY_ASSIST_CONSERVATIVE",
+    "profile": "GEOMETRY_ASSIST_MOGE_MASTER",
     "max_dimension": 1024,
     "strength": 0.24,
     "controlnet_scale": 0.95,
@@ -41,10 +41,11 @@
     "jpeg_quality": 95,
     "prompt_max_tokens": 77,
     "control_hint_alignment": "EXACT_WORKING_SIZE",
-    "prompt_contract": "BOTH_SDXL_CLIP_TOKENIZERS"
+    "prompt_contract": "BOTH_SDXL_CLIP_TOKENIZERS",
+    "prompt_intent": "MONOCULAR_GEOMETRY_READABILITY"
   },
-  "prompt": "Same scene and camera. Preserve framing, perspective, silhouettes, positions, proportions, architecture, openings, and major edges. Use neutral realistic materials and lighting to clarify planes, occlusion, and depth.",
-  "negative_prompt": "changed camera, crop, fisheye, altered architecture, added or removed objects, duplicates, changed proportions, warped geometry, dramatic lighting, blur, painterly distortion, invented structures, text, watermark",
+  "prompt": "Geometry-assist proxy for monocular 3D estimation. Preserve camera, framing, perspective, composition, silhouettes, positions, proportions, architecture, openings, and object layout. Reduce painterly ambiguity; clarify planes, occlusions, materials, contact shadows, depth layering, and neutral readable lighting.",
+  "negative_prompt": "changed camera, changed FOV, crop, fisheye, moved objects, changed proportions, warped architecture, added or removed objects, new openings, hallucinated structures, cinematic relighting, fog, bloom, painterly abstraction, blurred boundaries, scene redesign, text, watermark",
   "host_policy": {
     "shared_comfy_mutation": "FORBIDDEN",
     "shared_python_pip_install": "FORBIDDEN",
