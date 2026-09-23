@@ -574,9 +574,17 @@ def build_refined_evidence(
     authored_payload = str(route_plan_json or "").strip()
     if authored_payload:
         try:
-            authored_route_plan = DroneRoutePlan.from_dict(json.loads(authored_payload))
+            authored_route_payload = json.loads(authored_payload)
+            authored_route_plan = DroneRoutePlan.from_dict(authored_route_payload)
         except (json.JSONDecodeError, ContractError) as error:
             raise ContractError(f"Artist drone route plan is invalid: {error}") from error
+        declared_route_authority=str(
+            authored_route_payload.get("route_authority") or "ARTIST_AUTHORED"
+        ).strip().upper()
+        if declared_route_authority not in {"ARTIST_AUTHORED","EDITABLE_SEED"}:
+            raise ContractError(
+                f"Unsupported authored route authority: {declared_route_authority}"
+            )
 
         sampled_paths = sample_route_plan(authored_route_plan)
         if authored_route_plan.collision_mode == "HOLD_AND_RESUME":
@@ -601,7 +609,7 @@ def build_refined_evidence(
         flight_plan = None
         clearance_batch = None
         clearance_fallback_to_unadapted = False
-        route_authority = "ARTIST_AUTHORED"
+        route_authority = declared_route_authority
     else:
         flight_plan = plan_geometry_aware_flights(scene_footprint)
         clearance_batch = adapt_paths_for_clearance(
