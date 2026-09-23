@@ -87,7 +87,7 @@ class DroneRoutePlanTests(unittest.TestCase):
             return 1.0
 
         def segment_blocked(start,end):
-            return min(start.right,end.right)<0.0<max(start.right,end.right)
+            return min(start.right,end.right)<=0.0<=max(start.right,end.right)
 
         safe,report=apply_hold_and_resume_clearance(
             path,
