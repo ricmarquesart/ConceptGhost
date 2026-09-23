@@ -226,6 +226,31 @@ CI:
 Next: DR8D — preview invalidation / freshness.
 
 
+### Gate 4R DR8D checkpoint — preview invalidation and freshness
+
+DR8D is COMPLETE / CI PASS.
+
+Preview authority now follows:
+`route hash + control-manifest hash + WAN generation-context hash + exact final-composite bytes`.
+
+Before regeneration, the prior preview package is classified with a machine-readable invalidation reason. The prior index SHA-256 is checked against the prior WAN manifest when route/control/settings are otherwise unchanged.
+
+During regeneration:
+- old `drone_previews` contents are removed before new publication;
+- no old `drone_preview_index.json` survives a failed/new run as current authority;
+- new GIFs are validated against their recorded GIF hashes;
+- final composite frames are reassembled again and hashed after preview generation;
+- source-frame-set hashes must still match the exact current composite bytes.
+
+Therefore route changes, control changes, WAN-setting changes, preview-index tampering, GIF tampering and post-generation composite mutation all invalidate preview authority instead of silently presenting stale previews.
+
+CI:
+- `35817845135` SUCCESS — implementation;
+- `35817871526` SUCCESS — invalidation/freshness regressions.
+
+Next: DR8E — final diagnostics/GIF/index/workflow regression closeout.
+
+
 ## Gate 5 — 5 subgates
 
 5.1 11 GB WAN runtime/resource policy — COMPLETED. Conservative first-pass profile: 832×480, max 33-frame WAN window, 4 steps, CFG 1.0, FP8 UNet, one window at a time, model/cache offload between windows. GitHub Actions run 35702692128 SUCCESS.
