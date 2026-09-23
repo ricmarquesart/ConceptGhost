@@ -10,7 +10,7 @@ from .drone_route_plan import (
     parse_bound_route_plan,
     seed_plan_from_footprint,
 )
-from .drone_route_preview import render_route_authoring_preview
+from .drone_route_preview import build_route_preview_geometry, render_route_authoring_preview
 from .mesh_clearance import build_clearance_cloud
 from .route_collision import preflight_drone_route_plan
 from .p9_boundary import validate_official_run
@@ -28,8 +28,9 @@ def _pretty(payload: dict) -> str:
 class ConceptGhostP10DroneRouteAuthoring:
     """Artist-authored P10 drone mission editor backend.
 
-    The frontend owns click/drag interaction. This node validates and renders
-    the same serialized 3D route plan into synchronized TOP/SIDE/FRONT views.
+    The frontend owns click/drag/orbit interaction. This node validates and renders
+    the same serialized 3D route plan into one Perspective orbit view plus
+    synchronized metric-isotropic TOP/SIDE/FRONT views.
     Automatic geometry-aware planning is no longer route authority here; when
     no authored plan exists, a single editable starter mission is produced.
     """
@@ -60,7 +61,7 @@ class ConceptGhostP10DroneRouteAuthoring:
 
     RETURN_TYPES=("IMAGE","STRING","STRING","STRING")
     RETURN_NAMES=(
-        "route_triview",
+        "route_workspace",
         "route_plan_json",
         "projection_json",
         "diagnostics_json",
@@ -161,18 +162,24 @@ class ConceptGhostP10DroneRouteAuthoring:
             None,
             source_image=boundary.source_image,
         )
+        preview_geometry=build_route_preview_geometry(
+            boundary.primary_mesh,
+            camera,
+            source_image=boundary.source_image,
+            max_points=12000,
+        )
 
         output_root=(
             Path(folder_paths.get_output_directory())
             /"conceptghost"/"p10_route_editor"/boundary.run_id
         )
         output_root.mkdir(parents=True,exist_ok=True)
-        filename="drone_route_triview.png"
+        filename="drone_route_fourview.png"
         png_path=output_root/filename
         array=(preview[0].detach().cpu().numpy()*255.0).clip(0,255).astype("uint8")
         Image.fromarray(array).save(png_path)
 
-        base_filename="drone_route_triview_base.png"
+        base_filename="drone_route_fourview_base.png"
         base_png_path=output_root/base_filename
         base_array=(base_preview[0].detach().cpu().numpy()*255.0).clip(0,255).astype("uint8")
         Image.fromarray(base_array).save(base_png_path)
@@ -209,11 +216,13 @@ class ConceptGhostP10DroneRouteAuthoring:
             "preview_png_path":str(png_path.resolve()),
             "base_preview_png_path":str(base_png_path.resolve()),
             "interaction_contract":{
+                "perspective":"ORBIT_ZOOM_INSPECTION_ONLY",
                 "top":"RIGHT + FORWARD",
                 "side":"FORWARD + UP",
                 "front":"RIGHT + UP",
                 "same_3d_waypoint_shared_across_views":True,
                 "orthographic_metric_scale_preserved":True,
+                "perspective_uses_same_p9_local_geometry":True,
                 "downstream_updates_on_next_queue_prompt":True,
             },
         }
@@ -232,6 +241,7 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "type":"output",
             },
             "collision_preflight":collision_report.to_dict(),
+            "preview_geometry":preview_geometry,
             "diagnostics":diagnostics,
         }
         return {
