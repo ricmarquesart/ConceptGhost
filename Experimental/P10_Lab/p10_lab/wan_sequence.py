@@ -555,9 +555,6 @@ class ConceptGhostP10WanSequentialSampler:
                 use_fp8_unet=True,
             ).manifest(),
             "mission_count": len(missions),
-            "mission_order": mission_order,
-            "route_authority": control_payload.get("route_authority"),
-            "route_plan_sha256": control_payload.get("route_plan_sha256"),
             "window_count": len(windows),
             "requested_dimensions": {
                 "width": dimensions.requested_width,
@@ -589,6 +586,10 @@ class ConceptGhostP10WanSequentialSampler:
             "subgates": ["5.2", "5.3", "5.4"],
             "run_id": run_id,
             "mission_count": len(missions),
+            "mission_order": mission_order,
+            "mission_modes": mission_modes,
+            "route_authority": control_payload.get("route_authority"),
+            "route_plan_sha256": control_payload.get("route_plan_sha256"),
             "window_count": len(windows),
             "requested_dimensions": {
                 "width": dimensions.requested_width,
