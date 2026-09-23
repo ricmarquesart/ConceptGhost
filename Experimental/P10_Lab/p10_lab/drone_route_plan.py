@@ -284,6 +284,50 @@ def bind_route_plan(
     return payload
 
 
+
+def _legacy_v01_route_payload(plan: DroneRoutePlan) -> dict[str, object]:
+    return {
+        "schema": "ConceptGhost.P10DroneRoutePlan.v0.1",
+        "coordinate_space": "P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+        "maximum_drone_count": _MAX_DRONES,
+        "frames_per_drone": plan.frames_per_drone,
+        "collision_mode": plan.collision_mode,
+        "min_clearance_m": plan.min_clearance_m,
+        "missions": [
+            {
+                "name": mission.name,
+                "mode": mission.mode,
+                "enabled": mission.enabled,
+                "waypoints": [point.to_dict() for point in mission.waypoints],
+            }
+            for mission in plan.missions
+        ],
+    }
+
+
+def _legacy_v01_route_hash(
+    plan: DroneRoutePlan,
+    *,
+    scene_contract_id: str,
+    source_run_id: str,
+    route_authority: str,
+) -> str:
+    payload=_legacy_v01_route_payload(plan)
+    payload.update({
+        "binding_schema":"ConceptGhost.P10BoundDroneRoutePlan.v0.1",
+        "scene_contract_id":_clean_binding_text(scene_contract_id,"scene_contract_id"),
+        "source_run_id":_clean_binding_text(source_run_id,"source_run_id"),
+        "route_authority":_normalize_route_authority(route_authority),
+    })
+    canonical=json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",",":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def parse_bound_route_plan(
     payload: dict[str, object],
     *,
@@ -301,6 +345,7 @@ def parse_bound_route_plan(
     if not isinstance(payload,dict):
         raise ContractError("Bound drone route plan must be a JSON object")
     binding_schema=str(payload.get("binding_schema") or _BOUND_ROUTE_SCHEMA)
+    route_schema=str(payload.get("schema") or _ROUTE_SCHEMA)
     if binding_schema not in _LEGACY_BOUND_ROUTE_SCHEMAS:
         raise ContractError(f"Unsupported route binding schema: {binding_schema}")
 
@@ -330,7 +375,18 @@ def parse_bound_route_plan(
     stored_hash=str(payload.get("route_plan_sha256") or "").strip().lower()
     if require_hash and not stored_hash:
         raise ContractError("Bound drone route is missing route_plan_sha256")
-    if stored_hash and stored_hash!=expected_hash:
+    legacy_hash=None
+    if (
+        binding_schema=="ConceptGhost.P10BoundDroneRoutePlan.v0.1"
+        and route_schema=="ConceptGhost.P10DroneRoutePlan.v0.1"
+    ):
+        legacy_hash=_legacy_v01_route_hash(
+            plan,
+            scene_contract_id=scene_contract_id,
+            source_run_id=source_run_id,
+            route_authority=authority,
+        )
+    if stored_hash and stored_hash not in {expected_hash,legacy_hash}:
         raise ContractError(
             "Saved drone route hash does not match its serialized plan; "
             "clear/reset the route or execute the editor to rebind it"
@@ -372,6 +428,17 @@ def _normalize(v: tuple[float, float, float]) -> tuple[float, float, float]:
     length = sqrt(sum(value * value for value in v))
     if length <= 1.0e-12:
         return (0.0, 0.0, 1.0)
+    return tuple(value / length for value in v)
+
+
+def _normalize_strict(
+    v: tuple[float, float, float],
+    *,
+    label: str,
+) -> tuple[float, float, float]:
+    length = sqrt(sum(value * value for value in v))
+    if length <= 1.0e-12:
+        raise ContractError(f"{label} cannot have zero length")
     return tuple(value / length for value in v)
 
 
@@ -420,18 +487,21 @@ def _sample_path(mission: DroneMission, frame_count: int) -> CameraPath:
                 raise ContractError(
                     f"Mission {mission.name} LOOK_AT_TARGET has no target"
                 )
-            look = _normalize((
+            look = _normalize_strict((
                 target.right - position.right,
                 target.up - position.up,
                 target.forward - position.forward,
-            ))
+            ), label=f"Mission {mission.name} LOOK_AT_TARGET direction")
         elif mission.orientation_mode == "MANUAL_DIRECTION":
             manual = mission.manual_direction
             if manual is None:
                 raise ContractError(
                     f"Mission {mission.name} MANUAL_DIRECTION has no direction"
                 )
-            look = _normalize((manual.right, manual.up, manual.forward))
+            look = _normalize_strict(
+                (manual.right, manual.up, manual.forward),
+                label=f"Mission {mission.name} MANUAL_DIRECTION",
+            )
         else:
             look = tangent
 
@@ -470,6 +540,84 @@ def sample_route_plan(plan: DroneRoutePlan) -> tuple[CameraPath, ...]:
     if not active:
         raise ContractError("Drone route plan has no enabled missions")
     return tuple(sample_mission(m, plan.frames_per_drone) for m in active)
+
+
+
+def reorient_path_for_mission(
+    mission: DroneMission,
+    path: CameraPath,
+) -> CameraPath:
+    """Reapply mission orientation after collision holds alter emitted positions."""
+
+    if mission.mode=="SPIN_360":
+        return path
+    waypoints=path.waypoints
+    if not waypoints:
+        raise ContractError(f"Mission {mission.name} emitted path is empty")
+
+    result=[]
+    for index,point in enumerate(waypoints):
+        if mission.orientation_mode=="LOOK_AT_TARGET":
+            target=mission.look_target
+            if target is None:
+                raise ContractError(f"Mission {mission.name} LOOK_AT_TARGET has no target")
+            look=_normalize_strict(
+                (
+                    target.right-point.right,
+                    target.up-point.up,
+                    target.forward-point.forward,
+                ),
+                label=f"Mission {mission.name} LOOK_AT_TARGET direction",
+            )
+        elif mission.orientation_mode=="MANUAL_DIRECTION":
+            manual=mission.manual_direction
+            if manual is None:
+                raise ContractError(f"Mission {mission.name} MANUAL_DIRECTION has no direction")
+            look=_normalize_strict(
+                (manual.right,manual.up,manual.forward),
+                label=f"Mission {mission.name} MANUAL_DIRECTION",
+            )
+        else:
+            # Preserve the original sampled tangent when a hold creates repeated
+            # positions; otherwise derive the tangent from the emitted path.
+            neighbor=None
+            for candidate_index in range(index+1,len(waypoints)):
+                candidate=waypoints[candidate_index]
+                delta=(
+                    candidate.right-point.right,
+                    candidate.up-point.up,
+                    candidate.forward-point.forward,
+                )
+                if sqrt(sum(v*v for v in delta))>1.0e-12:
+                    neighbor=delta
+                    break
+            if neighbor is None:
+                for candidate_index in range(index-1,-1,-1):
+                    candidate=waypoints[candidate_index]
+                    delta=(
+                        point.right-candidate.right,
+                        point.up-candidate.up,
+                        point.forward-candidate.forward,
+                    )
+                    if sqrt(sum(v*v for v in delta))>1.0e-12:
+                        neighbor=delta
+                        break
+            if neighbor is None:
+                look=(point.look_right,point.look_up,point.look_forward)
+            else:
+                look=_normalize(neighbor)
+
+        result.append(
+            RelativeWaypoint(
+                right=point.right,
+                up=point.up,
+                forward=point.forward,
+                look_right=look[0],
+                look_up=look[1],
+                look_forward=look[2],
+            )
+        )
+    return CameraPath(path.name,tuple(result))
 
 
 def apply_hold_and_resume_clearance(
