@@ -74,8 +74,8 @@ Current state:
 - DR4 multi-drone PATH/SPIN_360 UX — backend implemented, frontend controls implemented, runtime validation pending;
 - DR5 hold-last-safe-and-resume collision policy — backend prototype implemented;
 - DR6 Gate 4→5→6 authored-route integration — COMPLETED in code/CI; user runtime acceptance deferred to DR9;
-- DR7 persistence/hash-safe resume — pending;
-- DR8 diagnostics/tests — partially implemented;
+- DR7 persistence/hash-safe resume — COMPLETED at code/CI level; user save/reload runtime acceptance deferred to DR9;
+- DR8 diagnostics/tests — ACTIVE / partially implemented;
 - DR9 packaged user acceptance — pending.
 
 Production direction:
@@ -108,6 +108,27 @@ Authority/identity guarantees:
 - untouched route-editor seed is tagged `EDITABLE_SEED`; artist interaction promotes it to `ARTIST_AUTHORED`.
 
 GitHub Actions run 35811855641 completed SUCCESS across Ubuntu Python 3.12, Windows Python 3.12 and Windows Python 3.14.
+
+
+### Gate 4R DR7 checkpoint — deterministic route persistence
+
+DR7 is complete at code/CI level.
+
+Persistence/resume contract:
+- route editor state is serialized in the workflow and bound to the exact P9 source `scene_contract_id` and `source_run_id`;
+- deterministic `route_plan_sha256` covers the route, binding and authority;
+- artist edits clear the stale hash and mark the plan dirty; execution rebinds the current bytes;
+- cross-scene/cross-run artist-route reuse fails closed;
+- `Resetar cena` is the explicit escape hatch for discarding old authored state;
+- Gate 4 persists the current bound route beside control/camera manifests;
+- stale Gate 4 frames/masks are removed before a replacement sequence is written;
+- Gate 5 verifies the persisted route file and clears stale WAN outputs before regeneration;
+- Gate 6 checkpoint reuse validates WAN/camera manifest digests plus exact composite-image digests;
+- source composite mutation or deletion invalidates the Gate 6 dataset instead of reusing stale sparse/dense/mesh state.
+
+CI evidence: `35813649004` SUCCESS on `02c72585a312e26fda011e128e27dd9eae4f1cc2`.
+
+Next: DR8 diagnostics / quality controls / regression closeout.
 
 
 ## Gate 5 — 5 subgates
