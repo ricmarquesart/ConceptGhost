@@ -1,0 +1,45 @@
+{
+  "schema": "ConceptGhost.P10DR9RPackageRecord.v0.7",
+  "release": "ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r7",
+  "date": "2026-09-23",
+  "runtime_source_commit": "2b35f61057c1131520d21059c183ab02fbdca635",
+  "source_ci": {
+    "run_id": 35897710951,
+    "status": "SUCCESS"
+  },
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "user_runtime_acceptance": "PENDING",
+  "zip": {
+    "bytes": 12234655,
+    "sha256": "0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756",
+    "members": 205
+  },
+  "google_drive": {
+    "file_id": "1hAp4qqbCVxUyHLXrKuWQUPHERLcFNFWR",
+    "path": "ConceptGhost/Storage/Evaluation_Builds/ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r7.zip"
+  },
+  "github": {
+    "release_tag": "p10-dr9r-r7",
+    "release_url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r7",
+    "asset_url": "https://github.com/ricmarquesart/ConceptGhost/releases/download/p10-dr9r-r7/ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r7.zip",
+    "asset_digest": "sha256:0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756"
+  },
+  "workflows": [
+    "01_ConceptGhost_P10_ROUTE_SETUP_r7.json",
+    "02_ConceptGhost_P10_PRODUCTION_r7.json"
+  ],
+  "storage_tool": "06_P10_STORAGE_AND_CLEANUP.bat",
+  "p9_policy": "ACCEPTED_IMMUTABLE_UPSTREAM",
+  "p10_cleanup_policy": "P10_OWNED_PATHS_ONLY_FAIL_CLOSED",
+  "maya_policy": "P9_MA_IMMUTABLE__P10_REFINED_MA_SEPARATE",
+  "validation": {
+    "source_tests": "PASS",
+    "javascript_syntax": "PASS",
+    "python_compile": "PASS",
+    "bundle_test": "PASS",
+    "static_runtime_verifier": "PASS",
+    "extracted_sha256s": "PASS",
+    "drive_redownload_digest": "PASS",
+    "github_release_asset_digest": "PASS"
+  }
+}
