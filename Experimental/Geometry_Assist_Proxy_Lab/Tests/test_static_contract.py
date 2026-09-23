@@ -36,9 +36,13 @@ def main() -> int:
     assert cfg["host_policy"]["official_pipeline_mutation"] == "FORBIDDEN"
     assert cfg["defaults"]["strength"] <= 0.30
     assert cfg["defaults"]["control_hint_alignment"] == "EXACT_WORKING_SIZE"
+    assert cfg["schema"] == "ConceptGhost.GeometryAssistDiagnostic.Config.v3"
     assert cfg["defaults"]["prompt_max_tokens"] == 77
-    assert len(cfg["prompt"].split()) < 70
-    assert len(cfg["negative_prompt"].split()) < 70
+    assert cfg["defaults"]["prompt_contract"] == "BOTH_SDXL_CLIP_TOKENIZERS"
+    # Keep a large lexical safety margin. Runtime/self-test enforce the actual
+    # tokenizer contract against both SDXL CLIP tokenizers.
+    assert len(cfg["prompt"].split()) < 35
+    assert len(cfg["negative_prompt"].split()) < 35
     assert cfg["defaults"]["controlnet_scale"] >= 0.90
     assert cfg["models"]["controlnet"]["repo_id"] == "diffusers/controlnet-canny-sdxl-1.0-small"
     assert cfg["models"]["ip_adapter"]["repo_id"] == "h94/IP-Adapter"
@@ -63,6 +67,10 @@ def main() -> int:
         "width=work.width",
         "Control hint alignment failed",
         "Prompt contract exceeded CLIP context",
+        "validate_prompt_contract",
+        "CLIPTokenizer",
+        "tokenizer_2",
+        "prompt_tokenizers",
         "CannyDetector",
         "02_geometry_assist_proxy.png",
         "03_side_by_side.png",
