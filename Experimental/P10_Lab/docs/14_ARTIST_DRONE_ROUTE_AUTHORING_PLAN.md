@@ -57,7 +57,7 @@ Exit: deterministic route plan roundtrip and sampler tests.
 
 Exit: one route-preview image + projection manifest + tests.
 
-### DR3 — Interactive ComfyUI route editor — IN PROGRESS
+### DR3 — Interactive ComfyUI route editor — IMPLEMENTED / CI PASS / USER RUNTIME PENDING
 - custom DOM/canvas editor;
 - click to create waypoint;
 - drag existing waypoint;
@@ -70,7 +70,7 @@ Exit: one route-preview image + projection manifest + tests.
 
 Exit: route can be authored without manually editing JSON.
 
-### DR4 — Multi-drone UX + mission modes — PARTIAL BACKEND / UI PENDING
+### DR4 — Multi-drone UX + mission modes — IMPLEMENTED IN BACKEND + FRONTEND / USER RUNTIME PENDING
 - Drone 1 present by default;
 - + Drone adds Drone 2…7;
 - select active drone;
@@ -138,11 +138,11 @@ Exit: artist-driven route workflow accepted in real ComfyUI runtime.
 ## Current progress
 
 Completed: DR0, DR1, DR2
-Active: DR3
-Partially implemented in backend: DR4, DR5, DR6, DR8
+Implemented / awaiting user runtime: DR3, DR4
+Partially implemented: DR5, DR6, DR8
 Pending: DR7, DR9
 
-There are 10 subgates total. At the start of this plan, 3 are complete and 7 remain including the active DR3.
+There are 10 subgates total. DR0–DR2 are complete; DR3–DR4 are implemented and CI-green but still need real ComfyUI runtime acceptance; DR5–DR9 remain to be closed.
 
 ## Immediate implementation order
 
