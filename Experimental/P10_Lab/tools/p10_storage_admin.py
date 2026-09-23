@@ -29,7 +29,9 @@ def main(argv=None):
     parser=argparse.ArgumentParser(
         description="ConceptGhost P10 storage report / fail-closed cleanup utility."
     )
-    parser.add_argument("--output-root",required=True,help="ComfyUI output directory")
+    source=parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--output-root",help="ComfyUI output directory")
+    source.add_argument("--comfy-root",help="ComfyUI root; folder_paths will resolve its active output directory")
     parser.add_argument(
         "action",
         choices=(
@@ -40,7 +42,14 @@ def main(argv=None):
     parser.add_argument("--confirm",default="")
     args=parser.parse_args(argv)
 
-    output=Path(args.output_root).expanduser().resolve()
+    if args.comfy_root:
+        comfy_root=Path(args.comfy_root).expanduser().resolve()
+        if str(comfy_root) not in sys.path:
+            sys.path.insert(0,str(comfy_root))
+        import folder_paths
+        output=Path(folder_paths.get_output_directory()).resolve()
+    else:
+        output=Path(args.output_root).expanduser().resolve()
     report=build_storage_report(output)
 
     if args.action=="report":
