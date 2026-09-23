@@ -42,6 +42,10 @@ class ControlSequenceManifest:
     frames: tuple[ControlFrameRecord, ...]
     width: int
     height: int
+    route_authority: str = "UNSPECIFIED"
+    route_plan_schema: str | None = None
+    route_plan_sha256: str | None = None
+    mission_modes: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.width) is not int or type(self.height) is not int:
@@ -54,12 +58,47 @@ class ControlSequenceManifest:
         actual = [frame.global_frame_index for frame in self.frames]
         if actual != expected:
             raise ContractError("Control sequence global frame indexes must be contiguous from zero")
+        if not str(self.route_authority).strip():
+            raise ContractError("route_authority cannot be empty")
+        seen=[]
+        for frame in self.frames:
+            if frame.path_name not in seen:
+                seen.append(frame.path_name)
+            elif seen[-1] != frame.path_name:
+                raise ContractError("Control sequence missions must be contiguous")
+        mode_names=[name for name,_mode in self.mission_modes]
+        if len(mode_names)!=len(set(mode_names)):
+            raise ContractError("mission_modes contains duplicate mission names")
+        if mode_names and mode_names!=seen:
+            raise ContractError(
+                "mission_modes order must match the contiguous control-frame mission order"
+            )
 
     def to_dict(self) -> dict[str, object]:
+        mission_order=[]
+        mission_counts={}
+        for frame in self.frames:
+            if frame.path_name not in mission_counts:
+                mission_order.append(frame.path_name)
+                mission_counts[frame.path_name]=0
+            mission_counts[frame.path_name]+=1
+        mode_lookup=dict(self.mission_modes)
         return {
-            "schema": "ConceptGhost.P10ControlSequence.v0.1",
+            "schema": "ConceptGhost.P10ControlSequence.v0.2",
             "frame_count": len(self.frames),
             "width": self.width,
             "height": self.height,
+            "route_authority": self.route_authority,
+            "route_plan_schema": self.route_plan_schema,
+            "route_plan_sha256": self.route_plan_sha256,
+            "mission_order": mission_order,
+            "missions": [
+                {
+                    "name": name,
+                    "mode": mode_lookup.get(name),
+                    "frame_count": mission_counts[name],
+                }
+                for name in mission_order
+            ],
             "frames": [frame.to_dict() for frame in self.frames],
         }
