@@ -147,14 +147,21 @@ CI evidence: GitHub Actions run `35813649004` — SUCCESS on head `02c72585a312e
 
 CI evidence: GitHub Actions run `35816433877` — SUCCESS on `efb7a39b0a53c2035ab8ae58ca34a26c339ea92a`.
 
-#### DR8B — Per-drone final composite GIF previews — NEXT
-- generate one animated GIF per drone from final Gate 5 composite frames;
-- preserve exact mission/frame order, including missions split across multiple WAN windows;
-- default lightweight preview sizing/fps;
-- loop continuously;
-- never mix frames from different drones.
+#### DR8B — Per-drone final composite GIF previews — COMPLETED / CI PASS
+- one animated GIF is generated per drone from the final Gate 5 composite frames;
+- every authored frame is included; the preview does not drop frames for convenience;
+- one mission split across multiple WAN windows is reassembled by original global frame index before GIF creation;
+- frames from different drones cannot be mixed; missing/duplicate/out-of-range composite frames fail closed;
+- default preview profile: maximum width 640 px, aspect ratio preserved, 10 fps, infinite loop;
+- mission names are sanitized for Windows-safe filenames;
+- output folder: `p10_gate5/<run_id>/drone_previews/`;
+- example names: `drone_01_drone_1_preview.gif`, `drone_02_drone_2_preview.gif`;
+- each GIF records SHA-256 plus an ordered source-frame-set SHA-256;
+- a preliminary `drone_preview_index.json` is already emitted as part of DR8B and becomes the formal surfacing contract in DR8C.
 
-#### DR8C — Preview index / output surfacing — PENDING
+CI evidence: GitHub Actions run `35816862522` — SUCCESS on `6c9931c63ed18ad3d6c3ad97b59175b44a4bad22` across Windows/Python 3.12, Windows/Python 3.14 and Ubuntu/Python 3.12 jobs.
+
+#### DR8C — Preview index / output surfacing — NEXT
 - write `drone_preview_index.json`;
 - include mission name/mode/frame count/fps/preview dimensions/source type/hash context;
 - expose preview locations clearly in Gate 5 diagnostics/output metadata.
@@ -190,7 +197,7 @@ Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
 Implemented / awaiting CI + user runtime: DR5
 Completed at code/CI level; user runtime acceptance pending: DR6, DR7
-DR8 active: DR8A complete; DR8B next; DR8C–DR8E pending
+DR8 active: DR8A–DR8B complete; DR8C next; DR8D–DR8E pending
 Pending: DR9
 
 There are 10 subgates total. DR0–DR2 are complete; DR3–DR7 are implemented and CI-green but still need real ComfyUI runtime acceptance where applicable; DR8 remains the active engineering subgate and DR9 is the final packaged user acceptance.
