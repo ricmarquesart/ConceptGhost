@@ -13,6 +13,7 @@ from .raw_holes import RawHoleFrame
 from .disocclusion import build_disocclusion_mask
 from .control_sequence import ControlFrameRecord, ControlSequenceManifest
 from .camera_sequence import CameraFrameRecord, CameraSequenceManifest
+from .drone_route_diagnostics import build_drone_route_diagnostics
 from .drone_route_plan import (
     DroneRoutePlan,
     apply_hold_and_resume_clearance,
@@ -675,6 +676,7 @@ def build_refined_evidence(
     camera_frames = []
     labels = []
     coverage_by_path: dict[str, list[float]] = {}
+    hole_fraction_by_path: dict[str, list[float]] = {}
     view_height = int(round(view_width * camera.height / camera.width))
 
     for path in active_paths:
@@ -686,6 +688,7 @@ def build_refined_evidence(
         poses = tuple(resolve_world_camera(camera, waypoint, frame_index=index) for index, waypoint in enumerate(waypoints))
         resolved_paths.append((path.name, poses))
         coverage_by_path[path.name] = []
+        hole_fraction_by_path[path.name] = []
         for index, pose in enumerate(poses):
             frame, coverage = _render_perspective(
                 vertices,
@@ -705,6 +708,7 @@ def build_refined_evidence(
                 coverage.reshape(-1).tolist(),
             )
             raw_hole_frames.append(raw_frame)
+            hole_fraction_by_path[path.name].append(float(raw_frame.hole_fraction))
             disocclusion_masks.append(
                 build_disocclusion_mask(
                     view_width,
@@ -776,6 +780,25 @@ def build_refined_evidence(
         ImageDraw=ImageDraw,
     )
 
+    route_diagnostics = build_drone_route_diagnostics(
+        authored_route_plan,
+        tuple(active_paths),
+        coverage_by_path,
+        hole_fraction_by_path,
+        authored_clearance_reports,
+        route_authority=route_authority,
+        route_plan_sha256=route_plan_sha256,
+        scene_contract_id=boundary.scene_contract_id,
+        source_run_id=boundary.run_id,
+    )
+    route_diagnostics_root = Path(control_manifest_path).parent.parent / "diagnostics"
+    route_diagnostics_root.mkdir(parents=True, exist_ok=True)
+    route_diagnostics_path = route_diagnostics_root / "drone_route_diagnostics.json"
+    route_diagnostics_path.write_text(
+        json.dumps(route_diagnostics, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+
     diagnostics = {
         "status": "PASS",
         "gate": 4,
@@ -820,11 +843,19 @@ def build_refined_evidence(
                 else "ADVISORY_APPROXIMATE_VERTEX_CLEARANCE_FOR_END_TO_END_FIRST_PASS"
             ),
         },
+        "route_diagnostics_path": str(route_diagnostics_path.resolve()),
+        "route_diagnostics": route_diagnostics,
         "paths": {
             name: {
                 "frame_count": len(values),
                 "min_p9_coverage": min(values),
+                "mean_p9_coverage": sum(values) / len(values),
                 "max_p9_coverage": max(values),
+                "min_hole_fraction": min(hole_fraction_by_path[name]),
+                "mean_hole_fraction": (
+                    sum(hole_fraction_by_path[name]) / len(hole_fraction_by_path[name])
+                ),
+                "max_hole_fraction": max(hole_fraction_by_path[name]),
             }
             for name, values in coverage_by_path.items()
         },
