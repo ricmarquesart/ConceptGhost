@@ -400,6 +400,34 @@ def analyze_and_render_mesh(
     sampled_count = len(sampled_faces)
     degenerate_fraction = degenerate / float(sampled_count) if sampled_count else 0.0
 
+    # B6 diagnostic only: estimate surface fragmentation from the preview sample.
+    # This is intentionally labeled approximate whenever not every face was read
+    # into sampled_faces. It must never be used to mutate P9 or reject unseen P10
+    # geometry solely because the original monocular P9 world is fragmented.
+    parent={}
+    def find(value):
+        root=parent.setdefault(value,value)
+        while parent[root]!=root:
+            parent[root]=parent[parent[root]]
+            root=parent[root]
+        while parent[value]!=value:
+            nxt=parent[value]
+            parent[value]=root
+            value=nxt
+        return root
+    def union(a,b):
+        ra,rb=find(a),find(b)
+        if ra!=rb:
+            parent[rb]=ra
+    active_vertices=set()
+    for face in sampled_faces:
+        a,b,c=face
+        active_vertices.update((a,b,c))
+        union(a,b)
+        union(a,c)
+    sampled_component_count=len({find(index) for index in active_vertices}) if active_vertices else 0
+    sampled_component_count_is_approximate=sampled_count < header.face_count
+
     warnings = []
     if invalid_face_count:
         warnings.append("INVALID_FACE_INDEX")
@@ -438,6 +466,8 @@ def analyze_and_render_mesh(
         "invalid_face_index_sample_count": invalid_face_count,
         "degenerate_face_sample_count": degenerate,
         "degenerate_face_sample_fraction": degenerate_fraction,
+        "sampled_connected_component_count": sampled_component_count,
+        "sampled_connected_component_count_is_approximate": sampled_component_count_is_approximate,
         "bounds": bounds,
         "spans": spans,
         "flattened_axes_warning": flattened,
