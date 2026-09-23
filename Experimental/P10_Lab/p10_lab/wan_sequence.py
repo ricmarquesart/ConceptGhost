@@ -300,6 +300,43 @@ def _safe_preview_name(name: str) -> str:
     return safe or "mission"
 
 
+def determine_preview_invalidation_reason(
+    previous_manifest: dict | None,
+    previous_preview_index_path: str | Path,
+    *,
+    route_plan_sha256: str | None,
+    source_control_manifest_sha256: str | None,
+    generation_context_sha256: str | None,
+) -> str:
+    """Explain why any previously published preview package is stale.
+
+    Gate 5 intentionally regenerates WAN output instead of resuming model
+    inference. This helper makes preview invalidation explicit and auditable
+    before the previous preview folder is removed.
+    """
+
+    if previous_manifest is None:
+        return "NO_PREVIOUS_WAN_OUTPUT"
+    if previous_manifest.get("route_plan_sha256") != route_plan_sha256:
+        return "ROUTE_PLAN_CHANGED"
+    if previous_manifest.get("source_control_manifest_sha256") != source_control_manifest_sha256:
+        return "CONTROL_MANIFEST_CHANGED"
+    if previous_manifest.get("generation_context_sha256") != generation_context_sha256:
+        return "WAN_SETTINGS_CHANGED"
+
+    preview_index_path=Path(previous_preview_index_path)
+    if not preview_index_path.is_file():
+        return "PREVIEW_INDEX_MISSING"
+    expected_index_sha=str(
+        previous_manifest.get("drone_preview_index_sha256") or ""
+    ).strip().lower()
+    if len(expected_index_sha)!=64:
+        return "PREVIEW_INDEX_HASH_MISSING"
+    if _sha256_file(preview_index_path)!=expected_index_sha:
+        return "PREVIEW_INDEX_HASH_CHANGED"
+    return "SAME_CONTEXT_EXPLICIT_REGENERATION"
+
+
 def write_per_drone_gif_previews(
     records: list[dict] | tuple[dict,...],
     missions: tuple[MissionRange,...],
@@ -316,6 +353,7 @@ def write_per_drone_gif_previews(
     scene_contract_id: str | None=None,
     source_run_id: str | None=None,
     output_directory: str | Path | None=None,
+    previous_preview_invalidation_reason: str | None=None,
 ) -> dict[str,object]:
     """Write one lightweight looping GIF from final composite frames per drone."""
 
@@ -422,6 +460,8 @@ def write_per_drone_gif_previews(
         "fps":fps,
         "max_width":max_width,
         "loop":"INFINITE",
+        "previous_preview_invalidation_reason":previous_preview_invalidation_reason,
+        "freshness_policy":"ROUTE_CONTROL_WAN_CONTEXT_PLUS_EXACT_FINAL_COMPOSITE_BYTES",
         "index_filename":index_path.name,
         "index_subfolder":index_subfolder,
         "index_path":str(index_path.resolve()),
@@ -488,6 +528,40 @@ def validate_drone_preview_index(
     index_path=Path(str(index.get("index_path") or ""))
     if not index_path.is_file():
         raise ContractError(f"Drone preview index file is missing: {index_path}")
+
+
+def validate_drone_preview_freshness(
+    index: dict[str,object],
+    records: list[dict] | tuple[dict,...],
+    missions: tuple[MissionRange,...],
+    mission_modes: dict[str,object],
+    *,
+    route_plan_sha256: str | None,
+    generation_context_sha256: str | None,
+    source_control_manifest_sha256: str | None,
+) -> None:
+    """Verify that published GIFs still match the current final composites."""
+
+    validate_drone_preview_index(
+        index,
+        missions,
+        mission_modes,
+        route_plan_sha256=route_plan_sha256,
+        generation_context_sha256=generation_context_sha256,
+        source_control_manifest_sha256=source_control_manifest_sha256,
+    )
+    grouped=collect_mission_composite_frames(records,missions)
+    previews=index.get("previews")
+    for preview,mission in zip(previews,missions):
+        name=mission.mission_name
+        actual_source_hash=_ordered_frame_set_sha256(grouped[name])
+        expected_source_hash=str(
+            preview.get("source_frame_set_sha256") or ""
+        ).strip().lower()
+        if len(expected_source_hash)!=64 or actual_source_hash!=expected_source_hash:
+            raise ContractError(
+                f"Drone preview source composite bytes changed for {name}"
+            )
 
 
 def padded_wan_length(length: int) -> int:
@@ -708,6 +782,15 @@ class ConceptGhostP10WanSequentialSampler:
         else:
             invalidation_reason="SAME_CONTEXT_EXPLICIT_REGENERATION"
 
+        previous_preview_index_path=preview_root/"drone_preview_index.json"
+        preview_invalidation_reason=determine_preview_invalidation_reason(
+            previous_manifest,
+            previous_preview_index_path,
+            route_plan_sha256=control_payload.get("route_plan_sha256"),
+            source_control_manifest_sha256=source_control_sha256,
+            generation_context_sha256=generation_context_sha256,
+        )
+
         # Gate 5 currently regenerates rather than resuming model inference.
         # Remove only ConceptGhost-owned derived windows so shorter/new routes
         # can never leave stale images that a later stage could discover.
@@ -902,9 +985,11 @@ class ConceptGhostP10WanSequentialSampler:
             scene_contract_id=control_payload.get("scene_contract_id"),
             source_run_id=control_payload.get("source_run_id"),
             output_directory=folder_paths.get_output_directory(),
+            previous_preview_invalidation_reason=preview_invalidation_reason,
         )
-        validate_drone_preview_index(
+        validate_drone_preview_freshness(
             drone_preview_index,
+            records,
             missions,
             mission_modes,
             route_plan_sha256=control_payload.get("route_plan_sha256"),
@@ -921,6 +1006,8 @@ class ConceptGhostP10WanSequentialSampler:
             "source_control_manifest_sha256": source_control_sha256,
             "generation_context_sha256": generation_context_sha256,
             "previous_output_invalidation_reason": invalidation_reason,
+            "previous_preview_invalidation_reason": preview_invalidation_reason,
+            "preview_freshness_policy":"ROUTE_CONTROL_WAN_CONTEXT_PLUS_EXACT_FINAL_COMPOSITE_BYTES",
             "scene_contract_id": control_payload.get("scene_contract_id"),
             "source_run_id": control_payload.get("source_run_id"),
             "route_authority": control_payload.get("route_authority"),
@@ -991,6 +1078,8 @@ class ConceptGhostP10WanSequentialSampler:
             "route_plan_sha256": control_payload.get("route_plan_sha256"),
             "generation_context_sha256": generation_context_sha256,
             "previous_output_invalidation_reason": invalidation_reason,
+            "previous_preview_invalidation_reason": preview_invalidation_reason,
+            "preview_freshness_policy":"ROUTE_CONTROL_WAN_CONTEXT_PLUS_EXACT_FINAL_COMPOSITE_BYTES",
             "window_count": len(windows),
             "requested_dimensions": {
                 "width": dimensions.requested_width,
