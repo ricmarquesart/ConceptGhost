@@ -33,13 +33,27 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             out.mkdir()
             dataset=out/"dataset"
             dataset.mkdir()
+            source_image=root/"comp"/"frame_0000.png"
+            source_image.parent.mkdir(parents=True,exist_ok=True)
+            source_image.write_bytes(b"png")
+            source_image_sha=hashlib.sha256(source_image.read_bytes()).hexdigest()
+            image_set=hashlib.sha256(
+                f"0\\0a\\0{source_image_sha}\\n".encode("utf-8")
+            ).hexdigest()
             dataset_manifest={
                 "schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.2",
                 "frame_count":1,
                 "camera_image_mapping_policy":"COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
+                "frames":[{
+                    "global_frame_index":0,
+                    "path_name":"a",
+                    "source_image_path":str(source_image),
+                    "source_image_sha256":source_image_sha,
+                }],
                 "source_inputs":{
                     "wan_manifest_sha256":hashlib.sha256(wan.read_bytes()).hexdigest(),
                     "camera_manifest_sha256":hashlib.sha256(cam.read_bytes()).hexdigest(),
+                    "source_image_set_sha256":image_set,
                 },
             }
             (dataset/"dataset_manifest.json").write_text(json.dumps(dataset_manifest),encoding="utf-8")
@@ -64,6 +78,47 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             self.assertFalse(d.called)
             self.assertEqual(result["stages"]["dataset"]["state"],"REUSED")
             self.assertEqual(result["stages"]["mesh"]["state"],"REUSED")
+
+    def test_resume_rebuilds_when_source_composite_bytes_change(self):
+        from p10_lab.reconstruction_runtime import run_reconstruction_pipeline
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            wan,cam=self._manifests(root)
+            source_image=root/"comp"/"frame_0000.png"
+            source_image.parent.mkdir(parents=True,exist_ok=True)
+            source_image.write_bytes(b"old")
+            source_image_sha=hashlib.sha256(source_image.read_bytes()).hexdigest()
+            image_set=hashlib.sha256(
+                f"0\\0a\\0{source_image_sha}\\n".encode("utf-8")
+            ).hexdigest()
+            out=root/"gate6"
+            dataset=out/"dataset"
+            dataset.mkdir(parents=True)
+            dataset_manifest={
+                "schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.2",
+                "frame_count":1,
+                "camera_image_mapping_policy":"COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
+                "frames":[{
+                    "global_frame_index":0,"path_name":"a",
+                    "source_image_path":str(source_image),
+                    "source_image_sha256":source_image_sha,
+                }],
+                "source_inputs":{
+                    "wan_manifest_sha256":hashlib.sha256(wan.read_bytes()).hexdigest(),
+                    "camera_manifest_sha256":hashlib.sha256(cam.read_bytes()).hexdigest(),
+                    "source_image_set_sha256":image_set,
+                },
+            }
+            (dataset/"dataset_manifest.json").write_text(json.dumps(dataset_manifest),encoding="utf-8")
+            source_image.write_bytes(b"changed")
+            with patch("p10_lab.reconstruction_runtime.prepare_known_camera_colmap_dataset") as prepare, \
+                 patch("p10_lab.reconstruction_runtime.resolve_colmap_executable", return_value="colmap"), \
+                 patch("p10_lab.reconstruction_runtime.run_sparse_triangulation") as sparse:
+                prepare.side_effect=RuntimeError("stale image rebuild requested")
+                with self.assertRaisesRegex(RuntimeError,"stale image rebuild requested"):
+                    run_reconstruction_pipeline(wan,cam,out,colmap_executable="colmap",resume=True)
+            self.assertTrue(prepare.called)
+            self.assertFalse(sparse.called)
 
     def test_resume_rebuilds_stale_dataset_context(self):
         from p10_lab.reconstruction_runtime import run_reconstruction_pipeline
