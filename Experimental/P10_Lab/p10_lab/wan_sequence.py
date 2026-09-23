@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 
 from .contracts import ContractError
+from .drone_route_plan import parse_bound_route_plan
 from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
 from .wan_policy import WanRuntimeProfile
 
@@ -156,6 +157,32 @@ def read_control_manifest(path: str | Path) -> tuple[Path, dict, tuple[MissionRa
                 raise ContractError(
                     f"Control manifest frame count mismatch for {mission.mission_name}"
                 )
+
+    route_hash=str(payload.get("route_plan_sha256") or "").strip().lower()
+    route_file=str(payload.get("route_plan_file") or "").strip()
+    if route_hash:
+        if not route_file:
+            raise ContractError("Hashed control manifest is missing route_plan_file")
+        route_path=(path.parent/route_file).resolve()
+        if not route_path.is_file():
+            raise ContractError(f"Persisted route plan is missing: {route_path}")
+        try:
+            route_payload=json.loads(route_path.read_text(encoding="utf-8"))
+        except (OSError,json.JSONDecodeError) as error:
+            raise ContractError(f"Cannot read persisted route plan {route_path}: {error}") from error
+        _plan,route_authority,verified_hash=parse_bound_route_plan(
+            route_payload,
+            expected_scene_contract_id=str(payload.get("scene_contract_id") or ""),
+            expected_source_run_id=str(payload.get("source_run_id") or ""),
+            require_hash=True,
+        )
+        if verified_hash!=route_hash:
+            raise ContractError("Control manifest route hash does not match persisted route plan")
+        if route_authority!=str(payload.get("route_authority") or "").strip().upper():
+            raise ContractError("Control manifest route authority does not match persisted route plan")
+    elif route_file:
+        raise ContractError("Unhashed control manifest must not advertise route_plan_file")
+
     return path,payload,ranges
 
 
