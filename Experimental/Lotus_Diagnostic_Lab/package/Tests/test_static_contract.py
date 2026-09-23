@@ -127,3 +127,20 @@ def test_r4_installer_copies_adapter_and_selftest_imports_torch():
     worker=(ROOT/'Runtime/worker/lotus_diagnostic_worker.py').read_text(encoding='utf-8')
     assert 'lotus_infer_adapter.py' in inst
     assert 'import numpy, cv2, PIL, matplotlib, torch, diffusers, transformers, safetensors' in worker
+
+
+def test_r5_uninstaller_avoids_powershell_r_alias_collision():
+    s=(ROOT/'Installer/uninstall_lotus_diagnostic.ps1').read_text(encoding='utf-8')
+    assert 'function R(' not in s
+    assert 'function Write-UninstallReport' in s
+    assert 'Invoke-History' in s
+    assert 'Write-UninstallReport "Removed owned bridge:' in s
+
+def test_r5_uninstaller_is_resumable_and_ownership_gated():
+    s=(ROOT/'Installer/uninstall_lotus_diagnostic.ps1').read_text(encoding='utf-8')
+    assert 'Owned bridge already absent; continuing resumable uninstall' in s
+    assert 'Owned workflow already absent; continuing resumable uninstall' in s
+    assert "ownership manifest does not belong to Lotus Diagnostic" in s
+    assert 'PRESERVED modified workflow' in s
+    assert 'Restored pre-existing workflow backup' in s
+    assert 'Save-UninstallReport' in s
