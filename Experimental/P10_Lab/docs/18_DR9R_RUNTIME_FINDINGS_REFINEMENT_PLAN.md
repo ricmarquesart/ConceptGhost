@@ -133,7 +133,7 @@ Add a metric-isotropic diagnostic surface showing:
 Report P9 bounds, P10 bounds, camera bounds, connected components and P10→P9 distance statistics without treating P9 distance alone as a requirement for unseen surfaces.
 
 #### DR9R-B6 — Gate 6 Geometry Quality Authority
-Status: **PLANNED**
+Status: **COMPLETE / CI PASS / RUNTIME EVIDENCE DEFERRED**
 
 Replace execution-only PASS semantics with explicit geometry-quality status.
 
@@ -152,7 +152,7 @@ Required diagnostics include:
 Gate 6 file existence remains a runtime check, not geometry acceptance.
 
 ### DR9R-C — Explicit Two-Stage P9→P10 Handoff
-Status: **PLANNED**
+Status: **NEXT**
 
 - Route Setup path stops before WAN/Gate 6.
 - Commit route against scene_contract_id + P9 run_id.
@@ -255,3 +255,16 @@ GitHub authority:
 - Latest CI for the B5 head passed successfully.
 - Runtime geometric evidence remains intentionally deferred until DR9R-E.
 - Next: DR9R-B6 — Gate 6 Geometry Quality Authority.
+
+
+### DR9R-B6 implementation checkpoint — 2026-09-23
+
+- Added `ConceptGhost.P10Gate6GeometryQuality.v0.1` as the explicit Gate 6 geometry-quality authority.
+- Runtime/file-existence success is now separate from geometry-quality PASS/WARN/FAIL.
+- Quality evidence covers sparse point count/density, per-mission selected/dropped frames, contributing missions, verified sparse components, dense fused points, depth/normal map coverage, pre-fusion mesh vertex/face validity, sampled fragmentation, degeneracy and P9-only audit status.
+- P10→P9 distance remains descriptive only for generated/unseen surfaces; P9 remains immutable accepted authority.
+- Gate 6 runtime exposes `runtime_status`, `geometry_quality_status`, quality alerts and `gate7_promotion_allowed`.
+- Core empty/invalid reconstruction becomes FAIL without crashing the diagnostic node; partial/fragmented evidence becomes explicit WARN.
+- CI run 35874519063 passed at the B6 implementation head.
+- User runtime evidence remains deferred until DR9R-E.
+- Next: DR9R-C — explicit P9 Route Setup → P10 Production handoff.
