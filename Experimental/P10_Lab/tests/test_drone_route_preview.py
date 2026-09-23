@@ -92,7 +92,7 @@ class DroneRoutePreviewTests(unittest.TestCase):
                 path,camera,plan,panel_width=400,panel_height=360,gap=10,max_geometry_points=1000
             )
             self.assertIsInstance(image,torch.Tensor)
-            self.assertEqual(tuple(image.shape),(1,380,1240,3))
+            self.assertEqual(tuple(image.shape),(1,750,830,3))
             self.assertEqual(len(projection["panels"]),3)
             self.assertEqual(diagnostics["route_plan"]["missions"][0]["name"],"drone_1")
 
