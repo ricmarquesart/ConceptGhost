@@ -1,3 +1,4 @@
+# republish-r11-fail-closed-entrypoint
 name: Publish DR9R r11 Bundle
 
 on:
