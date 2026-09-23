@@ -440,3 +440,28 @@ versus
 `Geometry Assist Proxy -> MoGe/P9`
 
 Only repeated evidence of improvement without structural drift can justify a later optional official branch.
+
+
+## r1 implementation status — 2026-09-23
+
+The isolated r1 diagnostic package is now implemented and packaged for hardware testing.
+
+Package:
+- `ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r1.zip`
+- SHA-256: `a30232d6a9dc29f4c4714d3a04c26d8f9e52cb4cad0d2a72b224540ba94f7165`
+- Google Drive Evaluation_Builds ID: `1v920EioJzLi-EvAkGWBV976GH3gr2Dxn`
+- GitHub Actions packaging run: `35927043338` — SUCCESS.
+
+Implemented stack:
+- isolated CPython 3.10.11;
+- private Torch 2.3.1 / CUDA 12.1;
+- Diffusers SDXL img2img;
+- `diffusers/controlnet-canny-sdxl-1.0-small`;
+- `controlnet-aux` Canny preprocessing;
+- `h94/IP-Adapter` SDXL image conditioning;
+- CPU offload + VAE tiling/slicing for the 11 GB target.
+
+No ComfyUI custom node or shared model installation is used in r1. This is deliberate: the first A/B test is a standalone diagnostic with PNG/JPG outputs only.
+
+Static contract + Python compile checks passed in GitHub Actions.
+Hardware inference acceptance on the RTX 2080 Ti remains pending and is the next checkpoint.
