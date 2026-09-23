@@ -4,7 +4,6 @@ import argparse
 import hashlib
 import json
 import os
-import py_compile
 import shutil
 import tempfile
 import zipfile
@@ -29,7 +28,7 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8-sig")
 
 
-def write_text(path: Path, text: str, *, newline: str | None = None) -> None:
+def write_text(path: Path, text: str, *, newline: str | None = "\n") -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline=newline) as f:
         f.write(text)
@@ -83,7 +82,8 @@ def overlay_hotfix(root: Path, hotfix_dir: Path) -> None:
         src = hotfix_dir / "Installer" / name
         if not src.is_file():
             raise RuntimeError(f"missing hotfix source: {src}")
-        shutil.copy2(src, root / "Installer" / name)
+        # Normalize source-controlled hotfix scripts so the ZIP is byte-identical on Windows/Linux.
+        write_text(root / "Installer" / name, read_text(src), newline="\n")
 
 
 def update_bundle_test(root: Path) -> None:
@@ -341,7 +341,7 @@ def static_validate(root: Path) -> list[str]:
 
     for p in list((root / "Installer").glob("*.py")) + list(p10.glob("*.py")):
         try:
-            py_compile.compile(str(p), doraise=True)
+            compile(read_text(p), str(p), "exec")
         except Exception as exc:
             errors.append(f"python compile failed {p.name}: {exc}")
 
@@ -412,6 +412,17 @@ def main() -> int:
             if proc.returncode:
                 raise SystemExit(proc.stdout + proc.stderr)
             print(proc.stdout.strip())
+
+        # Bundle tests intentionally compile Python, but cache bytecode is never a release artifact.
+        for cache in sorted(root.rglob("__pycache__"), key=lambda x: len(x.parts), reverse=True):
+            if cache.is_dir():
+                shutil.rmtree(cache)
+        for pyc in root.rglob("*.pyc"):
+            pyc.unlink(missing_ok=True)
+        regenerate_manifests(root)
+        errors = static_validate(root)
+        if errors:
+            raise SystemExit("\n".join("[FAIL] " + e for e in errors))
 
         deterministic_zip(root, args.output)
         digest = sha256(args.output)
