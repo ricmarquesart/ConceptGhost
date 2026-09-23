@@ -153,6 +153,12 @@ def load_production_entry(entry_path: str | Path) -> dict[str,object]:
     if str(entry.get("source_run_id") or "")!=boundary.run_id:
         raise ContractError("Production entry source_run_id no longer matches P9")
 
+    inventory_path=Path(str(entry.get("p9_dependency_inventory_path") or "")).resolve()
+    inventory=validate_p9_dependency_inventory(inventory_path)
+    expected_inventory_sha=str(entry.get("p9_dependency_inventory_sha256") or "").strip().lower()
+    if expected_inventory_sha and inventory.get("inventory_sha256")!=expected_inventory_sha:
+        raise ContractError("P9 dependency inventory file changed after Route Setup")
+
     route_path=Path(str(entry.get("committed_route_path") or "")).resolve()
     if not route_path.is_file():
         raise ContractError(f"Committed route is missing: {route_path}")
