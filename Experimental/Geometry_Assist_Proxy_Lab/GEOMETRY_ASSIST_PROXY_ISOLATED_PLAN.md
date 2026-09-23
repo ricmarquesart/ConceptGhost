@@ -636,3 +636,49 @@ Upgrade from r4:
 - then run verification and retry the same source image.
 
 Hardware inference acceptance remains pending until r5 completes the diffusion run and writes the proxy/evidence outputs.
+
+## r6 MoGe master prompt status — 2026-09-23
+
+The first successful r5 hardware generation proved the isolated runtime can complete the full SDXL + ControlNet + IP-Adapter pass on the RTX 2080 Ti. Runtime evidence:
+- status PASS;
+- 1024x768 working canvas;
+- ViT-H IP-Adapter pairing projection=1024;
+- both CLIP tokenizers remained within 77 tokens;
+- runtime 12.8s;
+- peak CUDA allocation 6.39 GB;
+- edge F1 0.7823.
+
+Visual review rejected the r5 proxy objective as too close to a generic repaint and not sufficiently targeted toward neural geometry readability.
+
+r6 therefore changes only the generation objective/prompt profile, not the validated runtime stack:
+- profile: GEOMETRY_ASSIST_MOGE_MASTER;
+- intent: MONOCULAR_GEOMETRY_READABILITY;
+- preserve camera, framing, perspective, composition, silhouettes, positions, proportions, architecture, openings and object layout;
+- allow surface reinterpretation specifically to reduce painterly ambiguity and clarify planes, occlusions, materials, contact shadows, depth layering and neutral readable lighting;
+- explicitly reject photoreal/beauty/cinematic objectives, scene redesign and geometry drift.
+
+Installed positive prompt:
+`Geometry-assist proxy for monocular 3D estimation. Preserve camera, framing, perspective, composition, silhouettes, positions, proportions, architecture, openings, and object layout. Reduce painterly ambiguity; clarify planes, occlusions, materials, contact shadows, depth layering, and neutral readable lighting.`
+
+Installed negative prompt:
+`changed camera, changed FOV, crop, fisheye, moved objects, changed proportions, warped architecture, added or removed objects, new openings, hallucinated structures, cinematic relighting, fog, bloom, painterly abstraction, blurred boundaries, scene redesign, text, watermark`
+
+Regression/packaging:
+- new `Tests/test_master_prompt_contract.py`;
+- Geometry Assist Isolated Package run 35935079286 — SUCCESS;
+- ConceptGhost Tests run 35935079187 — SUCCESS;
+- P10 DR9 Source Snapshot run 35935079252 — SUCCESS;
+- r6 package head: a8d8c16295ea26aebeedd5237616e2bed63bc1f0;
+- GitHub Actions artifact ID: 10782697505.
+
+Canonical r6:
+- `ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r6.zip`
+- SHA-256: `6104a50004dffc51bee2d4083e0511bb81b591501b08f8bd88e161b71a705f3f`
+- Google Drive Evaluation_Builds file ID: `1FUFfEqgLcWSeZtFgC3hOl63F1OYCvCuc`.
+
+Upgrade from r5:
+- do NOT uninstall the private runtime;
+- extract r6 and run the installer;
+- models/runtime are reused;
+- installer replaces the owned config with the new MoGe-oriented prompt profile;
+- rerun the same source image for direct visual A/B against the r5 proxy.
