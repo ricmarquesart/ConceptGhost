@@ -989,3 +989,17 @@ No intermediate user runtime test. Save each subgate checkpoint to GitHub and Go
 - Diagnostic branch is fail-open and has no geometry authority.
 - r8 package SHA-256: `9774a887e397e18d9dcb76c65dea29ce4496ec95f0fa75570b400238dad0139c`.
 - User runtime inspection remains pending.
+
+
+### DR9R r9 installer hotfix published — 2026-09-23
+
+- Status: PACKAGE PUBLISHED / CI PASS / USER RUNTIME ACCEPTANCE PENDING.
+- Final bundle: `ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r9.zip`.
+- SHA-256: `1143e94e0fcbfcf25809efa0a21fae162fa79079c3223b8ea2eec677069609bf`.
+- Google Drive file id: `1YUTpjOJzAIwYJwhgk87f8Dr-WONzwo7T`.
+- GitHub release: `p10-dr9r-r9`.
+- Final branch head: `9fa358c7ad7078b4f7bfa4e2e181848daf37cf2b`.
+- Tests run `35906865640`: SUCCESS.
+- Source snapshot run `35906865630`: SUCCESS.
+- r9 supersedes r8 for target-PC testing.
+- Gate 7 remains blocked pending user runtime acceptance.
