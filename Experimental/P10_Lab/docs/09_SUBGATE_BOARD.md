@@ -932,3 +932,16 @@ No user runtime test is requested until DR9R-E after B1-B6/C/D are complete.
 - User runtime acceptance — PENDING.
 - Required final flow: Route Setup queue #1 -> edit route -> Route Setup queue #2 commit -> P10 Production queue #1.
 - Gate 7 remains blocked until this final user runtime evidence is accepted.
+
+
+### DR9R-E r6 final user-test package — 2026-09-23
+
+- Status: READY FOR USER RUNTIME ACCEPTANCE.
+- One ZIP only: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r6.zip`.
+- Two installed workflows: ROUTE_SETUP_r6 and PRODUCTION_r6.
+- Queue sequence: Route Setup #1 -> artist edit -> Route Setup #2 commit -> Production #1.
+- Production defaults to AUTO_LATEST and writes each attempt to a unique immutable p10_attempt_id directory.
+- Final package static audit fixed the PowerShell workflow-path join and verifier Python syntax before publishing.
+- 256 source tests PASS; final bundle test PASS; verifier PASS; extracted hashes PASS.
+- ZIP SHA-256: `be3e3fc5ef84f404a41cd7177b16a5aa9331ba0420c6013397a4f641413226d5`.
+- Runtime acceptance on the user's ComfyUI PC is the only remaining DR9R-E acceptance item.
