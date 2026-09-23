@@ -137,6 +137,110 @@ class WanSequentialSamplerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_control_manifest(path)
 
+    def test_collect_mission_composite_frames_reassembles_split_drone(self):
+        from p10_lab.wan_sequence import MissionRange,collect_mission_composite_frames
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            records=[]
+            for window_index,(name,start,end) in enumerate([
+                ("drone_1__part00",0,2),
+                ("drone_1__part01",2,4),
+                ("drone_2",4,6),
+            ]):
+                folder=root/f"{window_index:02d}_{name}"
+                folder.mkdir(parents=True)
+                for local_index in range(end-start):
+                    (folder/f"frame_{local_index:04d}.png").write_bytes(
+                        f"{name}:{local_index}".encode("utf-8")
+                    )
+                records.append({
+                    "window_index":window_index,
+                    "name":name,
+                    "mission_name":"drone_1" if start<4 else "drone_2",
+                    "source_start":start,
+                    "source_end":end,
+                    "decoded_frame_count":end-start,
+                    "composite_dir":str(folder),
+                })
+            missions=(
+                MissionRange("drone_1",0,4,"drone_1"),
+                MissionRange("drone_2",4,6,"drone_2"),
+            )
+            grouped=collect_mission_composite_frames(records,missions)
+            self.assertEqual(len(grouped["drone_1"]),4)
+            self.assertEqual(len(grouped["drone_2"]),2)
+            self.assertTrue(grouped["drone_1"][0].name.endswith("0000.png"))
+            self.assertTrue(grouped["drone_1"][-1].name.endswith("0001.png"))
+
+    def test_collect_mission_composite_frames_rejects_missing_frame(self):
+        from p10_lab.wan_sequence import MissionRange,collect_mission_composite_frames
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            folder=root/"00_drone_1"
+            folder.mkdir(parents=True)
+            (folder/"frame_0000.png").write_bytes(b"x")
+            record={
+                "window_index":0,"name":"drone_1","mission_name":"drone_1",
+                "source_start":0,"source_end":2,"decoded_frame_count":2,
+                "composite_dir":str(folder),
+            }
+            with self.assertRaises(ValueError):
+                collect_mission_composite_frames(
+                    [record],(MissionRange("drone_1",0,2,"drone_1"),)
+                )
+
+    def test_per_drone_gif_writer_uses_all_final_composite_frames(self):
+        try:
+            from PIL import Image
+        except ImportError as error:
+            self.skipTest(str(error))
+        from p10_lab.wan_sequence import MissionRange,write_per_drone_gif_previews
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            records=[]
+            for window_index,(name,start,end,mission) in enumerate([
+                ("drone_1__part00",0,2,"drone_1"),
+                ("drone_1__part01",2,4,"drone_1"),
+                ("drone_2",4,6,"drone_2"),
+            ]):
+                folder=root/"composite"/f"{window_index:02d}_{name}"
+                folder.mkdir(parents=True)
+                for local_index in range(end-start):
+                    color=(20*(start+local_index),40,80)
+                    Image.new("RGB",(800,400),color).save(
+                        folder/f"frame_{local_index:04d}.png"
+                    )
+                records.append({
+                    "window_index":window_index,
+                    "name":name,
+                    "mission_name":mission,
+                    "source_start":start,
+                    "source_end":end,
+                    "decoded_frame_count":end-start,
+                    "composite_dir":str(folder),
+                })
+            missions=(
+                MissionRange("drone_1",0,4,"drone_1"),
+                MissionRange("drone_2",4,6,"drone_2"),
+            )
+            index=write_per_drone_gif_previews(
+                records,missions,{"drone_1":"PATH","drone_2":"SPIN_360"},
+                root/"drone_previews",Image,fps=10,max_width=640,
+                route_plan_sha256="a"*64,generation_context_sha256="b"*64,
+            )
+            self.assertEqual(index["schema"],"ConceptGhost.P10DronePreviewIndex.v0.1")
+            self.assertEqual(index["mission_order"],["drone_1","drone_2"])
+            self.assertEqual(index["drone_count"],2)
+            self.assertEqual(index["previews"][0]["frame_count"],4)
+            self.assertEqual(index["previews"][1]["frame_count"],2)
+            self.assertEqual(index["previews"][0]["preview_width"],640)
+            self.assertEqual(index["previews"][0]["preview_height"],320)
+            self.assertTrue(Path(index["previews"][0]["gif_path"]).is_file())
+            self.assertTrue(Path(index["index_path"]).is_file())
+            with Image.open(index["previews"][0]["gif_path"]) as gif:
+                self.assertEqual(getattr(gif,"n_frames",1),4)
+
     def test_manifest_groups_contiguous_frames_by_mission(self):
         from p10_lab.wan_sequence import mission_ranges_from_manifest
         payload = {
