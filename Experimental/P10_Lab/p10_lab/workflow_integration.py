@@ -14,7 +14,9 @@ _DEFAULT_GEOMETRY_PROFILE = "High Fidelity Split Clean"
 # These positions intentionally leave the proven v1.53 Baseline/Refined layout
 # untouched while arranging Gate 4 -> Gate 5 -> Gate 6 left-to-right.
 _P10_LAYOUT_POSITIONS = {
+    2098: (9480, 9520),
     2099: (9460, 9600),
+    2110: (10220, 9600),
     2100: (10200, 10000),
     2101: (10900, 9600),
     2102: (11320, 9600),
@@ -153,14 +155,14 @@ def integrate_gate4_refined_preview(workflow: dict) -> dict:
             },
         ],
         "outputs": [
-            {"name": "route_triview", "type": "IMAGE", "links": None, "slot_index": 0},
+            {"name": "route_workspace", "type": "IMAGE", "links": None, "slot_index": 0},
             {"name": "route_plan_json", "type": "STRING", "links": None, "slot_index": 1},
             {"name": "projection_json", "type": "STRING", "links": None, "slot_index": 2},
             {"name": "diagnostics_json", "type": "STRING", "links": None, "slot_index": 3},
         ],
         "properties": {"Node name for S&R": "ConceptGhostP10DroneRouteAuthoring"},
         "widgets_values": ["", 30, 0.20],
-        "title": "REFINED/P10 · 07R · ARTIST DRONE ROUTES · TOP + SIDE + FRONT",
+        "title": "REFINED/P10 · 07R · ARTIST DRONE ROUTES · PERSPECTIVE + TOP + SIDE + FRONT",
     }
     nodes.append(route_author)
     links.append([next_link, _REFINED_EXPORT_ID, run_dir_index, _ROUTE_AUTHOR_NODE_ID, 0, "STRING"])
@@ -613,3 +615,196 @@ def integrate_gate6_refined_preview(workflow: dict) -> dict:
 
     organize_p10_layout(patched)
     return patched
+
+
+
+def _remove_links_touching_nodes(workflow: dict, removed_node_ids: set[int]) -> None:
+    """Remove links to/from removed nodes and repair remaining slot link arrays."""
+
+    nodes=workflow["nodes"]
+    links=workflow["links"]
+    kept=[
+        link for link in links
+        if isinstance(link,list)
+        and len(link)>=6
+        and int(link[1]) not in removed_node_ids
+        and int(link[3]) not in removed_node_ids
+    ]
+    workflow["links"]=kept
+    kept_ids={int(link[0]) for link in kept}
+    for node in nodes:
+        for output in node.get("outputs") or []:
+            values=output.get("links")
+            if isinstance(values,list):
+                output["links"]=[int(value) for value in values if int(value) in kept_ids] or None
+        for input_slot in node.get("inputs") or []:
+            value=input_slot.get("link")
+            if value is not None and int(value) not in kept_ids:
+                input_slot["link"]=None
+
+
+def integrate_route_setup_refined_preview(workflow: dict) -> dict:
+    """Stage A: solve P9 once, expose the route workspace, commit route, stop.
+
+    This deliberately contains no WAN or Gate-6 node. The first Queue Prompt
+    reaches the editable P9 route workspace. After artist editing, a second
+    lightweight Queue Prompt commits a scene-bound production_entry.json while
+    P9 remains cached/unchanged.
+    """
+
+    patched=integrate_gate4_refined_preview(workflow)
+    nodes=patched["nodes"]
+    by_id={node.get("id"):node for node in nodes}
+    if _EVIDENCE_NODE_ID not in by_id or _ROUTE_AUTHOR_NODE_ID not in by_id:
+        raise ContractError("Route Setup requires integrated route/evidence nodes")
+
+    nodes[:]=[node for node in nodes if node.get("id")!=_EVIDENCE_NODE_ID]
+    _remove_links_touching_nodes(patched,{_EVIDENCE_NODE_ID})
+    by_id={node.get("id"):node for node in nodes}
+
+    refined_export=by_id[_REFINED_EXPORT_ID]
+    run_dir_index=next(
+        index for index,output in enumerate(refined_export["outputs"])
+        if output.get("name")=="run_dir"
+    )
+    next_link=max(
+        int(patched.get("last_link_id") or 0)+1,
+        max((int(link[0]) for link in patched["links"]),default=0)+1,
+    )
+    order=max((int(node.get("order") or 0) for node in nodes),default=0)
+
+    commit={
+        "id":2110,
+        "type":"ConceptGhostP10RouteCommit",
+        "pos":list(_P10_LAYOUT_POSITIONS[2110]),
+        "size":[600,220],
+        "flags":{},
+        "order":order+1,
+        "mode":0,
+        "inputs":[
+            {"name":"run_dir","type":"STRING","link":next_link},
+            {"name":"route_plan_json","type":"STRING","link":next_link+1},
+        ],
+        "outputs":[
+            {"name":"production_entry_path","type":"STRING","links":None,"slot_index":0},
+            {"name":"diagnostics_json","type":"STRING","links":None,"slot_index":1},
+        ],
+        "properties":{"Node name for S&R":"ConceptGhostP10RouteCommit"},
+        "widgets_values":[],
+        "title":"REFINED/P10 · ROUTE SETUP · COMMIT FOR PRODUCTION",
+    }
+    nodes.append(commit)
+
+    patched["links"].append([
+        next_link,_REFINED_EXPORT_ID,run_dir_index,2110,0,"STRING"
+    ])
+    output_links=refined_export["outputs"][run_dir_index].get("links")
+    if output_links is None:
+        output_links=[]
+        refined_export["outputs"][run_dir_index]["links"]=output_links
+    output_links.append(next_link)
+
+    route_author=by_id[_ROUTE_AUTHOR_NODE_ID]
+    patched["links"].append([
+        next_link+1,_ROUTE_AUTHOR_NODE_ID,1,2110,1,"STRING"
+    ])
+    if route_author["outputs"][1].get("links") is None:
+        route_author["outputs"][1]["links"]=[]
+    route_author["outputs"][1]["links"].append(next_link+1)
+
+    patched["last_node_id"]=2110
+    patched["last_link_id"]=next_link+1
+    for item in nodes:
+        if item.get("id")==68:
+            item["title"]="01 · RUN MODE · P10 ROUTE SETUP · P9 SOLVE + ARTIST ROUTE ONLY"
+        elif item.get("id")==2:
+            item["title"]="01 · MASTER CONTROLS · P9 AUTHORITY FOR P10 ROUTE SETUP"
+    organize_p10_layout(patched)
+    return patched
+
+
+def integrate_p10_production_from_entry(workflow: dict) -> dict:
+    """Stage B: a standalone P10 graph loaded from a committed Stage-A entry.
+
+    The resulting workflow has no Baseline/P9 solver dependency. It consumes the
+    immutable P9 run_dir and artist route recorded by Route Setup, then executes
+    Evidence -> WAN -> known-camera reconstruction.
+    """
+
+    full=integrate_gate6_refined_preview(workflow)
+    keep_ids={_EVIDENCE_NODE_ID,*range(2200,2209),2300,2301}
+    kept_nodes=[node for node in full["nodes"] if node.get("id") in keep_ids]
+    kept_links=[
+        link for link in full["links"]
+        if int(link[1]) in keep_ids and int(link[3]) in keep_ids
+    ]
+    kept_link_ids={int(link[0]) for link in kept_links}
+    for node in kept_nodes:
+        for input_slot in node.get("inputs") or []:
+            value=input_slot.get("link")
+            if value is not None and int(value) not in kept_link_ids:
+                input_slot["link"]=None
+        for output in node.get("outputs") or []:
+            values=output.get("links")
+            if isinstance(values,list):
+                output["links"]=[int(value) for value in values if int(value) in kept_link_ids] or None
+
+    by_id={node.get("id"):node for node in kept_nodes}
+    if _EVIDENCE_NODE_ID not in by_id:
+        raise ContractError("P10 Production workflow lost evidence node")
+
+    loader={
+        "id":2098,
+        "type":"ConceptGhostP10ProductionEntryLoader",
+        "pos":list(_P10_LAYOUT_POSITIONS[2098]),
+        "size":[660,210],
+        "flags":{},
+        "order":0,
+        "mode":0,
+        "inputs":[
+            {
+                "name":"production_entry_path",
+                "type":"STRING",
+                "widget":{"name":"production_entry_path"},
+                "link":None,
+            }
+        ],
+        "outputs":[
+            {"name":"run_dir","type":"STRING","links":None,"slot_index":0},
+            {"name":"route_plan_json","type":"STRING","links":None,"slot_index":1},
+            {"name":"diagnostics_json","type":"STRING","links":None,"slot_index":2},
+        ],
+        "properties":{"Node name for S&R":"ConceptGhostP10ProductionEntryLoader"},
+        "widgets_values":[""],
+        "title":"P10 PRODUCTION · LOAD COMMITTED P9 + ARTIST ROUTE",
+    }
+    kept_nodes.append(loader)
+    by_id[2098]=loader
+
+    next_link=max((int(link[0]) for link in kept_links),default=0)+1
+    evidence=by_id[_EVIDENCE_NODE_ID]
+    run_input=next(index for index,item in enumerate(evidence["inputs"]) if item.get("name")=="run_dir")
+    route_input=next(index for index,item in enumerate(evidence["inputs"]) if item.get("name")=="route_plan_json")
+    evidence["inputs"][run_input]["link"]=next_link
+    evidence["inputs"][route_input]["link"]=next_link+1
+    kept_links.extend([
+        [next_link,2098,0,_EVIDENCE_NODE_ID,run_input,"STRING"],
+        [next_link+1,2098,1,_EVIDENCE_NODE_ID,route_input,"STRING"],
+    ])
+    loader["outputs"][0]["links"]=[next_link]
+    loader["outputs"][1]["links"]=[next_link+1]
+
+    full["nodes"]=kept_nodes
+    full["links"]=kept_links
+    full["last_node_id"]=2301
+    full["last_link_id"]=next_link+1
+    full["groups"]=[]
+    full["extra"]={
+        "conceptghost":{
+            "workflow_role":"P10_PRODUCTION_FROM_EXISTING_P9",
+            "p9_solver_present":False,
+            "requires_production_entry":True,
+        }
+    }
+    organize_p10_layout(full)
+    return full
