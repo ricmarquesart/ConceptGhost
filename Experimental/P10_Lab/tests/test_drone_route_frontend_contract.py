@@ -34,6 +34,9 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             '#ff3b58',
             'colisão precisa ser revalidada',
             'state.plan.route_authority = "ARTIST_AUTHORED"',
+            'route_plan_dirty',
+            '"Resetar cena"',
+            'delete state.plan.route_plan_sha256',
         ):
             self.assertIn(required, source)
 
