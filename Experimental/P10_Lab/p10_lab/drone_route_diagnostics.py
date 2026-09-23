@@ -98,6 +98,7 @@ def build_drone_route_diagnostics(
         authored_by_name={}
         expected_counts={path.name:len(path.waypoints) for path in emitted_paths}
         mode_by_name={path.name:"AUTO" for path in emitted_paths}
+        orientation_by_name={path.name:"AUTO" for path in emitted_paths}
         min_clearance=None
     else:
         active=plan.active_missions
@@ -105,6 +106,7 @@ def build_drone_route_diagnostics(
         authored_by_name={mission.name:mission for mission in active}
         expected_counts={mission.name:plan.frames_per_drone for mission in active}
         mode_by_name={mission.name:mission.mode for mission in active}
+        orientation_by_name={mission.name:mission.orientation_mode for mission in active}
         min_clearance=float(plan.min_clearance_m)
 
     global_order_status=(
@@ -169,6 +171,17 @@ def build_drone_route_diagnostics(
             "mission_index":mission_index,
             "name":name,
             "mode":mode_by_name.get(name),
+            "orientation_mode":orientation_by_name.get(name),
+            "look_target":(
+                authored.look_target.to_dict()
+                if authored is not None and authored.look_target is not None
+                else None
+            ),
+            "manual_direction":(
+                authored.manual_direction.to_dict()
+                if authored is not None and authored.manual_direction is not None
+                else None
+            ),
             "status":status,
             "alerts":alerts,
             "expected_frame_count":expected_count,
@@ -209,7 +222,7 @@ def build_drone_route_diagnostics(
         global_alerts.append("ONE_OR_MORE_MISSIONS_REQUIRED_COLLISION_HOLD")
 
     return {
-        "schema":"ConceptGhost.P10DroneRouteDiagnostics.v0.1",
+        "schema":"ConceptGhost.P10DroneRouteDiagnostics.v0.2",
         "status":global_status,
         "alerts":global_alerts,
         "route_authority":authority,
