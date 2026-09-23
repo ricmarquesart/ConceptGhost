@@ -330,3 +330,113 @@ NONE.
 
 This lab does not update P9/P10 gates and does not become an official dependency.
 Any future integration requires a separate explicit roadmap decision after A/B validation.
+
+
+---
+
+## r1 implementation / delivery status — 2026-09-23
+
+The isolated test package is now implemented as **r1**.
+
+Canonical evaluation bundle:
+
+`ConceptGhost_Geometry_Assist_Proxy_Diagnostic_Isolated_FULL_r1.zip`
+
+SHA-256:
+
+`f0c9c887008b71d0e9c5c207354f8ae281187eb6d22b236ea4b8c39f0c511ad6`
+
+Google Drive Evaluation_Builds file ID:
+
+`1JqgESxbEU-s2-U2atbfNAKfYPX7WKzTd`
+
+Google Drive parent:
+
+`ConceptGhost/Storage/Evaluation_Builds`
+
+### r1 user entry points
+
+1. `01_INSTALL_GEOMETRY_ASSIST_DIAGNOSTIC.bat`
+2. `02_VERIFY_GEOMETRY_ASSIST_DIAGNOSTIC.bat`
+3. restart ComfyUI and open `Geometry_Assist_Proxy_Diagnostic.json`
+4. optional standalone path: `04_RUN_STANDALONE_GEOMETRY_ASSIST.bat <image> [STRICT|CONSERVATIVE|MODERATE]`
+5. uninstall: `03_UNINSTALL_GEOMETRY_ASSIST_DIAGNOSTIC.bat`
+
+### r1 private runtime
+
+`%LOCALAPPDATA%\ConceptGhost-GeometryAssistDiagnostic`
+
+The runtime contains its own:
+- Python 3.10.11 embeddable runtime;
+- Torch 2.3.1 / CUDA 12.1 wheels;
+- Diffusers/Transformers/Accelerate;
+- ControlNet Aux;
+- SDXL base files;
+- small SDXL Canny ControlNet;
+- IP-Adapter Plus + private CLIP Vision encoder;
+- FP16-safe SDXL VAE;
+- worker, cache, TEMP, outputs and manifests.
+
+No models are written into shared ComfyUI folders.
+
+### r1 host-side writes
+
+Only the uniquely owned bridge and standalone workflow:
+- `ComfyUI/custom_nodes/ConceptGhost_Geometry_Assist_Diagnostic`
+- `ComfyUI/user/default/workflows/Geometry_Assist_Proxy_Diagnostic.json`
+
+No host pip install is used.
+
+### r1 output set
+
+Each run persists:
+- original PNG;
+- Canny structural hint;
+- native proxy PNG;
+- original-resolution proxy PNG;
+- convenience JPG;
+- amplified source/proxy difference;
+- source/proxy edge overlap image;
+- comparison mosaic;
+- diagnostics JSON;
+- manifest JSON;
+- run log.
+
+### r1 low-VRAM policy
+
+Target remains RTX 2080 Ti 11 GB:
+- FP16;
+- model CPU offload;
+- attention slicing;
+- VAE slicing/tiling;
+- one image per run;
+- 1024 max long edge;
+- one automatic retry at 768 after CUDA OOM.
+
+### r1 conservative profiles
+
+- STRICT: strength 0.18 / ControlNet 1.00 / IP-Adapter 0.90.
+- CONSERVATIVE default: strength 0.28 / ControlNet 0.90 / IP-Adapter 0.80.
+- MODERATE: strength 0.38 / ControlNet 0.80 / IP-Adapter 0.70.
+
+### Verification status
+
+Static package tests: **5/5 PASS**.
+
+Python worker / bridge compile checks: **PASS**.
+
+Full SDXL model download and RTX 2080 Ti generation remain a **runtime acceptance test on the target PC**. This package does not claim GPU acceptance before that user-side run.
+
+### Official pipeline status
+
+Still **NONE / DIAGNOSTIC ONLY**.
+
+r1 does not update P9/P10, does not replace MoGe, and does not automatically route the proxy into geometry generation. The intended A/B remains:
+
+`Original -> MoGe/P9`
+
+versus
+
+`Geometry Assist Proxy -> MoGe/P9`
+
+Only repeated evidence of improvement without structural drift can justify a later optional official branch.
