@@ -55,6 +55,6 @@ The point cloud is **relative/non-metric** and uses assumed intrinsics only for 
 
 Canonical evaluation bundle is mirrored in Google Drive under `P10_Lab_Baseline_Multiview_Completion/Lotus_Diagnostic_Lab`.
 
-Bundle name: `ConceptGhost_Lotus_Diagnostic_Isolated_FULL.zip`
+Bundle name: `ConceptGhost_Lotus_Diagnostic_Isolated_FULL_r2.zip`\n\n### Installer r2 hotfix\n\nThe first installer build had two Windows PowerShell bootstrap defects: the embeddable Python pip probe could terminate before `get-pip.py`, and a single ComfyUI candidate could be treated as a scalar string so `$valid[0]` resolved to the character `C`. r2 fixes both issues and adds regression tests. Existing partial `%LOCALAPPDATA%\\ConceptGhost-LotusDiagnostic` state from the failed first attempt can be resumed safely.
 
 This GitHub folder is a registration/authority record for the isolated experiment. The official P9/P10 workflow is not modified by this lab.
