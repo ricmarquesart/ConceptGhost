@@ -1,5 +1,20 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-23 DR9R-F r7 ready for runtime acceptance
+
+- P9 remains the accepted immutable upstream authority.
+- DR9R-F F1–F8 implementation/static-package work is complete.
+- Current package: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r7.zip`.
+- Current user workflows are numbered and current-only: `01_ConceptGhost_P10_ROUTE_SETUP_r7.json` and `02_ConceptGhost_P10_PRODUCTION_r7.json`.
+- r7 fixes the destructive route reset, frozen Perspective duplicate, missing all-view zoom/pan, route visibility overflow, hidden AUTO_LATEST resolution, P10 storage lifecycle ambiguity, and split-workflow P9-dependency uncertainty.
+- P10 cleanup is explicitly scoped to P10-owned paths and cannot delete P9.
+- P9 Maya remains immutable; future P10 refined Maya is a separate non-overwriting deliverable.
+- Runtime source commit: `2b35f61057c1131520d21059c183ab02fbdca635`; CI run `35897710951` SUCCESS.
+- r7 ZIP SHA-256: `0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756`.
+- Google Drive file id: `1hAp4qqbCVxUyHLXrKuWQUPHERLcFNFWR`; GitHub release tag: `p10-dr9r-r7`.
+- User runtime acceptance is PENDING. Gate 7 remains blocked until r7 is tested and reviewed.
+
+
 ## Authoritative reconciliation — 2026-09-23 DR9R r6 ready for runtime acceptance
 
 - P9 remains accepted immutable upstream authority; P10 must operate on that geometry as delivered.
