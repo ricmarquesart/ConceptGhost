@@ -5,6 +5,23 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 DR6 complete
+
+This is the newest authoritative development status.
+
+- Gate 6 first-pass remains PASS.
+- Gate 4R artist-route refinement remains the active bounded work before required Gate 7.
+- DR0–DR2 are complete.
+- DR3 interactive tri-view editor is implemented/CI-green; user runtime pending.
+- DR4 1–7 drones + PATH/SPIN_360 UX is implemented/CI-green; user runtime pending.
+- DR5 surface-aware collision preflight + hold/resume protection is implemented/CI-green; user runtime pending.
+- **DR6 route editor → Gate 4 → Gate 5 WAN → Gate 6 known-camera reconstruction integration is COMPLETED at code/CI level.**
+- DR6 now enforces exact mission/frame identity, no silent WAN frame loss, preserved mission identity across split windows, and route-authority/hash parity at the Gate 6 boundary.
+- GitHub Actions run `35811855641` completed SUCCESS on all active Python/OS test jobs.
+- Next bounded development is **DR7 — scene-bound persistence / deterministic route identity / checkpoint invalidation**.
+- DR8 diagnostics remains partial.
+- DR9 produces the complete preview bundle and performs the real ComfyUI user acceptance of DR3–DR6.
+
 ## Authoritative reconciliation — 2026-09-23 Gate 4R artist route authoring
 
 This is the newest authoritative development boundary.
