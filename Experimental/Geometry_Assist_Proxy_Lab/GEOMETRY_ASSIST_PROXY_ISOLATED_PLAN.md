@@ -591,3 +591,48 @@ Upgrade from r3:
 - then run `02_VERIFY_GEOMETRY_ASSIST_DIAGNOSTIC.bat` and retry the same source image.
 
 Hardware inference acceptance remains pending after this self-test/runtime-state correction.
+
+## r5 IP-Adapter pairing hotfix status — 2026-09-23
+
+The first complete r4 hardware inference reached the actual SDXL UNet denoising step and failed inside the IP-Adapter projection layer.
+
+Observed r4 evidence:
+- source / ControlNet canvas: 1024x768;
+- both SDXL CLIP tokenizers: prompt=44, negative=44, max=77;
+- conservative generation started successfully;
+- failure: `RuntimeError: mat1 and mat2 shapes cannot be multiplied (2x1024 and 1280x8192)`.
+
+Root cause:
+- `sdxl_models/ip-adapter_sdxl.bin` is the SDXL OpenCLIP ViT-bigG variant and expects 1280-dimensional image embeddings;
+- the isolated runtime intentionally materialized `models/image_encoder`, which is OpenCLIP ViT-H-14 and exposes a 1024 projection;
+- r4 therefore paired a 1024 encoder with a 1280 adapter projection.
+
+r5 correction:
+- keep the already-downloaded, lighter OpenCLIP ViT-H-14 encoder suitable for the RTX 2080 Ti target;
+- replace the adapter weight with `sdxl_models/ip-adapter_sdxl_vit-h.safetensors`;
+- define pairing contract `SDXL_VIT_H_1024`;
+- self-test now checks encoder projection_dim=1024 before installation acceptance;
+- runtime checks the loaded pipeline image encoder projection again before denoising;
+- add `Tests/test_ip_adapter_pairing.py` and an explicit GitHub Actions gate.
+
+Validation:
+- Geometry Assist Isolated Package run 35933214150 — SUCCESS;
+- ConceptGhost Tests run 35933214015 — SUCCESS;
+- P10 DR9 Source Snapshot run 35933213982 — SUCCESS;
+- r5 package head: 232e74e8250a71a3f9bf57d474cbc099a6ea9fa0;
+- GitHub Actions artifact ID: 10782490279.
+
+Canonical r5:
+- `ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r5.zip`
+- SHA-256: `1b96aa2b069dbcc6a53a0ea6ded00fe12351c4919a9ac8bfb02fd516e07fff1a`
+- Google Drive Evaluation_Builds file ID: `1NodeK3tS8rqp_9OyHtaXVnlMq5sDx_C7`
+
+Upgrade from r4:
+- do NOT uninstall the isolated runtime;
+- extract r5 and run `01_INSTALL_GEOMETRY_ASSIST_DIAGNOSTIC.bat`;
+- the existing Python/Torch/SDXL/ControlNet/ViT-H encoder are reused;
+- installer only needs to materialize the matching ~698 MB ViT-H SDXL adapter weight if absent;
+- self-test must report `IP-Adapter pairing: PASS ... projection=1024` and `Prompt contract: PASS`;
+- then run verification and retry the same source image.
+
+Hardware inference acceptance remains pending until r5 completes the diffusion run and writes the proxy/evidence outputs.
