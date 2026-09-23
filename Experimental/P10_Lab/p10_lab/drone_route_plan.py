@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from math import cos, isfinite, pi, sin, sqrt
 
 from .contracts import ContractError
@@ -9,7 +11,10 @@ from .path_planner import CameraPath, RelativeWaypoint
 
 _ALLOWED_MODES = {"PATH", "SPIN_360"}
 _ALLOWED_COLLISION_MODES = {"HOLD_AND_RESUME", "DISABLED"}
+_ALLOWED_ROUTE_AUTHORITIES = {"EDITABLE_SEED", "ARTIST_AUTHORED"}
 _MAX_DRONES = 7
+_ROUTE_SCHEMA = "ConceptGhost.P10DroneRoutePlan.v0.1"
+_BOUND_ROUTE_SCHEMA = "ConceptGhost.P10BoundDroneRoutePlan.v0.1"
 
 
 def _finite(value, label: str) -> float:
@@ -107,7 +112,7 @@ class DroneRoutePlan:
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "schema": "ConceptGhost.P10DroneRoutePlan.v0.1",
+            "schema": _ROUTE_SCHEMA,
             "coordinate_space": "P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
             "maximum_drone_count": _MAX_DRONES,
             "frames_per_drone": self.frames_per_drone,
@@ -120,8 +125,8 @@ class DroneRoutePlan:
     def from_dict(cls, payload: dict[str, object]) -> "DroneRoutePlan":
         if not isinstance(payload, dict):
             raise ContractError("Drone route plan must be an object")
-        schema = str(payload.get("schema") or "ConceptGhost.P10DroneRoutePlan.v0.1")
-        if schema != "ConceptGhost.P10DroneRoutePlan.v0.1":
+        schema = str(payload.get("schema") or _ROUTE_SCHEMA)
+        if schema != _ROUTE_SCHEMA:
             raise ContractError(f"Unsupported drone route schema: {schema}")
         raw = payload.get("missions")
         if not isinstance(raw, list):
@@ -160,6 +165,135 @@ class DroneRoutePlan:
             collision_mode=str(payload.get("collision_mode") or "HOLD_AND_RESUME"),
             min_clearance_m=float(payload.get("min_clearance_m", 0.20)),
         )
+
+
+def _clean_binding_text(value: object, label: str) -> str:
+    text=str(value or "").strip()
+    if not text:
+        raise ContractError(f"{label} cannot be empty")
+    return text
+
+
+def _normalize_route_authority(value: object) -> str:
+    authority=str(value or "").strip().upper()
+    if authority not in _ALLOWED_ROUTE_AUTHORITIES:
+        raise ContractError(f"Unsupported route authority: {authority or '<empty>'}")
+    return authority
+
+
+def _route_identity_payload(
+    plan: DroneRoutePlan,
+    *,
+    scene_contract_id: str,
+    source_run_id: str,
+    route_authority: str,
+) -> dict[str, object]:
+    payload=plan.to_dict()
+    payload.update({
+        "binding_schema":_BOUND_ROUTE_SCHEMA,
+        "scene_contract_id":_clean_binding_text(scene_contract_id,"scene_contract_id"),
+        "source_run_id":_clean_binding_text(source_run_id,"source_run_id"),
+        "route_authority":_normalize_route_authority(route_authority),
+    })
+    return payload
+
+
+def compute_route_plan_sha256(
+    plan: DroneRoutePlan,
+    *,
+    scene_contract_id: str,
+    source_run_id: str,
+    route_authority: str,
+) -> str:
+    payload=_route_identity_payload(
+        plan,
+        scene_contract_id=scene_contract_id,
+        source_run_id=source_run_id,
+        route_authority=route_authority,
+    )
+    canonical=json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",",":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def bind_route_plan(
+    plan: DroneRoutePlan,
+    *,
+    scene_contract_id: str,
+    source_run_id: str,
+    route_authority: str,
+) -> dict[str, object]:
+    payload=_route_identity_payload(
+        plan,
+        scene_contract_id=scene_contract_id,
+        source_run_id=source_run_id,
+        route_authority=route_authority,
+    )
+    payload["route_plan_sha256"]=compute_route_plan_sha256(
+        plan,
+        scene_contract_id=payload["scene_contract_id"],
+        source_run_id=payload["source_run_id"],
+        route_authority=payload["route_authority"],
+    )
+    return payload
+
+
+def parse_bound_route_plan(
+    payload: dict[str, object],
+    *,
+    expected_scene_contract_id: str,
+    expected_source_run_id: str,
+    require_hash: bool=False,
+) -> tuple[DroneRoutePlan,str,str]:
+    """Parse, scene-bind and verify a serialized artist route.
+
+    Missing hashes are allowed while the artist is actively editing a saved
+    workflow. A present hash is always authoritative and must match exactly.
+    Execution returns a freshly bound/hashed payload for persistence.
+    """
+
+    if not isinstance(payload,dict):
+        raise ContractError("Bound drone route plan must be a JSON object")
+    binding_schema=str(payload.get("binding_schema") or _BOUND_ROUTE_SCHEMA)
+    if binding_schema!=_BOUND_ROUTE_SCHEMA:
+        raise ContractError(f"Unsupported route binding schema: {binding_schema}")
+
+    scene_contract_id=_clean_binding_text(payload.get("scene_contract_id"),"scene_contract_id")
+    source_run_id=_clean_binding_text(payload.get("source_run_id"),"source_run_id")
+    expected_scene=_clean_binding_text(expected_scene_contract_id,"expected_scene_contract_id")
+    expected_run=_clean_binding_text(expected_source_run_id,"expected_source_run_id")
+    if scene_contract_id!=expected_scene:
+        raise ContractError(
+            "Saved drone route belongs to a different scene contract: "
+            f"route={scene_contract_id!r}, current={expected_scene!r}"
+        )
+    if source_run_id!=expected_run:
+        raise ContractError(
+            "Saved drone route belongs to a different source run: "
+            f"route={source_run_id!r}, current={expected_run!r}"
+        )
+
+    authority=_normalize_route_authority(payload.get("route_authority"))
+    plan=DroneRoutePlan.from_dict(payload)
+    expected_hash=compute_route_plan_sha256(
+        plan,
+        scene_contract_id=scene_contract_id,
+        source_run_id=source_run_id,
+        route_authority=authority,
+    )
+    stored_hash=str(payload.get("route_plan_sha256") or "").strip().lower()
+    if require_hash and not stored_hash:
+        raise ContractError("Bound drone route is missing route_plan_sha256")
+    if stored_hash and stored_hash!=expected_hash:
+        raise ContractError(
+            "Saved drone route hash does not match its serialized plan; "
+            "clear/reset the route or execute the editor to rebind it"
+        )
+    return plan,authority,expected_hash
 
 
 @dataclass(frozen=True)
