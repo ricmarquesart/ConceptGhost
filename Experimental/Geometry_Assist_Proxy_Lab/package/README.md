@@ -112,3 +112,14 @@ r3 fixes that packaging defect by:
 The MediaPipe/timm/TinyViT warnings remain non-fatal for the Canny-only diagnostic path.
 
 Distribution revision: **r3** — prompt-contract runtime hotfix after the second RTX 2080 Ti hardware attempt.
+
+## r5 IP-Adapter pairing correction
+
+The isolated RTX 2080 Ti runtime uses the SDXL ViT-H IP-Adapter pair:
+- weight: `sdxl_models/ip-adapter_sdxl_vit-h.safetensors`
+- image encoder: `models/image_encoder` (OpenCLIP-ViT-H-14)
+- encoder projection dimension: 1024
+- pairing contract: `SDXL_VIT_H_1024`
+
+Do not pair `ip-adapter_sdxl.bin` with `models/image_encoder`: the former expects the SDXL ViT-bigG image encoder (1280 projection), while `models/image_encoder` is ViT-H (1024 projection). The installer self-test and runtime now fail closed if this pairing contract is violated.
+
