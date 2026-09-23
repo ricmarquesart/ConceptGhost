@@ -194,7 +194,9 @@ class WanSequentialSamplerTests(unittest.TestCase):
             from PIL import Image
         except ImportError as error:
             self.skipTest(str(error))
-        from p10_lab.wan_sequence import MissionRange,write_per_drone_gif_previews
+        from p10_lab.wan_sequence import (
+            MissionRange,write_per_drone_gif_previews,validate_drone_preview_index
+        )
 
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
@@ -224,12 +226,16 @@ class WanSequentialSamplerTests(unittest.TestCase):
                 MissionRange("drone_1",0,4,"drone_1"),
                 MissionRange("drone_2",4,6,"drone_2"),
             )
+            modes={"drone_1":"PATH","drone_2":"SPIN_360"}
             index=write_per_drone_gif_previews(
-                records,missions,{"drone_1":"PATH","drone_2":"SPIN_360"},
+                records,missions,modes,
                 root/"drone_previews",Image,fps=10,max_width=640,
                 route_plan_sha256="a"*64,generation_context_sha256="b"*64,
+                source_control_manifest_sha256="c"*64,
+                run_id="run1",scene_contract_id="scene1",source_run_id="source1",
+                output_directory=root,
             )
-            self.assertEqual(index["schema"],"ConceptGhost.P10DronePreviewIndex.v0.1")
+            self.assertEqual(index["schema"],"ConceptGhost.P10DronePreviewIndex.v0.2")
             self.assertEqual(index["mission_order"],["drone_1","drone_2"])
             self.assertEqual(index["drone_count"],2)
             self.assertEqual(index["previews"][0]["frame_count"],4)
@@ -237,9 +243,62 @@ class WanSequentialSamplerTests(unittest.TestCase):
             self.assertEqual(index["previews"][0]["preview_width"],640)
             self.assertEqual(index["previews"][0]["preview_height"],320)
             self.assertTrue(Path(index["previews"][0]["gif_path"]).is_file())
+            self.assertEqual(
+                index["previews"][0]["gif_subfolder"].replace("\\","/"),
+                "drone_previews",
+            )
+            self.assertEqual(index["index_subfolder"].replace("\\","/"),"drone_previews")
+            self.assertEqual(index["run_id"],"run1")
+            self.assertEqual(index["scene_contract_id"],"scene1")
+            self.assertEqual(index["source_run_id"],"source1")
             self.assertTrue(Path(index["index_path"]).is_file())
+            validate_drone_preview_index(
+                index,missions,modes,
+                route_plan_sha256="a"*64,
+                generation_context_sha256="b"*64,
+                source_control_manifest_sha256="c"*64,
+            )
             with Image.open(index["previews"][0]["gif_path"]) as gif:
                 self.assertEqual(getattr(gif,"n_frames",1),4)
+
+    def test_preview_index_validation_rejects_tampered_gif(self):
+        try:
+            from PIL import Image
+        except ImportError as error:
+            self.skipTest(str(error))
+        from p10_lab.wan_sequence import (
+            MissionRange,write_per_drone_gif_previews,validate_drone_preview_index
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            comp=root/"comp"
+            comp.mkdir()
+            for index in range(2):
+                Image.new("RGB",(320,180),(index*40,20,40)).save(
+                    comp/f"frame_{index:04d}.png"
+                )
+            records=[{
+                "window_index":0,"name":"drone_1","mission_name":"drone_1",
+                "source_start":0,"source_end":2,"decoded_frame_count":2,
+                "composite_dir":str(comp),
+            }]
+            missions=(MissionRange("drone_1",0,2,"drone_1"),)
+            modes={"drone_1":"PATH"}
+            index=write_per_drone_gif_previews(
+                records,missions,modes,root/"previews",Image,
+                route_plan_sha256="a"*64,
+                generation_context_sha256="b"*64,
+                source_control_manifest_sha256="c"*64,
+                output_directory=root,
+            )
+            Path(index["previews"][0]["gif_path"]).write_bytes(b"tampered")
+            with self.assertRaises(ValueError):
+                validate_drone_preview_index(
+                    index,missions,modes,
+                    route_plan_sha256="a"*64,
+                    generation_context_sha256="b"*64,
+                    source_control_manifest_sha256="c"*64,
+                )
 
     def test_manifest_groups_contiguous_frames_by_mission(self):
         from p10_lab.wan_sequence import mission_ranges_from_manifest
