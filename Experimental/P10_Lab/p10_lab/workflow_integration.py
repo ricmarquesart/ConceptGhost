@@ -923,7 +923,7 @@ def integrate_route_setup_refined_preview(workflow: dict) -> dict:
         "RUN #2: depois de editar, clique Run novamente NESTE MESMO workflow. "
         "O P9 deve ficar em cache; a rota é commitada como ARTIST_AUTHORED.\n\n"
         "Somente quando o commit mostrar READY / production_ready=true, abra "
-        "02_ConceptGhost_P10_PRODUCTION_r7.json."
+        "o WORKFLOW 02 · P10 PRODUCTION."
     )
     guide={
         "id":2097,
