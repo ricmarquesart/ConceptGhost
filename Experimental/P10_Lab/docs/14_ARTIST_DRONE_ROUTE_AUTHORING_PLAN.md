@@ -161,12 +161,23 @@ CI evidence: GitHub Actions run `35816433877` — SUCCESS on `efb7a39b0a53c2035a
 
 CI evidence: GitHub Actions run `35816862522` — SUCCESS on `6c9931c63ed18ad3d6c3ad97b59175b44a4bad22` across Windows/Python 3.12, Windows/Python 3.14 and Ubuntu/Python 3.12 jobs.
 
-#### DR8C — Preview index / output surfacing — NEXT
-- write `drone_preview_index.json`;
-- include mission name/mode/frame count/fps/preview dimensions/source type/hash context;
-- expose preview locations clearly in Gate 5 diagnostics/output metadata.
+#### DR8C — Preview index / output surfacing — COMPLETED / CI PASS
+- `drone_preview_index.json` is now a formal `ConceptGhost.P10DronePreviewIndex.v0.2` contract;
+- index identity includes run ID, scene contract, source run, route-plan hash, control-manifest hash and WAN generation-context hash;
+- mission order and mission modes are repeated explicitly and must exactly match the authored/control manifest;
+- every preview records drone index, mission, mode, exact global frame range, frame count, fps, dimensions, source-frame-set SHA-256, GIF SHA-256, filename, output subfolder and absolute path;
+- formal validation fails closed on missing GIFs, hash mismatch, mission/order/mode mismatch or wrong route/control/generation context;
+- the WAN manifest stores both the preview-index path and preview-index SHA-256;
+- Gate 5 diagnostics expose preview count, index path/hash and the individual preview metadata;
+- the WAN node adds a fifth string output `drone_preview_index_path` while preserving all previous output slot numbers;
+- GIFs are also surfaced through ComfyUI's standard output-image UI metadata so the artist can access the animated per-drone previews directly from the Gate 5 node;
+- portable `filename + subfolder + type=output` metadata is emitted in addition to absolute paths.
 
-#### DR8D — Preview invalidation / freshness — PENDING
+CI evidence:
+- `35817184829` — SUCCESS on `3c8ef10772799cd73c63c198794a0fe198bf37ab` for the formal preview-index contract;
+- `35817189070` — SUCCESS on `397074acc741f6277d551dd29e2f84734b4185e0` for Gate 5 workflow/output surfacing.
+
+#### DR8D — Preview invalidation / freshness — NEXT
 - route/control/WAN/composite changes invalidate old previews;
 - no stale GIF/index can remain authoritative after regeneration.
 
@@ -197,7 +208,7 @@ Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
 Implemented / awaiting CI + user runtime: DR5
 Completed at code/CI level; user runtime acceptance pending: DR6, DR7
-DR8 active: DR8A–DR8B complete; DR8C next; DR8D–DR8E pending
+DR8 active: DR8A–DR8C complete; DR8D next; DR8E pending
 Pending: DR9
 
 There are 10 subgates total. DR0–DR2 are complete; DR3–DR7 are implemented and CI-green but still need real ComfyUI runtime acceptance where applicable; DR8 remains the active engineering subgate and DR9 is the final packaged user acceptance.
