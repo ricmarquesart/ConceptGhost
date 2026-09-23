@@ -253,8 +253,6 @@ function setupEditor(node) {
         targetDragging: false,
     };
 
-    function pushHistory()    };
-
     function pushHistory() {
         if (!validPlan(state.plan)) return;
         state.history.push(clone(state.plan));
@@ -529,7 +527,7 @@ function setupEditor(node) {
         }
     }
 
-    function perspectivePanel() {    function perspectivePanel() {
+    function perspectivePanel() {
         return state.projection?.perspective_panel || null;
     }
 
@@ -702,7 +700,7 @@ function setupEditor(node) {
         return worldFromPanel(panel, x, y, base);
     }
 
-    function eventCoordinates(event) {    function eventCoordinates(event) {
+    function eventCoordinates(event) {
         const rect = canvas.getBoundingClientRect();
         if (!rect.width || !rect.height) return null;
         return {
@@ -1128,7 +1126,7 @@ function setupEditor(node) {
         }
     });
 
-    droneSelect.addEventListener("change", () => {    droneSelect.addEventListener("change", () => {
+    droneSelect.addEventListener("change", () => {
         state.activeMission = Number(droneSelect.value) || 0;
         state.selectedPoint = null;
         state.editingTarget = false;
