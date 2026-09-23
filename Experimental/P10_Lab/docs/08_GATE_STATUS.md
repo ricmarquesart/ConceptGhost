@@ -5,6 +5,25 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 Gate 4R artist route authoring
+
+This is the newest authoritative development boundary.
+
+- Gate 6 first-pass runtime acceptance remains PASS and is not reopened.
+- Before starting required Gate 7 fusion work, a user-requested P10 camera-evidence refinement is active at the Gate 4 boundary: **Gate 4R — Artist Drone Route Authoring**.
+- The refinement replaces automatic route authority with artist-authored missions while retaining the automatic planner only as an editable seed/fallback.
+- Total bounded work: **10 subgates DR0–DR9**.
+- DR0 planning, DR1 route contract/sampling and DR2 tri-view projection backend are completed.
+- DR3 interactive ComfyUI editor is implemented and under CI/runtime validation.
+- DR4 multi-drone/PATH/SPIN_360 controls are implemented in backend and frontend but still require runtime validation.
+- DR5 collision hold-and-resume backend exists; visualization and stronger scene-surface validation remain.
+- DR6 authored-route Gate 4→5→6 integration is partially wired.
+- DR7 deterministic persistence/resume is pending.
+- DR8 diagnostics/tests are partial.
+- DR9 packaged user runtime acceptance is pending.
+- The final UI target is one synchronized TOP/SIDE/FRONT scene editor, 1–7 drones, click/drag 3D waypoints, PATH or SPIN_360 per drone, shared capture settings and collision protection.
+- Gate 7 required implementation waits until this bounded camera-authoring refinement is accepted, because the quality of Gate 7 fusion depends on the evidence cameras selected here.
+
 ## Authoritative reconciliation — 2026-09-23 r9 runtime PASS
 
 This is the newest authoritative status. Older reconciliations below are historical checkpoints.
