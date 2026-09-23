@@ -25,7 +25,6 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             '"Limpar rota"',
             'node.addDOMWidget',
             'route_plan_json',
-            'editor_base_preview',
             'pointerdown',
             'pointermove',
             'onExecuted',
@@ -35,12 +34,22 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'execute Queue Prompt para aplicar/revalidar',
             'state.plan.route_authority = "ARTIST_AUTHORED"',
             'route_plan_dirty',
-            '"Resetar cena"',
+            '"Resetar rota"',
+            '"Enquadrar tudo"',
             'delete state.plan.route_plan_sha256',
             'function perspectivePanel()',
             'drawPerspectiveScene()',
             'orbitDragging',
+            'orbitPanning',
+            'orthoViews',
+            'orthoPanning',
+            'ensureRouteVisible',
+            'resetViewportFraming',
+            'sanitizeNumericWidgets',
+            'drawOrthographicScene',
+            'worldFromPanel',
             'wheel',
+            'Shift+drag',
             'inspection only',
             '"LOOK_AT_TARGET"',
             '"LOOK_ALONG_PATH"',
@@ -53,6 +62,16 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'orientationTip',
         ):
             self.assertIn(required, source)
+
+    def test_frontend_has_no_static_background_dependency(self):
+        import p10_lab
+
+        path=Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js"
+        source=path.read_text(encoding="utf-8")
+        self.assertNotIn("loadBackground(",source)
+        self.assertNotIn("editor_base_preview",source)
+        self.assertNotIn('"Resetar cena"',source)
+        self.assertIn('"Resetar rota"',source)
 
     def test_route_authoring_node_is_registered(self):
         import p10_lab
