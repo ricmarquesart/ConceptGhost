@@ -5,6 +5,20 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 r9 runtime PASS
+
+This is the newest authoritative status. Older reconciliations below are historical checkpoints.
+
+- User runtime r9 completed the integrated P10 path through the **Gate 6.6 reconstructed pre-fusion mesh preview** with no runtime exception.
+- The r9 viewport/intrinsics correction is therefore runtime-validated: Gate 6.3 accepted the known-camera database, Gate 6.4 dense reconstruction completed, Gate 6.5 produced a non-empty pre-fusion mesh, and Gate 6.6 rendered the final three-view mesh diagnostic.
+- **Gate 6.6 functional runtime acceptance is PASS. Gate 6 first-pass path is COMPLETED.**
+- The source Refined/P9 run used for this validation was `20260923T001018_212752Z_21246d71`. Its production export manifest reports PASS, but it was executed with **Fast Test / Low Resolution**; therefore it validates pipeline structure and runtime plumbing, not final-quality geometry.
+- P10 release workflows now default `geometry_profile` to **High Fidelity Split Clean**. Artist override remains allowed.
+- Several secondary `PreviewImage` nodes may appear blank even when their tensors are valid. These nodes are diagnostic-only parallel consumers: Gate 5 receives flight images/hole masks/control manifest directly from the evidence node, and Gate 6 receives the camera manifest directly. The successful WAN and Gate 6 reconstruction therefore prove the blank panels are not blocking the data path.
+- To make diagnostics robust against ComfyUI temp-preview/cache behavior, the Gate 4 evidence node now persists compact output previews for source authority, source-lock mask, representative drone views, representative raw holes and camera trajectory in addition to the existing P9 ERP preview.
+- The new Free-Space/Delaunay producer extensions remain scheduled as Gate 7 prerequisites/consumers per the existing policy; they do not invalidate the completed Gate 6 first-pass acceptance.
+- Next required development gate is **Gate 7.1 — P10 reconstruction → P9 coordinate registration**, but project-control rules still require explicit user approval before starting the next gate.
+
 ## Authoritative reconciliation — 2026-09-22 r8 runtime + free-space update
 
 This is the newest authoritative status. Older reconciliation/current-summary sections below are retained only as historical checkpoints.
