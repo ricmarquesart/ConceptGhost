@@ -945,3 +945,19 @@ No user runtime test is requested until DR9R-E after B1-B6/C/D are complete.
 - 256 source tests PASS; final bundle test PASS; verifier PASS; extracted hashes PASS.
 - ZIP SHA-256: `be3e3fc5ef84f404a41cd7177b16a5aa9331ba0420c6013397a4f641413226d5`.
 - Runtime acceptance on the user's ComfyUI PC is the only remaining DR9R-E acceptance item.
+
+
+### DR9R-F active — 2026-09-23
+
+Runtime acceptance of r6 is reopened by first real Route Setup UX findings. Gate 7 remains blocked.
+
+- F1 numbered workflow order + embedded Run #1/#2/#3 instructions.
+- F2 reset-safe dynamic four-view workspace; zoom/pan all views; no frozen Perspective duplicate; route visibility guard.
+- F3 explicit storage lifecycle + safe P10-only cleanup.
+- F4 AUTO_LATEST resolved-path observability.
+- F5 P9 persisted-dependency closure audit for all future P10 gates.
+- F6 dual Maya deliverable contract: preserve P9 .ma; later create separate P10 Refined .ma.
+- F7 current-only install: no legacy Master v1.53 in user workflow folder.
+- F8 aggregate regressions + replacement bundle.
+
+No intermediate user runtime test. Save each subgate checkpoint to GitHub and Google Drive.
