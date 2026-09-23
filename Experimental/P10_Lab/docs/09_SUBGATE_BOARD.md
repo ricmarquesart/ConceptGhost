@@ -163,6 +163,28 @@ CI evidence: `35816433877` SUCCESS on `efb7a39b0a53c2035ab8ae58ca34a26c339ea92a`
 Next: DR8B — one final-composite GIF per drone.
 
 
+### Gate 4R DR8B checkpoint — per-drone final-composite GIF previews
+
+DR8B is COMPLETE / CI PASS.
+
+Gate 5 now generates exactly one looping animated GIF per authored drone/mission from **final composite** frames.
+
+Contract:
+- all frames belonging to the mission are included;
+- a mission split into multiple WAN windows is reconstructed by original global frame index;
+- duplicate, missing, cross-mission or out-of-range frames fail closed;
+- 640 px maximum width, preserved aspect ratio, 10 fps, infinite loop;
+- Windows-safe filenames;
+- output root: `p10_gate5/<run_id>/drone_previews/`;
+- each preview records GIF SHA-256 and ordered source-frame-set SHA-256;
+- `drone_preview_index.json` is emitted alongside the GIFs;
+- Gate 5 diagnostics surface preview count, index path and individual preview metadata.
+
+CI evidence: `35816862522` SUCCESS on `6c9931c63ed18ad3d6c3ad97b59175b44a4bad22`.
+
+Next: DR8C — formal preview index/output surfacing contract.
+
+
 ## Gate 5 — 5 subgates
 
 5.1 11 GB WAN runtime/resource policy — COMPLETED. Conservative first-pass profile: 832×480, max 33-frame WAN window, 4 steps, CFG 1.0, FP8 UNet, one window at a time, model/cache offload between windows. GitHub Actions run 35702692128 SUCCESS.
