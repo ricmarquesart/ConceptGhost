@@ -12,8 +12,9 @@ class ReconstructionRuntimeTests(unittest.TestCase):
         cam=root/"p10_gate4"/"run1"/"control_sequence"/"camera_manifest.json"
         wan.parent.mkdir(parents=True)
         cam.parent.mkdir(parents=True)
-        wan.write_text(json.dumps({"run_id":"run1","effective_dimensions":{"width":832,"height":480,"mode":"UNCHANGED"},"windows":[{"window_index":0,"name":"a","source_start":0,"source_end":1,"decoded_frame_count":1,"composite_dir":str(root/"comp")}]}),encoding="utf-8")
-        cam.write_text(json.dumps({"scene_contract_id":"scene1","frames":[{"global_frame_index":0,"path_name":"a","path_frame_index":0,"camera":{"model":"PINHOLE","width":640,"height":360,"fx":700,"fy":700,"cx":320,"cy":180,"world_matrix":[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]}}]}),encoding="utf-8")
+        route_meta={"route_authority":"ARTIST_AUTHORED","route_plan_sha256":"routehash","mission_order":["a"]}
+        wan.write_text(json.dumps({"run_id":"run1",**route_meta,"mission_modes":{"a":"PATH"},"effective_dimensions":{"width":832,"height":480,"mode":"UNCHANGED"},"windows":[{"window_index":0,"name":"a","mission_name":"a","source_start":0,"source_end":1,"decoded_frame_count":1,"composite_dir":str(root/"comp")}]}),encoding="utf-8")
+        cam.write_text(json.dumps({"scene_contract_id":"scene1",**route_meta,"frames":[{"global_frame_index":0,"path_name":"a","path_frame_index":0,"camera":{"model":"PINHOLE","width":640,"height":360,"fx":700,"fy":700,"cx":320,"cy":180,"world_matrix":[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]}}]}),encoding="utf-8")
         return wan,cam
 
     def test_standard_colmap_candidates_include_conceptghost_runtime(self):
