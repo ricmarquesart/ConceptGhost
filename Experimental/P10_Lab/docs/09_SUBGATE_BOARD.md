@@ -978,3 +978,14 @@ No intermediate user runtime test. Save each subgate checkpoint to GitHub and Go
 - Google Drive file id: `1hAp4qqbCVxUyHLXrKuWQUPHERLcFNFWR`
 - GitHub release: `p10-dr9r-r7`
 - User runtime acceptance: PENDING. Gate 7 remains blocked until r7 is reviewed.
+
+
+### DR9R-F9 MoGe diagnostics — 2026-09-23
+
+- Status: IMPLEMENTED / CI PASS / r8 PACKAGE PUBLISHED.
+- Workflow 01 contains `P9 · MoGe Depth Diagnostics · OPTIONAL · OFF BY DEFAULT`.
+- OFF writes no diagnostic folder and does not change official P9/P10 output.
+- ON produces native/raw + derived depth inspection evidence in a separate retained diagnostic directory.
+- Diagnostic branch is fail-open and has no geometry authority.
+- r8 package SHA-256: `9774a887e397e18d9dcb76c65dea29ce4496ec95f0fa75570b400238dad0139c`.
+- User runtime inspection remains pending.
