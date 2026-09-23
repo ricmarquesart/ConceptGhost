@@ -236,3 +236,24 @@ Storage utility:
 `06_P10_STORAGE_AND_CLEANUP.bat`
 
 Runtime acceptance remains PENDING. Gate 7 remains blocked until the user validates r7 in ComfyUI.
+
+
+## F9 — Optional MoGe Depth Diagnostics
+
+Status: IMPLEMENTED / CI VALIDATION IN PROGRESS
+
+Add a diagnostic-only Refined/P9 MoGe side lane, OFF by default, inside Workflow 01.
+
+Requirements locked:
+- main Enable MoGe Diagnostics switch defaults OFF;
+- optional raw outputs, 3D preview and extra depth visual switches;
+- exact native-vs-derived distinction;
+- original / grayscale / heatmap / inverse-depth / bands / contours / discontinuities / normals / mask / point-cloud diagnostics where source data exists;
+- raw depth/points/normals/mask/intrinsics + optional per-step evidence when explicitly enabled;
+- separate diagnostic storage under <ConceptGhost output root>/_diagnostics/moge_depth/...;
+- explicit diagnostic runs preserved until manual cleanup;
+- fail-open diagnostic failure with zero official geometry authority;
+- visible notes containing Purpose / Inputs / What it does / Outputs / Authority / Geometry impact / Default state / Failure/fallback / TEMP-retention / Next stage;
+- existing official P9 Primary Master remains the authoritative mesh preview.
+
+Detailed spec: `docs/21_P9_MOGE_DEPTH_DIAGNOSTICS.md`.
