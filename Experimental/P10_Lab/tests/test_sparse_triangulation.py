@@ -173,6 +173,32 @@ class SparseTriangulationTests(unittest.TestCase):
                 "DATABASE_ASSIGNED_TRIVIAL_RIG_AND_FRAME_IDS",
             )
 
+    def test_database_sync_preserves_multiple_verified_components(self):
+        from p10_lab.sparse_triangulation import build_sparse_plan, _write_database_synced_model
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._dataset(Path(tmp), frame_count=4, camera_count=1)
+            ids = self._database(root, frame_count=4, camera_count=1)
+            db = sqlite3.connect(root / "database.db")
+            db.execute(
+                "DELETE FROM two_view_geometries WHERE pair_id=?",
+                (pair_id(ids[1], ids[2]),),
+            )
+            db.commit()
+            db.close()
+
+            plan = build_sparse_plan(root)
+            synced = _write_database_synced_model(plan)
+            diag = json.loads(synced.diagnostics_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(diag["verified_component_count"], 2)
+            self.assertTrue(diag["all_verified_components_preserved"])
+            self.assertEqual(diag["component_policy"], "ALL_VERIFIED_MATCH_COMPONENTS_FIXED_P9_WORLD")
+            self.assertEqual(diag["dropped_image_count"], 0)
+            self.assertEqual(set(diag["selected_image_ids"]), set(ids.values()))
+            images_txt = (synced.text_path / "images.txt").read_text(encoding="utf-8")
+            for index in range(4):
+                self.assertIn(f"frame_{index:06d}.png", images_txt)
+
     def test_database_sync_drops_disconnected_featureless_view(self):
         from p10_lab.sparse_triangulation import build_sparse_plan, _write_database_synced_model
         with tempfile.TemporaryDirectory() as tmp:
