@@ -391,7 +391,8 @@ def parse_bound_route_plan(
             "Saved drone route hash does not match its serialized plan; "
             "clear/reset the route or execute the editor to rebind it"
         )
-    return plan,authority,expected_hash
+    verified_hash=stored_hash or expected_hash
+    return plan,authority,verified_hash
 
 
 @dataclass(frozen=True)
