@@ -554,7 +554,7 @@ def build_refined_evidence(
     clearance_cloud = build_clearance_cloud(
         boundary.primary_mesh,
         camera,
-        max_points=12000,
+        max_points=40000 if str(route_plan_json or "").strip() else 12000,
     )
 
     authored_route_plan = None
@@ -574,6 +574,11 @@ def build_refined_evidence(
                     path,
                     clearance_cloud.query,
                     min_clearance=authored_route_plan.min_clearance_m,
+                    segment_is_blocked=lambda start, end: clearance_cloud.segment_is_blocked(
+                        start,
+                        end,
+                        authored_route_plan.min_clearance_m,
+                    ),
                 )
                 active.append(safe_path)
                 authored_clearance_reports.append(report.to_dict())
