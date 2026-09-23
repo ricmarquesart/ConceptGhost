@@ -66,7 +66,7 @@ def commit_route_setup(
         dependency_inventory=validate_p9_dependency_inventory(dependency_inventory_path)
     else:
         dependency_inventory=write_p9_dependency_inventory(
-            boundary.root,
+            Path(run_dir).resolve(),
             dependency_inventory_path,
         )
 
