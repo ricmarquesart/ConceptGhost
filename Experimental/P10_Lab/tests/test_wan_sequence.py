@@ -78,6 +78,19 @@ class WanSequentialSamplerTests(unittest.TestCase):
         self.assertEqual(cls.CATEGORY, "ConceptGhost/P10 Refined")
         self.assertTrue(cls.OUTPUT_NODE)
 
+    def test_control_batch_contract_requires_exact_authored_frame_count(self):
+        from p10_lab.wan_sequence import validate_control_batch_contract
+        payload={"frame_count":30,"width":640,"height":360}
+        validate_control_batch_contract(payload,(30,360,640,3),(30,360,640))
+        with self.assertRaises(ValueError):
+            validate_control_batch_contract(payload,(29,360,640,3),(30,360,640))
+
+    def test_control_batch_contract_requires_exact_manifest_dimensions(self):
+        from p10_lab.wan_sequence import validate_control_batch_contract
+        payload={"frame_count":2,"width":640,"height":360}
+        with self.assertRaises(ValueError):
+            validate_control_batch_contract(payload,(2,480,832,3),(2,480,832))
+
     def test_manifest_groups_contiguous_frames_by_mission(self):
         from p10_lab.wan_sequence import mission_ranges_from_manifest
         payload = {
@@ -98,6 +111,15 @@ class WanSequentialSamplerTests(unittest.TestCase):
             [(r.name, r.start, r.end) for r in ranges],
             [("a", 0, 2), ("b", 2, 5)],
         )
+        self.assertEqual([r.mission_name for r in ranges],["a","b"])
+
+    def test_window_parts_preserve_original_mission_identity(self):
+        from p10_lab.wan_sequence import MissionRange,_window_ranges
+        windows=_window_ranges(MissionRange("drone_1",0,70,"drone_1"),33)
+        self.assertEqual([w.name for w in windows],[
+            "drone_1__part00","drone_1__part01","drone_1__part02"
+        ])
+        self.assertTrue(all(w.mission_name=="drone_1" for w in windows))
 
     def test_wan_conditioning_length_pads_to_next_four_k_plus_one(self):
         from p10_lab.wan_sequence import padded_wan_length
