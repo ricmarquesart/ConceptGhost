@@ -5,6 +5,23 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 DR8C complete
+
+This is the newest authoritative development status.
+
+- The pre-DR8 DR7 recovery checkpoint remains frozen in GitHub and Google Drive.
+- DR8A pre-WAN route diagnostics remains COMPLETE / CI PASS.
+- DR8B per-drone final-composite GIF generation remains COMPLETE / CI PASS.
+- **DR8C — Preview Index / Output Surfacing — is COMPLETED / CI PASS.**
+- `drone_preview_index.json` is now schema `ConceptGhost.P10DronePreviewIndex.v0.2` with scene/run/route/control/WAN-generation identity.
+- Every GIF entry carries exact mission/frame range, dimensions, fps, ordered source-frame-set SHA-256 and GIF SHA-256.
+- Formal validation fails closed on stale/missing/tampered preview bytes or identity/order mismatch.
+- WAN manifest and diagnostics surface preview-index path/hash plus per-drone preview metadata.
+- Gate 5 WAN sampler now exposes `drone_preview_index_path` as an additional output without changing the existing WAN manifest output used by Gate 6.
+- GIFs are surfaced through ComfyUI standard output-image metadata for direct artist inspection.
+- CI runs `35817184829` and `35817189070` both completed SUCCESS.
+- **Next bounded development: DR8D — Preview Invalidation / Freshness.**
+
 ## Authoritative reconciliation — 2026-09-23 DR8B complete
 
 This is the newest authoritative development status.
