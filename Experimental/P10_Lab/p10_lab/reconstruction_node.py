@@ -4,13 +4,30 @@ import json
 from pathlib import Path
 
 
-def _render_mesh_preview_png(mesh_path: Path, png_path: Path):
+def _image_file_to_tensor(path: Path):
     try:
         import numpy as np
         import torch
+        from PIL import Image
+    except ImportError as error:
+        raise RuntimeError(
+            "Gate 6 visual preview requires NumPy, Pillow and Torch from ComfyUI"
+        ) from error
+    with Image.open(path) as opened:
+        arr=np.asarray(opened.convert("RGB"),dtype=np.float32)/255.0
+    return torch.from_numpy(arr).unsqueeze(0)
+
+
+def _render_mesh_preview_png(mesh_path: Path, png_path: Path):
+    """Legacy/fallback mesh-only preview with one metric scale per panel."""
+
+    try:
+        import numpy as np
         from PIL import Image, ImageDraw
     except ImportError as error:
-        raise RuntimeError("Gate 6 visual preview requires NumPy, Pillow and Torch from ComfyUI") from error
+        raise RuntimeError(
+            "Gate 6 visual preview requires NumPy and Pillow from ComfyUI"
+        ) from error
 
     from .prefusion_mesh import _read_mesh, _vertex
 
@@ -18,48 +35,74 @@ def _render_mesh_preview_png(mesh_path: Path, png_path: Path):
     if not sampled_faces:
         raise RuntimeError("Pre-fusion mesh has no sampled faces for preview")
 
-    points=[_vertex(vertices,i) for face in sampled_faces for i in face]
-    bounds=[]
-    for axis in range(3):
-        values=[p[axis] for p in points]
-        lo=min(values); hi=max(values)
-        if abs(hi-lo)<1e-9:
-            lo-=0.5; hi+=0.5
-        bounds.append((lo,hi))
+    points=np.asarray(
+        [_vertex(vertices,index) for face in sampled_faces for index in face],
+        dtype=np.float64,
+    )
+    lo=np.min(points,axis=0)
+    hi=np.max(points,axis=0)
+    span=np.maximum(hi-lo,1.0e-9)
+    lo=lo-span*0.04
+    hi=hi+span*0.04
 
     panel=420
     gap=16
-    top=52
+    top=72
+    pad=28
+    usable=panel-2*pad
     width=panel*3+gap*4
     height=panel+top+gap
     image=Image.new("RGB",(width,height),(13,13,13))
     draw=ImageDraw.Draw(image)
-    draw.text((14,14),"ConceptGhost Gate 6.6 - pre-fusion reconstruction preview",fill=(245,245,245))
+    draw.text(
+        (14,14),
+        "ConceptGhost Gate 6.6 - pre-fusion mesh-only fallback preview",
+        fill=(245,245,245),
+    )
+    draw.text(
+        (14,36),
+        "Metric-isotropic panels; preferred preview is the P9/P10 overlay.",
+        fill=(165,165,165),
+    )
 
     specs=((0,2,"TOP XZ"),(0,1,"FRONT XY"),(2,1,"SIDE ZY"))
     for panel_index,(a,b,label) in enumerate(specs):
         x0=gap+panel_index*(panel+gap)
         y0=top
-        draw.rectangle((x0,y0,x0+panel,y0+panel),outline=(90,90,90),fill=(22,22,22))
+        draw.rectangle(
+            (x0,y0,x0+panel,y0+panel),
+            outline=(90,90,90),
+            fill=(22,22,22),
+        )
         draw.text((x0+10,y0+8),label,fill=(235,235,235))
-        pad=28
-        usable=panel-2*pad
-        alo,ahi=bounds[a]
-        blo,bhi=bounds[b]
+
+        span_a=max(float(hi[a]-lo[a]),1.0e-9)
+        span_b=max(float(hi[b]-lo[b]),1.0e-9)
+        ppm=min(usable/span_a,usable/span_b)
+        display_a=usable/ppm
+        display_b=usable/ppm
+        center_a=float((lo[a]+hi[a])*0.5)
+        center_b=float((lo[b]+hi[b])*0.5)
+        alo,ahi=center_a-display_a*0.5,center_a+display_a*0.5
+        blo,bhi=center_b-display_b*0.5,center_b+display_b*0.5
+        draw.text((x0+10,y0+25),f"{ppm:.2f} px/m",fill=(145,145,145))
+
         def project(p):
             px=x0+pad+(p[a]-alo)/(ahi-alo)*usable
             py=y0+panel-pad-(p[b]-blo)/(bhi-blo)*usable
             return (px,py)
+
         for face in sampled_faces:
             pts=[project(_vertex(vertices,index)) for index in face]
-            draw.line([pts[0],pts[1],pts[2],pts[0]],fill=(155,203,255),width=1)
+            draw.line(
+                [pts[0],pts[1],pts[2],pts[0]],
+                fill=(155,203,255),
+                width=1,
+            )
 
     png_path.parent.mkdir(parents=True,exist_ok=True)
     image.save(png_path)
-
-    arr=np.asarray(image,dtype=np.float32)/255.0
-    tensor=torch.from_numpy(arr).unsqueeze(0)
-    return tensor
+    return _image_file_to_tensor(png_path)
 
 
 class ConceptGhostP10ReconstructionRuntime:
@@ -117,9 +160,17 @@ class ConceptGhostP10ReconstructionRuntime:
             resume=bool(resume_existing),
         )
         mesh_path=Path(diagnostics["pre_fusion_mesh_path"])
-        png_path=mesh_path.parent/"pre_fusion_mesh_preview.png"
-        preview=_render_mesh_preview_png(mesh_path,png_path)
-        diagnostics["mesh_preview_png_path"]=str(png_path.resolve())
+        overlay_value=str(diagnostics.get("metric_overlay_preview_png_path") or "").strip()
+        overlay_path=Path(overlay_value) if overlay_value else None
+        if overlay_path is not None and overlay_path.is_file():
+            preview=_image_file_to_tensor(overlay_path)
+            diagnostics["mesh_preview_png_path"]=str(overlay_path.resolve())
+            diagnostics["mesh_preview_kind"]="METRIC_P9_P10_RECONSTRUCTION_OVERLAY"
+        else:
+            png_path=mesh_path.parent/"pre_fusion_mesh_preview.png"
+            preview=_render_mesh_preview_png(mesh_path,png_path)
+            diagnostics["mesh_preview_png_path"]=str(png_path.resolve())
+            diagnostics["mesh_preview_kind"]="METRIC_ISOTROPIC_MESH_ONLY_FALLBACK"
         rendered=json.dumps(diagnostics,indent=2,sort_keys=True)
         return {
             "ui":{"text":[rendered]},
