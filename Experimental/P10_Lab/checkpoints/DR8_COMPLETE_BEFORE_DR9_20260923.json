@@ -1,0 +1,37 @@
+{
+  "schema": "ConceptGhost.P10Checkpoint.v0.1",
+  "checkpoint": "DR8_COMPLETE_BEFORE_DR9",
+  "created_at": "2026-09-23T04:29:00Z",
+  "branch": "work/v1.54-p10-multiview-completion",
+  "source_head_before_checkpoint": "9b563ec280871689314e26fc95aaa29c578c3bcb",
+  "final_closeout_actions_run": 35818321869,
+  "final_closeout_actions_conclusion": "success",
+  "authoritative_status_actions_run": 35818449176,
+  "authoritative_status_actions_conclusion": "success",
+  "dr8": {
+    "status": "COMPLETE_CODE_CI",
+    "completed": [
+      "DR8A",
+      "DR8B",
+      "DR8C",
+      "DR8D",
+      "DR8E"
+    ],
+    "closeout_document": "Experimental/P10_Lab/docs/15_DR8_FINAL_REGRESSION_CLOSEOUT.md",
+    "next": "DR9"
+  },
+  "route_authoring": {
+    "status": "DR0_DR8_CODE_CI_COMPLETE_USER_RUNTIME_PENDING",
+    "user_runtime_acceptance_stage": "DR9"
+  },
+  "base_full_installer": {
+    "release": "ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r10",
+    "code_commit": "0fe68e1b90557993c3d7ade008ad52aeafa4a7db",
+    "note": "r10 remains the last complete installer baseline. DR0-DR8 source changes are frozen by this GitHub checkpoint and will be packaged in DR9."
+  },
+  "recovery_contract": {
+    "baseline_p9_unchanged": true,
+    "github_authority": "Use checkpoint/p10-dr8-complete-20260923 after it is created from this checkpoint commit.",
+    "drive_authority": "Use the matching Google Drive DR8 checkpoint folder together with the r10 installer baseline; reconstruct new DR0-DR8 source from the exact GitHub checkpoint."
+  }
+}
