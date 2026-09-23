@@ -1,0 +1,19 @@
+name: Cleanup obsolete DR9R r5 release
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - .github/workflows/p10-dr9r-r5-cleanup.yml
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove obsolete r5 release if present
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release delete p10-dr9r-r5 --repo "${{ github.repository }}" --cleanup-tag --yes || true
