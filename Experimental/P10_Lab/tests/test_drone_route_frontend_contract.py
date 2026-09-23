@@ -33,6 +33,7 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'blockedSegment',
             '#ff3b58',
             'colisão precisa ser revalidada',
+            'state.plan.route_authority = "ARTIST_AUTHORED"',
         ):
             self.assertIn(required, source)
 
