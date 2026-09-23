@@ -1,17 +1,17 @@
 # P10-Lab Gate Status
 
-## Authoritative reconciliation — 2026-09-23 DR9 runtime findings / DR9R active
+## Authoritative reconciliation — 2026-09-23 DR9R r5 published
 
-- DR9 runtime acceptance is **NOT CLOSED**.
-- The first real artist-route test exposed route-preview projection distortion, a stale duplicate fixed preview, the expected human-in-the-loop second-prompt boundary, and non-immutable per-attempt P10 output storage.
-- The second prompt did consume the edited multi-drone route and reused cached P9 rather than re-solving the expensive P9 geometry.
-- Corrective block **DR9R** is now active before Gate 7.
-- **DR9R-A implemented / CI pending:** isotropic metric orthographic projection, source-colored point preview, stale duplicate image removal, clearer next-Queue-Prompt execution guidance.
-- Next: **DR9R-B — interactive perspective + locked TOP/SIDE/FRONT four-view workspace**.
-- Architecture decision for DR9R-C: split P9 Scene Solve + Route Setup from P10 Production while reusing the immutable P9 run_dir; do not author routes on a different low-fidelity geometry profile.
-- DR9R-D will give every P10 attempt its own immutable directory under the parent P9 scene identity.
-- Current pre-fusion mesh from this test remains diagnostic-only and is not quality-accepted.
-- Detailed plan: `Experimental/P10_Lab/docs/18_DR9R_RUNTIME_FINDINGS_REFINEMENT_PLAN.md`.
+- P9 remains the accepted immutable upstream authority.
+- DR9R-A, B1-B6, C and D are COMPLETE / CI PASS.
+- DR9R-E final two-workflow package is PUBLISHED.
+- Bundle: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r5.zip`.
+- SHA-256: `63ec487e3a73e98018cb72d5d27472ada3e33ccbd450ebf964028e558420be1d`.
+- Google Drive file id: `1qr3iAHlRRlgRHsqRF1zwULlfNikhTwyH`.
+- GitHub release: `p10-dr9r-r5`.
+- New-scene flow is three Queue Prompt clicks but only one expensive P9 solve and one P10 Production execution.
+- User runtime acceptance is PENDING. Gate 7 must not begin until r5 runtime evidence is reviewed.
+- Detailed closeout: `Experimental/P10_Lab/docs/18_DR9R_RUNTIME_FINDINGS_REFINEMENT_PLAN.md`.
 
 
 This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
