@@ -134,6 +134,19 @@ def build_reconstruction_input_manifest(
     if not isinstance(camera_frames,list) or not camera_frames:
         raise ContractError("Camera manifest requires non-empty frames")
 
+    wan_scene_contract_id=str(wan.get("scene_contract_id") or "").strip()
+    camera_scene_contract_id=str(cameras.get("scene_contract_id") or "").strip()
+    wan_source_run_id=str(wan.get("source_run_id") or "").strip()
+    camera_source_run_id=str(cameras.get("source_run_id") or "").strip()
+    if wan_scene_contract_id != camera_scene_contract_id:
+        raise ContractError(
+            "Gate 6 scene contract mismatch between WAN and camera manifests"
+        )
+    if wan_source_run_id != camera_source_run_id:
+        raise ContractError(
+            "Gate 6 source run mismatch between WAN and camera manifests"
+        )
+
     wan_route_hash=wan.get("route_plan_sha256")
     camera_route_hash=cameras.get("route_plan_sha256")
     wan_route_authority=wan.get("route_authority")
@@ -268,7 +281,8 @@ def build_reconstruction_input_manifest(
     return {
         "schema":"ConceptGhost.P10ReconstructionInputs.v0.2",
         "run_id":wan.get("run_id"),
-        "scene_contract_id":cameras.get("scene_contract_id"),
+        "scene_contract_id":camera_scene_contract_id,
+        "source_run_id":camera_source_run_id,
         "source_wan_manifest":str(wan_path.resolve()),
         "source_camera_manifest":str(camera_path.resolve()),
         "frame_count":len(frames),
