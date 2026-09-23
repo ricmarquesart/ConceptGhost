@@ -917,3 +917,18 @@ No user runtime test is requested until DR9R-E after B1-B6/C/D are complete.
 - DR9R-C — COMPLETE / CI PASS: explicit P9 Route Setup → committed production entry → standalone P10 Production handoff; Stage A stops before WAN/Gate6 and Stage B contains no P9 solver dependency.
 - DR9R-D — COMPLETE / CI PASS: unique immutable p10_attempt_id per Production queue; Gate4/Gate5/Gate6 share one attempt root; previous attempts are preserved; LATEST_P10_RUN is pointer-only; cross-attempt manifest mixing fails closed.
 - DR9R-E — ACTIVE: aggregate closeout regression + final two-workflow installer + one deferred user runtime acceptance pass.
+
+
+### DR9R-E final package published — 2026-09-23
+
+- DR9R-B1..B6 — COMPLETE / CI PASS.
+- DR9R-C — COMPLETE / CI PASS.
+- DR9R-D — COMPLETE / CI PASS.
+- DR9R-E package build — COMPLETE.
+- Final bundle: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r5.zip`.
+- SHA-256: `63ec487e3a73e98018cb72d5d27472ada3e33ccbd450ebf964028e558420be1d`.
+- Google Drive Evaluation_Builds file id: `1qr3iAHlRRlgRHsqRF1zwULlfNikhTwyH`.
+- GitHub Release: tag `p10-dr9r-r5`.
+- User runtime acceptance — PENDING.
+- Required final flow: Route Setup queue #1 -> edit route -> Route Setup queue #2 commit -> P10 Production queue #1.
+- Gate 7 remains blocked until this final user runtime evidence is accepted.
