@@ -10,9 +10,6 @@ LAB=Path(__file__).resolve().parents[1]
 if str(LAB) not in sys.path:
     sys.path.insert(0,str(LAB))
 
-from p10_lab.storage_lifecycle import build_storage_report,cleanup_p10_owned_cache
-
-
 def _print(payload):
     print(json.dumps(payload,indent=2,sort_keys=True))
 
@@ -46,9 +43,16 @@ def main(argv=None):
         comfy_root=Path(args.comfy_root).expanduser().resolve()
         if str(comfy_root) not in sys.path:
             sys.path.insert(0,str(comfy_root))
+        custom_nodes=comfy_root/"custom_nodes"
+        if str(custom_nodes) not in sys.path:
+            sys.path.insert(0,str(custom_nodes))
         import folder_paths
+        from ConceptGhost_P10_Lab.storage_lifecycle import build_storage_report,cleanup_p10_owned_cache
         output=Path(folder_paths.get_output_directory()).resolve()
     else:
+        if str(LAB) not in sys.path:
+            sys.path.insert(0,str(LAB))
+        from p10_lab.storage_lifecycle import build_storage_report,cleanup_p10_owned_cache
         output=Path(args.output_root).expanduser().resolve()
     report=build_storage_report(output)
 
