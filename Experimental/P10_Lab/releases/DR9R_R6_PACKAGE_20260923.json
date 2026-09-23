@@ -1,0 +1,33 @@
+{
+  "schema": "ConceptGhost.P10DR9RPackageRecord.v0.6",
+  "release": "ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r6",
+  "date": "2026-09-23",
+  "source_commit": "e5a11bca683c08d436c211f2fdfb634f46c23c2b",
+  "branch": "work/v1.54-p10-multiview-completion",
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "user_runtime_acceptance": "PENDING",
+  "google_drive": {
+    "file_id": "12ivtdYTumq_nxct_rFw4_FK17iKHIbOU",
+    "folder": "ConceptGhost/Storage/Evaluation_Builds"
+  },
+  "zip": {
+    "bytes": 12256852,
+    "sha256": "be3e3fc5ef84f404a41cd7177b16a5aa9331ba0420c6013397a4f641413226d5"
+  },
+  "workflows": [
+    "ConceptGhost_v1.54_P10_DR9R_ROUTE_SETUP_r6.json",
+    "ConceptGhost_v1.54_P10_DR9R_PRODUCTION_r6.json"
+  ],
+  "validation": {
+    "source_tests": 256,
+    "bundle": "PASS",
+    "runtime_verifier_static": "PASS",
+    "extracted_sha256s": "PASS",
+    "drive_redownload_sha256": "PASS"
+  },
+  "packaging_hotfixes": [
+    "PowerShell workflow source Join-Path corrected",
+    "verify_p10_dr9.py newline syntax corrected",
+    "installer Python compile checks added"
+  ]
+}
