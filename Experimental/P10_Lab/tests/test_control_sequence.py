@@ -19,11 +19,24 @@ class ControlSequenceContractTests(unittest.TestCase):
             Frame(1, "entry_micro_orbit_360", 1, 0.50, "frame_0001.png", "mask_0001.png"),
             Frame(2, "scene_round_trip", 0, 0.75, "frame_0002.png", "mask_0002.png"),
         )
-        manifest = Manifest(frames=frames, width=640, height=480)
+        manifest = Manifest(
+            frames=frames,
+            width=640,
+            height=480,
+            route_authority="ARTIST_AUTHORED",
+            route_plan_schema="ConceptGhost.P10DroneRoutePlan.v0.1",
+            route_plan_sha256="abc",
+            mission_modes=(("entry_micro_orbit_360","SPIN_360"),("scene_round_trip","PATH")),
+        )
         payload = manifest.to_dict()
         self.assertEqual(payload["frame_count"], 3)
         self.assertEqual(payload["frames"][2]["path_name"], "scene_round_trip")
         self.assertEqual(payload["frames"][0]["global_frame_index"], 0)
+        self.assertEqual(payload["schema"],"ConceptGhost.P10ControlSequence.v0.2")
+        self.assertEqual(payload["route_authority"],"ARTIST_AUTHORED")
+        self.assertEqual(payload["route_plan_sha256"],"abc")
+        self.assertEqual(payload["mission_order"],["entry_micro_orbit_360","scene_round_trip"])
+        self.assertEqual(payload["missions"][0]["mode"],"SPIN_360")
 
     def test_control_sequence_requires_monotonic_global_indexes(self):
         Frame, Manifest = self._api()
