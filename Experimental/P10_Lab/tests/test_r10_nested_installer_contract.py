@@ -56,6 +56,7 @@ class DR9RR10NestedInstallerContractTests(unittest.TestCase):
                 "Installer/install_gate5.ps1",
                 "Installer/install_gate6.ps1",
                 "README.md",
+                "build_r10_from_r9.py",
             ],
         )
 
