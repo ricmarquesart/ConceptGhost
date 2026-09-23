@@ -119,6 +119,74 @@ class DroneRoutePlanTests(unittest.TestCase):
                 min_clearance=0.5,
             )
 
+    def test_bound_route_hash_is_deterministic_and_scene_specific(self):
+        from p10_lab.drone_route_plan import (
+            DroneMission,DroneRoutePlan,DroneWaypoint,
+            bind_route_plan,parse_bound_route_plan,
+        )
+
+        plan=DroneRoutePlan(
+            missions=(DroneMission("drone_1","PATH",(
+                DroneWaypoint(0,0,0),DroneWaypoint(0,0,5)
+            )),),
+            frames_per_drone=30,
+        )
+        a=bind_route_plan(
+            plan,scene_contract_id="sceneA",source_run_id="runA",
+            route_authority="ARTIST_AUTHORED",
+        )
+        b=bind_route_plan(
+            plan,scene_contract_id="sceneA",source_run_id="runA",
+            route_authority="ARTIST_AUTHORED",
+        )
+        self.assertEqual(a["route_plan_sha256"],b["route_plan_sha256"])
+        restored,authority,digest=parse_bound_route_plan(
+            a,expected_scene_contract_id="sceneA",expected_source_run_id="runA",
+            require_hash=True,
+        )
+        self.assertEqual(restored,plan)
+        self.assertEqual(authority,"ARTIST_AUTHORED")
+        self.assertEqual(digest,a["route_plan_sha256"])
+
+        with self.assertRaises(ValueError):
+            parse_bound_route_plan(
+                a,expected_scene_contract_id="sceneB",expected_source_run_id="runA"
+            )
+        with self.assertRaises(ValueError):
+            parse_bound_route_plan(
+                a,expected_scene_contract_id="sceneA",expected_source_run_id="runB"
+            )
+
+    def test_bound_route_rejects_tampering_but_allows_unhashed_dirty_edit(self):
+        from p10_lab.drone_route_plan import (
+            DroneMission,DroneRoutePlan,DroneWaypoint,
+            bind_route_plan,parse_bound_route_plan,
+        )
+        plan=DroneRoutePlan(
+            missions=(DroneMission("drone_1","PATH",(
+                DroneWaypoint(0,0,0),DroneWaypoint(0,0,5)
+            )),),
+        )
+        payload=bind_route_plan(
+            plan,scene_contract_id="scene",source_run_id="run",
+            route_authority="EDITABLE_SEED",
+        )
+        tampered=dict(payload)
+        tampered["frames_per_drone"]=31
+        with self.assertRaises(ValueError):
+            parse_bound_route_plan(
+                tampered,expected_scene_contract_id="scene",expected_source_run_id="run"
+            )
+
+        dirty=dict(tampered)
+        dirty.pop("route_plan_sha256",None)
+        restored,authority,digest=parse_bound_route_plan(
+            dirty,expected_scene_contract_id="scene",expected_source_run_id="run"
+        )
+        self.assertEqual(restored.frames_per_drone,31)
+        self.assertEqual(authority,"EDITABLE_SEED")
+        self.assertEqual(len(digest),64)
+
     def test_roundtrip_manifest(self):
         from p10_lab.drone_route_plan import DroneMission, DroneRoutePlan, DroneWaypoint
 
