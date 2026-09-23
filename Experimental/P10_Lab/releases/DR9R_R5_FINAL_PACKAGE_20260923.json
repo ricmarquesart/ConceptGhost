@@ -1,0 +1,41 @@
+{
+  "schema": "ConceptGhost.P10DR9RFinalPackage.v0.5",
+  "release": "ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r5",
+  "created_at": "2026-09-23",
+  "runtime_source_commit": "e5a11bca683c08d436c211f2fdfb634f46c23c2b",
+  "sha256": "63ec487e3a73e98018cb72d5d27472ada3e33ccbd450ebf964028e558420be1d",
+  "bytes": 12230648,
+  "zip_members": 187,
+  "google_drive": {
+    "file_id": "1qr3iAHlRRlgRHsqRF1zwULlfNikhTwyH",
+    "url": "https://drive.google.com/file/d/1qr3iAHlRRlgRHsqRF1zwULlfNikhTwyH/view"
+  },
+  "github_release": {
+    "tag": "p10-dr9r-r5",
+    "url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r5",
+    "asset": "ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r5.zip",
+    "asset_digest": "sha256:63ec487e3a73e98018cb72d5d27472ada3e33ccbd450ebf964028e558420be1d"
+  },
+  "workflows": {
+    "route_setup": "ConceptGhost_v1.54_P10_DR9R_ROUTE_SETUP_r5.json",
+    "production": "ConceptGhost_v1.54_P10_DR9R_PRODUCTION_r5.json"
+  },
+  "queue_model": {
+    "new_scene_expected_queue_clicks": 3,
+    "expensive_p9_solves_expected": 1,
+    "p10_production_runs_expected": 1
+  },
+  "ci": {
+    "source_validation_run": 35884897990,
+    "status": "SUCCESS"
+  },
+  "validation": {
+    "bundle_structure": "PASS",
+    "extracted_sha256s": "PASS",
+    "drive_redownload_byte_identical": true,
+    "github_release_asset_digest_matches": true
+  },
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "user_runtime_acceptance": "PENDING",
+  "next_after_acceptance": "Gate 7"
+}
