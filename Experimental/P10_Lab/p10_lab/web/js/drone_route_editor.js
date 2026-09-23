@@ -93,6 +93,20 @@ function setupEditor(node) {
 
     const routeWidget = findWidget(node, "route_plan_json");
     if (!routeWidget) return;
+    const framesWidget = findWidget(node, "frames_per_drone");
+    const clearanceWidget = findWidget(node, "min_clearance_m");
+
+    function sanitizeNumericWidgets() {
+        if (framesWidget) {
+            const value = Number(framesWidget.value);
+            if (!Number.isFinite(value) || value < 2 || value > 240) framesWidget.value = 30;
+        }
+        if (clearanceWidget) {
+            const value = Number(clearanceWidget.value);
+            if (!Number.isFinite(value) || value < 0 || value > 10) clearanceWidget.value = 0.20;
+        }
+    }
+    sanitizeNumericWidgets();
 
     // JSON is still serialized by the normal ComfyUI widget, but the artist
     // edits it through the tri-view UI instead of a text box.
@@ -154,7 +168,8 @@ function setupEditor(node) {
     const deletePoint = button("Excluir ponto", "Excluir waypoint selecionado");
     const undo = button("Desfazer", "Desfazer a última edição");
     const clearRoute = button("Limpar rota", "Limpar os pontos do drone atual");
-    const resetScene = button("Resetar cena", "Descartar a rota salva e gerar uma nova semente para a cena atual");
+    const resetRoute = button("Resetar rota", "Restaurar a rota-semente desta mesma cena sem apagar P9 nem a visualização");
+    const frameAll = button("Enquadrar tudo", "Restaurar zoom/pan das quatro vistas sem alterar rota ou P9");
     const editTarget = button("Editar alvo", "Definir/arrastar o LOOK_AT_TARGET nas vistas ortográficas");
     const yawInput = document.createElement("input");
     const pitchInput = document.createElement("input");
@@ -170,14 +185,15 @@ function setupEditor(node) {
         "Drone:", droneSelect, modeSelect,
         "Aim:", orientationSelect, editTarget,
         "Yaw:", yawInput, "Pitch:", pitchInput,
-        addDrone, removeDrone, deletePoint, undo, clearRoute, resetScene
+        addDrone, removeDrone, deletePoint, undo, clearRoute, resetRoute, frameAll
     );
 
     const help = document.createElement("div");
     help.textContent =
-        "PERSPECTIVE: arraste para orbitar e use a roda para zoom. TOP, SIDE e FRONT editam o mesmo ponto 3D " +
-        "com escala métrica preservada. Em LOOK_AT_TARGET, use Editar alvo para posicionar o alvo nas vistas ortográficas. " +
-        "A perspectiva é inspeção, sem criação ambígua de profundidade. Após editar, execute Queue Prompt para aplicar a rota ao P10.";
+        "PASSO 1/2 neste workflow: após o primeiro Run, edite os drones; depois clique Run novamente para COMMITAR a rota. " +
+        "PERSPECTIVE: arraste para orbitar, Shift+arraste para pan e use a roda para zoom. " +
+        "TOP/SIDE/FRONT: roda = zoom; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
+        "LOOK_AT_TARGET usa Editar alvo. Resetar rota não apaga a cena; Enquadrar tudo só restaura a câmera das vistas.";
     help.style.cssText = "color:#aaa;line-height:1.3;";
 
     const canvasWrap = document.createElement("div");
@@ -209,7 +225,6 @@ function setupEditor(node) {
     const state = {
         plan: null,
         projection: null,
-        background: null,
         activeMission: 0,
         selectedPoint: null,
         dragging: false,
@@ -217,14 +232,25 @@ function setupEditor(node) {
         history: [],
         metadata: null,
         collisionStale: false,
+        sceneKey: null,
+        initialSeedPlan: null,
         orbitYaw: -35 * Math.PI / 180,
         orbitPitch: -18 * Math.PI / 180,
         orbitZoom: 1.0,
+        orbitPanX: 0,
+        orbitPanY: 0,
         orbitDragging: false,
+        orbitPanning: false,
         orbitLast: null,
+        orthoViews: {},
+        orthoPanning: false,
+        orthoPanPanel: null,
+        orthoLast: null,
         editingTarget: false,
         targetDragging: false,
     };
+
+    function pushHistory()    };
 
     function pushHistory() {
         if (!validPlan(state.plan)) return;
@@ -234,12 +260,14 @@ function setupEditor(node) {
 
     function persist() {
         if (!validPlan(state.plan)) return;
+        sanitizeNumericWidgets();
         state.plan.route_authority = "ARTIST_AUTHORED";
         delete state.plan.route_plan_sha256;
         state.plan.route_plan_dirty = true;
         routeWidget.value = JSON.stringify(state.plan, null, 2);
         routeWidget.callback?.(routeWidget.value);
         state.collisionStale = true;
+        if (!state.dragging && !state.targetDragging) ensureRouteVisible();
         node.graph?.setDirtyCanvas?.(true, true);
         updateToolbar();
         draw();
@@ -385,22 +413,120 @@ function setupEditor(node) {
         }) || null;
     }
 
+    function baseOrthoView(panel) {
+        const xMin = Number(panel.x_extent.min);
+        const xMax = Number(panel.x_extent.max);
+        const yMin = Number(panel.y_extent.min);
+        const yMax = Number(panel.y_extent.max);
+        return {
+            baseCenterX: (xMin + xMax) * 0.5,
+            baseCenterY: (yMin + yMax) * 0.5,
+            baseSpanX: Math.max(xMax - xMin, 1e-9),
+            baseSpanY: Math.max(yMax - yMin, 1e-9),
+            zoom: 1.0,
+            panX: 0.0,
+            panY: 0.0,
+        };
+    }
+
+    function ensureOrthoViews(reset = false) {
+        for (const panel of state.projection?.panels || []) {
+            if (reset || !state.orthoViews[panel.name]) {
+                state.orthoViews[panel.name] = baseOrthoView(panel);
+            }
+        }
+    }
+
+    function orthoExtent(panel) {
+        ensureOrthoViews(false);
+        const view = state.orthoViews[panel.name] || baseOrthoView(panel);
+        const zoom = Math.max(0.15, Math.min(40, Number(view.zoom) || 1));
+        const spanX = view.baseSpanX / zoom;
+        const spanY = view.baseSpanY / zoom;
+        const centerX = view.baseCenterX + Number(view.panX || 0);
+        const centerY = view.baseCenterY + Number(view.panY || 0);
+        return {
+            minX: centerX - spanX * 0.5,
+            maxX: centerX + spanX * 0.5,
+            minY: centerY - spanY * 0.5,
+            maxY: centerY + spanY * 0.5,
+            spanX,
+            spanY,
+            centerX,
+            centerY,
+            view,
+        };
+    }
+
     function project(panel, point) {
         const r = panel.plot_rect_px;
-        const xExtent = panel.x_extent;
-        const yExtent = panel.y_extent;
+        const extent = orthoExtent(panel);
         const xValue = Number(point[panel.x_axis]);
         const yValue = Number(point[panel.y_axis]);
-        const xAmount = (xValue - Number(xExtent.min)) / (Number(xExtent.max) - Number(xExtent.min));
-        const yAmount = (yValue - Number(yExtent.min)) / (Number(yExtent.max) - Number(yExtent.min));
+        const xAmount = (xValue - extent.minX) / extent.spanX;
+        const yAmount = (yValue - extent.minY) / extent.spanY;
         return {
             x: r.x + xAmount * r.width,
             y: r.y + (1 - yAmount) * r.height,
         };
     }
 
+    function worldFromPanel(panel, x, y, base) {
+        const r = panel.plot_rect_px;
+        const extent = orthoExtent(panel);
+        const xAmount = Math.max(0, Math.min(1, (x - r.x) / r.width));
+        const yAmount = Math.max(0, Math.min(1, 1 - (y - r.y) / r.height));
+        const point = { ...base };
+        point[panel.x_axis] = extent.minX + xAmount * extent.spanX;
+        point[panel.y_axis] = extent.minY + yAmount * extent.spanY;
+        return point;
+    }
 
-    function perspectivePanel() {
+    function routePointsForVisibility() {
+        const points = [];
+        for (const mission of state.plan?.missions || []) {
+            if (mission.enabled === false) continue;
+            for (const point of mission.waypoints || []) points.push(point);
+            if (mission.orientation_mode === "LOOK_AT_TARGET" && mission.look_target) points.push(mission.look_target);
+        }
+        return points;
+    }
+
+    function ensureRouteVisible() {
+        if (!state.projection || !validPlan(state.plan)) return;
+        ensureOrthoViews(false);
+        const points = routePointsForVisibility();
+        if (!points.length) return;
+        for (const panel of state.projection.panels || []) {
+            const extent = orthoExtent(panel);
+            const xs = points.map((p) => Number(p[panel.x_axis])).filter(Number.isFinite);
+            const ys = points.map((p) => Number(p[panel.y_axis])).filter(Number.isFinite);
+            if (!xs.length || !ys.length) continue;
+            const marginX = extent.spanX * 0.06;
+            const marginY = extent.spanY * 0.06;
+            const minX = Math.min(...xs) - marginX;
+            const maxX = Math.max(...xs) + marginX;
+            const minY = Math.min(...ys) - marginY;
+            const maxY = Math.max(...ys) + marginY;
+            const inside = minX >= extent.minX && maxX <= extent.maxX &&
+                minY >= extent.minY && maxY <= extent.maxY;
+            if (inside) continue;
+
+            const unionMinX = Math.min(extent.minX, minX);
+            const unionMaxX = Math.max(extent.maxX, maxX);
+            const unionMinY = Math.min(extent.minY, minY);
+            const unionMaxY = Math.max(extent.maxY, maxY);
+            const desiredSpanX = unionMaxX - unionMinX;
+            const desiredSpanY = unionMaxY - unionMinY;
+            const scale = Math.max(desiredSpanX / extent.spanX, desiredSpanY / extent.spanY, 1.0);
+            const view = extent.view;
+            view.zoom = Math.max(0.15, view.zoom / scale);
+            view.panX = ((unionMinX + unionMaxX) * 0.5) - view.baseCenterX;
+            view.panY = ((unionMinY + unionMaxY) * 0.5) - view.baseCenterY;
+        }
+    }
+
+    function perspectivePanel() {    function perspectivePanel() {
         return state.projection?.perspective_panel || null;
     }
 
@@ -436,8 +562,8 @@ function setupEditor(node) {
         if (depth <= radius * 0.02) return null;
         const focal = Math.min(plot.width, plot.height) * 1.05;
         return {
-            x: plot.x + plot.width * 0.5 + (x1 / depth) * focal,
-            y: plot.y + plot.height * 0.5 - (y2 / depth) * focal,
+            x: plot.x + plot.width * 0.5 + state.orbitPanX + (x1 / depth) * focal,
+            y: plot.y + plot.height * 0.5 + state.orbitPanY - (y2 / depth) * focal,
             depth,
         };
     }
@@ -502,14 +628,14 @@ function setupEditor(node) {
         ctx.clip();
 
         const points = geometry.points;
-        const drawStride = Math.max(1, Math.ceil(points.length / 9000));
+        const drawStride = Math.max(1, Math.ceil(points.length / 30000));
         for (let index = 0; index < points.length; index += drawStride) {
             const raw = points[index];
             const p = projectPerspective(raw);
             if (!p) continue;
             if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
             ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.72)`;
-            ctx.fillRect(p.x, p.y, 1.4, 1.4);
+            ctx.fillRect(p.x, p.y, 0.9, 0.9);
         }
 
         for (let missionIndex = 0; missionIndex < (state.plan?.missions || []).length; missionIndex++) {
@@ -566,22 +692,14 @@ function setupEditor(node) {
         ctx.restore();
         ctx.fillStyle = "#aaa";
         ctx.font = "11px sans-serif";
-        ctx.fillText("drag: orbit · wheel: zoom · inspection only", plot.x + 8, plot.y + plot.height - 10);
+        ctx.fillText("drag: orbit · Shift+drag: pan · wheel: zoom · inspection only", plot.x + 8, plot.y + plot.height - 10);
     }
 
     function pointFromPanel(panel, x, y, base) {
-        const r = panel.plot_rect_px;
-        const xExtent = panel.x_extent;
-        const yExtent = panel.y_extent;
-        const xAmount = Math.max(0, Math.min(1, (x - r.x) / r.width));
-        const yAmount = Math.max(0, Math.min(1, 1 - (y - r.y) / r.height));
-        const point = { ...base };
-        point[panel.x_axis] = Number(xExtent.min) + xAmount * (Number(xExtent.max) - Number(xExtent.min));
-        point[panel.y_axis] = Number(yExtent.min) + yAmount * (Number(yExtent.max) - Number(yExtent.min));
-        return point;
+        return worldFromPanel(panel, x, y, base);
     }
 
-    function eventCoordinates(event) {
+    function eventCoordinates(event) {    function eventCoordinates(event) {
         const rect = canvas.getBoundingClientRect();
         if (!rect.width || !rect.height) return null;
         return {
@@ -619,19 +737,85 @@ function setupEditor(node) {
         return Boolean(segment?.blocked);
     }
 
+    function canvasDimensionsFromProjection() {
+        const rects = [
+            state.projection?.perspective_panel?.panel_rect_px,
+            ...(state.projection?.panels || []).map((panel) => panel.panel_rect_px),
+        ].filter(Boolean);
+        if (!rects.length) return { width: 900, height: 900 };
+        return {
+            width: Math.ceil(Math.max(...rects.map((r) => r.x + r.width)) + 10),
+            height: Math.ceil(Math.max(...rects.map((r) => r.y + r.height)) + 10),
+        };
+    }
+
+    function drawPanelShell(panel, subtitle) {
+        const rect = panel.panel_rect_px;
+        const plot = panel.plot_rect_px;
+        ctx.fillStyle = "#181818";
+        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        ctx.strokeStyle = "#555";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        ctx.strokeStyle = "#333";
+        ctx.strokeRect(plot.x, plot.y, plot.width, plot.height);
+        ctx.fillStyle = "#eee";
+        ctx.font = "12px sans-serif";
+        ctx.fillText(panel.name || "", rect.x + 10, rect.y + 16);
+        ctx.fillStyle = "#999";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(subtitle || "", rect.x + 10, rect.y + 31);
+    }
+
+    function geometryPoint(raw) {
+        return { right: Number(raw[0]), up: Number(raw[1]), forward: Number(raw[2]) };
+    }
+
+    function drawOrthographicScene(panel) {
+        const geometry = state.metadata?.preview_geometry;
+        if (!geometry?.points) return;
+        const plot = panel.plot_rect_px;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(plot.x, plot.y, plot.width, plot.height);
+        ctx.clip();
+
+        const points = geometry.points;
+        const drawStride = Math.max(1, Math.ceil(points.length / 30000));
+        for (let index = 0; index < points.length; index += drawStride) {
+            const raw = points[index];
+            const p = project(panel, geometryPoint(raw));
+            if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
+            ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.78)`;
+            ctx.fillRect(p.x, p.y, 0.85, 0.85);
+        }
+        ctx.restore();
+
+        const extent = orthoExtent(panel);
+        ctx.fillStyle = "#999";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(
+            `zoom ${extent.view.zoom.toFixed(2)}x · Shift+drag/middle = pan · wheel = zoom`,
+            plot.x + 7, plot.y + plot.height - 8
+        );
+    }
+
     function draw() {
         if (!canvas.width || !canvas.height) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (state.background?.complete && state.background.naturalWidth) {
-            ctx.drawImage(state.background, 0, 0, canvas.width, canvas.height);
-        }
-
         if (!validPlan(state.plan) || !state.projection) return;
 
-        drawPerspectiveScene();
+        const perspective = perspectivePanel();
+        if (perspective) {
+            drawPanelShell(perspective, "ORBIT / PAN / ZOOM · inspection");
+            drawPerspectiveScene();
+        }
+        for (const panel of state.projection.panels || []) {
+            drawPanelShell(panel, `${String(panel.x_axis).toUpperCase()} / ${String(panel.y_axis).toUpperCase()} · axis locked`);
+            drawOrthographicScene(panel);
+        }
 
         for (let missionIndex = 0; missionIndex < state.plan.missions.length; missionIndex++) {
             const mission = state.plan.missions[missionIndex];
@@ -640,8 +824,13 @@ function setupEditor(node) {
             const points = mission.waypoints || [];
 
             for (const panel of state.projection.panels || []) {
-                const projected = points.map((point) => project(panel, point));
+                const plot = panel.plot_rect_px;
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(plot.x, plot.y, plot.width, plot.height);
+                ctx.clip();
 
+                const projected = points.map((point) => project(panel, point));
                 const collisionReport = collisionMissionReport(mission);
                 if (mission.mode === "PATH" && projected.length > 1) {
                     for (let segmentIndex = 0; segmentIndex < projected.length - 1; segmentIndex++) {
@@ -649,13 +838,13 @@ function setupEditor(node) {
                         const a = projected[segmentIndex];
                         const b = projected[segmentIndex + 1];
                         ctx.strokeStyle = blocked ? "#ff3b58" : color;
-                        ctx.lineWidth = blocked ? 5 : (missionIndex === state.activeMission ? 3 : 2);
+                        ctx.lineWidth = blocked ? 4 : (missionIndex === state.activeMission ? 2.5 : 1.5);
                         ctx.setLineDash(blocked ? [10, 5] : (missionIndex === state.activeMission ? [] : [7, 5]));
                         ctx.beginPath();
                         ctx.moveTo(a.x, a.y);
                         ctx.lineTo(b.x, b.y);
                         ctx.stroke();
-                        drawArrowHead(a, b, blocked ? "#ff3b58" : color, blocked ? 1.2 : 1.0);
+                        drawArrowHead(a, b, blocked ? "#ff3b58" : color, blocked ? 1.0 : 0.85);
                     }
                     ctx.setLineDash([]);
                 }
@@ -664,85 +853,95 @@ function setupEditor(node) {
                     const p = projected[0];
                     const blocked = Boolean(collisionReport?.blocked);
                     ctx.strokeStyle = blocked ? "#ff3b58" : color;
-                    ctx.lineWidth = blocked ? 5 : 3;
+                    ctx.lineWidth = blocked ? 4 : 2.5;
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 9, -Math.PI * 0.15, Math.PI * 1.6);
+                    ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
                     ctx.stroke();
                 }
 
-                const metricSpan = Math.max(
-                    Number(panel.x_extent.max) - Number(panel.x_extent.min),
-                    Number(panel.y_extent.max) - Number(panel.y_extent.min),
-                );
+                const extent = orthoExtent(panel);
+                const metricSpan = Math.max(extent.spanX, extent.spanY);
                 points.forEach((point, pointIndex) => {
                     const p = projected[pointIndex];
                     const selectedPoint =
                         missionIndex === state.activeMission && pointIndex === state.selectedPoint;
                     ctx.fillStyle = color;
                     ctx.strokeStyle = selectedPoint ? "#ffffff" : "#202020";
-                    ctx.lineWidth = selectedPoint ? 3 : 1;
+                    ctx.lineWidth = selectedPoint ? 2 : 1;
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, selectedPoint ? 7 : 5, 0, Math.PI * 2);
+                    ctx.arc(p.x, p.y, selectedPoint ? 5 : 3.5, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
                     ctx.fillStyle = color;
-                    ctx.font = "11px sans-serif";
-                    ctx.fillText(String(pointIndex + 1), p.x + 8, p.y - 7);
+                    ctx.font = "10px sans-serif";
+                    ctx.fillText(String(pointIndex + 1), p.x + 6, p.y - 5);
 
                     if (mission.mode === "PATH") {
-                        const tipPoint = orientationTip(point, mission, pointIndex, Math.max(metricSpan * 0.045, 0.20));
+                        const tipPoint = orientationTip(point, mission, pointIndex, Math.max(metricSpan * 0.035, 0.15));
                         const tip = project(panel, tipPoint);
                         ctx.strokeStyle = "#f5f5f5";
-                        ctx.lineWidth = 1.25;
+                        ctx.lineWidth = 1;
                         ctx.beginPath();
                         ctx.moveTo(p.x, p.y);
                         ctx.lineTo(tip.x, tip.y);
                         ctx.stroke();
-                        drawArrowHead(p, tip, "#f5f5f5", 0.75);
+                        drawArrowHead(p, tip, "#f5f5f5", 0.65);
                     }
                 });
                 if (mission.orientation_mode === "LOOK_AT_TARGET") {
                     drawTargetMarker((point) => project(panel, point), mission.look_target, color);
                 }
+                ctx.restore();
             }
         }
     }
 
-    function loadBackground(meta) {
-        const url = imageUrl(meta);
-        if (!url) return;
-        const image = new Image();
-        image.onload = () => {
-            state.background = image;
-            canvas.width = image.naturalWidth;
-            canvas.height = image.naturalHeight;
-            draw();
-        };
-        image.src = url;
+    function resetViewportFraming() {
+        if (!state.projection) return;
+        ensureOrthoViews(true);
+        const perspective = state.projection?.perspective_panel;
+        state.orbitYaw = Number(perspective?.default_yaw_deg ?? -35) * Math.PI / 180;
+        state.orbitPitch = Number(perspective?.default_pitch_deg ?? -18) * Math.PI / 180;
+        state.orbitZoom = Number(perspective?.default_zoom ?? 1);
+        state.orbitPanX = 0;
+        state.orbitPanY = 0;
+        ensureRouteVisible();
+        draw();
     }
 
     function ingestExecution(message) {
         const raw = message?.route_editor;
         const meta = Array.isArray(raw) ? raw[0] : raw;
         if (!meta?.projection || !meta?.plan) return;
+        sanitizeNumericWidgets();
+        const sceneKey = String(meta?.diagnostics?.scene_contract_id || meta?.diagnostics?.source_run_id || "");
+        const sceneChanged = Boolean(sceneKey && state.sceneKey && sceneKey !== state.sceneKey);
+        state.sceneKey = sceneKey || state.sceneKey;
         state.metadata = meta;
         state.projection = meta.projection;
         state.collisionStale = false;
-        const perspective = meta.projection?.perspective_panel;
-        if (perspective) {
-            state.orbitYaw = Number(perspective.default_yaw_deg ?? -35) * Math.PI / 180;
-            state.orbitPitch = Number(perspective.default_pitch_deg ?? -18) * Math.PI / 180;
-            state.orbitZoom = Number(perspective.default_zoom ?? 1);
+
+        const size = canvasDimensionsFromProjection();
+        canvas.width = size.width;
+        canvas.height = size.height;
+
+        if (sceneChanged || !Object.keys(state.orthoViews).length) {
+            ensureOrthoViews(true);
+            resetViewportFraming();
+        } else {
+            ensureOrthoViews(false);
         }
+
         const cleanPlan = clone(meta.plan);
         delete cleanPlan.route_plan_dirty;
+        if (!state.initialSeedPlan || sceneChanged || String(cleanPlan.route_authority || "").toUpperCase() === "EDITABLE_SEED") {
+            state.initialSeedPlan = clone(cleanPlan);
+        }
         setPlan(cleanPlan, true);
+        ensureRouteVisible();
         state.collisionStale = false;
         updateToolbar();
-        loadBackground(meta.editor_base_preview || meta.preview);
+        draw();
     }
 
     canvas.addEventListener("pointerdown", (event) => {
@@ -750,15 +949,30 @@ function setupEditor(node) {
         const xy = eventCoordinates(event);
         if (!xy) return;
         const perspective = perspectivePanel();
+        const panGesture = event.shiftKey || event.button === 1;
+
         if (perspective && insideRect(perspective.plot_rect_px, xy.x, xy.y)) {
-            state.orbitDragging = true;
             state.orbitLast = xy;
+            if (panGesture) state.orbitPanning = true;
+            else state.orbitDragging = true;
             canvas.setPointerCapture?.(event.pointerId);
-            canvas.style.cursor = "grabbing";
+            canvas.style.cursor = panGesture ? "move" : "grabbing";
+            event.preventDefault();
             return;
         }
+
         const panel = panelAt(xy.x, xy.y);
         if (!panel) return;
+        if (panGesture) {
+            state.orthoPanning = true;
+            state.orthoPanPanel = panel.name;
+            state.orthoLast = xy;
+            canvas.setPointerCapture?.(event.pointerId);
+            canvas.style.cursor = "move";
+            event.preventDefault();
+            return;
+        }
+
         const mission = activeMission();
         if (!mission) return;
 
@@ -788,9 +1002,7 @@ function setupEditor(node) {
 
         pushHistory();
         const points = mission.waypoints || (mission.waypoints = []);
-        const base =
-            points[points.length - 1] ||
-            defaultPoint(state.projection);
+        const base = points[points.length - 1] || defaultPoint(state.projection);
         const point = pointFromPanel(panel, xy.x, xy.y, base);
 
         if (mission.mode === "SPIN_360") {
@@ -806,15 +1018,36 @@ function setupEditor(node) {
     canvas.addEventListener("pointermove", (event) => {
         const xy = eventCoordinates(event);
         if (!xy) return;
-        if (state.orbitDragging && state.orbitLast) {
+
+        if ((state.orbitDragging || state.orbitPanning) && state.orbitLast) {
             const dx = xy.x - state.orbitLast.x;
             const dy = xy.y - state.orbitLast.y;
-            state.orbitYaw += dx * 0.008;
-            state.orbitPitch = Math.max(-1.35, Math.min(1.35, state.orbitPitch + dy * 0.008));
+            if (state.orbitPanning) {
+                state.orbitPanX += dx;
+                state.orbitPanY += dy;
+            } else {
+                state.orbitYaw += dx * 0.008;
+                state.orbitPitch = Math.max(-1.35, Math.min(1.35, state.orbitPitch + dy * 0.008));
+            }
             state.orbitLast = xy;
             draw();
             return;
         }
+
+        if (state.orthoPanning && state.orthoLast && state.orthoPanPanel) {
+            const panel = (state.projection?.panels || []).find((item) => item.name === state.orthoPanPanel);
+            if (panel) {
+                const extent = orthoExtent(panel);
+                const dx = xy.x - state.orthoLast.x;
+                const dy = xy.y - state.orthoLast.y;
+                extent.view.panX -= dx / panel.plot_rect_px.width * extent.spanX;
+                extent.view.panY += dy / panel.plot_rect_px.height * extent.spanY;
+                state.orthoLast = xy;
+                draw();
+            }
+            return;
+        }
+
         if (!state.dragging && !state.targetDragging) return;
         if (!state.targetDragging && state.selectedPoint == null) return;
         const panel = panelAt(xy.x, xy.y);
@@ -837,14 +1070,23 @@ function setupEditor(node) {
     });
 
     const stopDrag = (event) => {
-        if (!state.dragging && !state.targetDragging && !state.orbitDragging) return;
+        const wasEditing = state.dragging || state.targetDragging;
+        if (!wasEditing && !state.orbitDragging && !state.orbitPanning && !state.orthoPanning) return;
         state.dragging = false;
         state.targetDragging = false;
         state.dragHistoryPushed = false;
         state.orbitDragging = false;
+        state.orbitPanning = false;
         state.orbitLast = null;
+        state.orthoPanning = false;
+        state.orthoPanPanel = null;
+        state.orthoLast = null;
         canvas.style.cursor = "crosshair";
         canvas.releasePointerCapture?.(event.pointerId);
+        if (wasEditing) {
+            ensureRouteVisible();
+            draw();
+        }
     };
     canvas.addEventListener("pointerup", stopDrag);
     canvas.addEventListener("pointercancel", stopDrag);
@@ -852,15 +1094,38 @@ function setupEditor(node) {
     canvas.addEventListener("wheel", (event) => {
         if (!state.projection) return;
         const xy = eventCoordinates(event);
+        if (!xy) return;
         const perspective = perspectivePanel();
-        if (!xy || !perspective || !insideRect(perspective.plot_rect_px, xy.x, xy.y)) return;
-        event.preventDefault();
         const factor = Math.exp(-event.deltaY * 0.0015);
-        state.orbitZoom = Math.max(0.25, Math.min(5.0, state.orbitZoom * factor));
+
+        if (perspective && insideRect(perspective.plot_rect_px, xy.x, xy.y)) {
+            event.preventDefault();
+            state.orbitZoom = Math.max(0.20, Math.min(12.0, state.orbitZoom * factor));
+            draw();
+            return;
+        }
+
+        const panel = panelAt(xy.x, xy.y);
+        if (!panel) return;
+        event.preventDefault();
+        const before = worldFromPanel(panel, xy.x, xy.y, {});
+        const extent = orthoExtent(panel);
+        extent.view.zoom = Math.max(0.20, Math.min(30.0, extent.view.zoom * factor));
+        const after = worldFromPanel(panel, xy.x, xy.y, {});
+        extent.view.panX += Number(before[panel.x_axis]) - Number(after[panel.x_axis]);
+        extent.view.panY += Number(before[panel.y_axis]) - Number(after[panel.y_axis]);
         draw();
     }, { passive: false });
 
-    droneSelect.addEventListener("change", () => {
+    canvas.addEventListener("contextmenu", (event) => {
+        const xy = eventCoordinates(event);
+        if (!xy) return;
+        if ((perspectivePanel() && insideRect(perspectivePanel().plot_rect_px, xy.x, xy.y)) || panelAt(xy.x, xy.y)) {
+            if (event.shiftKey) event.preventDefault();
+        }
+    });
+
+    droneSelect.addEventListener("change", () => {    droneSelect.addEventListener("change", () => {
         state.activeMission = Number(droneSelect.value) || 0;
         state.selectedPoint = null;
         state.editingTarget = false;
@@ -994,29 +1259,39 @@ function setupEditor(node) {
         setPlan(previous, true);
     });
 
-    resetScene.addEventListener("click", () => {
+    resetRoute.addEventListener("click", () => {
+        if (!state.initialSeedPlan || !state.projection || !state.metadata) {
+            status.textContent = "A cena ainda não foi carregada. Execute Run #1 primeiro.";
+            status.style.color = "#ffdc5a";
+            return;
+        }
+        sanitizeNumericWidgets();
+        pushHistory();
         state.history = [];
-        state.plan = null;
-        state.projection = null;
-        state.metadata = null;
         state.selectedPoint = null;
         state.editingTarget = false;
+        state.targetDragging = false;
         state.collisionStale = true;
-        routeWidget.value = "";
-        routeWidget.callback?.("");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        status.textContent = "Rota descartada · execute o node para gerar a semente da cena atual";
+        setPlan(clone(state.initialSeedPlan), true);
+        ensureRouteVisible();
+        status.textContent = "Rota restaurada para a semente desta cena · P9 e visualização preservados";
         status.style.color = "#ffdc5a";
-        selected.textContent = "";
         node.graph?.setDirtyCanvas?.(true, true);
-        updateToolbar();
+        draw();
     });
 
-    chainCallback(node, "onExecuted", function (message) {
+    frameAll.addEventListener("click", () => {
+        resetViewportFraming();
+        status.textContent = "Enquadramento restaurado · rota e P9 não foram alterados";
+        status.style.color = "#86e276";
+    });
+
+    chainCallback(node, "onExecuted", function (message) {    chainCallback(node, "onExecuted", function (message) {
         ingestExecution(message);
     });
 
     // Restore the serialized route immediately when a workflow is reopened.
+    sanitizeNumericWidgets();
     try {
         const saved = JSON.parse(String(routeWidget.value || "").trim());
         if (validPlan(saved)) {
