@@ -482,8 +482,18 @@ def run_dense_reconstruction(
     depth_map_count = _count_matching_files(plan.dense_root / "stereo" / "depth_maps", ".bin")
     normal_map_count = _count_matching_files(plan.dense_root / "stereo" / "normal_maps", ".bin")
 
+    sparse_manifest_path=plan.dataset_root/"sparse_triangulation_manifest.json"
+    sparse_manifest=None
+    if sparse_manifest_path.is_file():
+        try:
+            candidate=json.loads(sparse_manifest_path.read_text(encoding="utf-8"))
+            if isinstance(candidate,dict):
+                sparse_manifest=candidate
+        except (OSError,json.JSONDecodeError):
+            sparse_manifest=None
+
     result_manifest = {
-        "schema": "ConceptGhost.P10DenseReconstructionResult.v0.1",
+        "schema": "ConceptGhost.P10DenseReconstructionResult.v0.2",
         **plan.manifest(),
         "status": "PASS",
         "colmap_executable": executable,
@@ -491,6 +501,21 @@ def run_dense_reconstruction(
         "depth_map_file_count": depth_map_count,
         "normal_map_file_count": normal_map_count,
         "fused_cloud": cloud_health,
+        "source_sparse_manifest_path":(
+            str(sparse_manifest_path.resolve()) if sparse_manifest_path.is_file() else None
+        ),
+        "verified_sparse_component_count":(
+            sparse_manifest.get("verified_component_count")
+            if isinstance(sparse_manifest,dict) else None
+        ),
+        "mission_contribution":(
+            sparse_manifest.get("mission_contribution",[])
+            if isinstance(sparse_manifest,dict) else []
+        ),
+        "sparse_quality_status":(
+            sparse_manifest.get("quality_status")
+            if isinstance(sparse_manifest,dict) else None
+        ),
         "visual_evidence_path": cloud_health["preview_path"],
         "diagnostic_log_root": str(log_root.resolve()),
     }
