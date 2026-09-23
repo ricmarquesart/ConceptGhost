@@ -17,6 +17,7 @@ from .p9_boundary import validate_official_run
 from .prefusion_mesh import run_prefusion_meshing
 from .sparse_triangulation import run_sparse_triangulation
 from .wan_sequence import read_control_manifest
+from .reconstruction_overlay import build_metric_reconstruction_overlay
 
 
 _SCHEMA = "ConceptGhost.P10P9RoundtripDataset.v0.1"
@@ -364,6 +365,33 @@ def run_p9_roundtrip_audit(
     )
     dataset=json.loads((dataset_root/"dataset_manifest.json").read_text(encoding="utf-8"))
 
+    metric_overlay=None
+    source_p9_run_dir=str(dataset.get("source_p9_run_dir") or "").strip()
+    if source_p9_run_dir:
+        overlay_path=output_root/"p9_roundtrip_metric_overlay.png"
+        try:
+            metric_overlay=build_metric_reconstruction_overlay(
+                source_p9_run_dir,
+                camera_manifest_path,
+                dataset_root,
+                overlay_path,
+            )
+        except Exception as error:
+            metric_overlay={
+                "schema":"ConceptGhost.P10MetricReconstructionOverlay.v0.1",
+                "status":"WARN",
+                "alerts":["P9_ROUNDTRIP_METRIC_OVERLAY_RENDER_FAILED"],
+                "error":f"{type(error).__name__}: {error}",
+                "p9_authority_changed":False,
+            }
+    else:
+        metric_overlay={
+            "schema":"ConceptGhost.P10MetricReconstructionOverlay.v0.1",
+            "status":"WARN",
+            "alerts":["SOURCE_P9_RUN_DIR_MISSING"],
+            "p9_authority_changed":False,
+        }
+
     sparse_points=int(sparse.get("sparse_point_count") or 0)
     dense_points=int((dense.get("fused_cloud") or {}).get("vertex_count") or 0)
     mesh_health=mesh.get("mesh_health") or {}
@@ -403,6 +431,11 @@ def run_p9_roundtrip_audit(
         "mesh_health":mesh_health,
         "dense_preview_path":(dense.get("fused_cloud") or {}).get("preview_path"),
         "prefusion_preview_path":mesh_health.get("preview_path"),
+        "metric_overlay":metric_overlay,
+        "metric_overlay_preview_png_path":(
+            metric_overlay.get("preview_png_path")
+            if isinstance(metric_overlay,dict) else None
+        ),
     }
     audit_path.write_text(json.dumps(result,indent=2,sort_keys=True),encoding="utf-8")
     result["audit_manifest_path"]=str(audit_path)
