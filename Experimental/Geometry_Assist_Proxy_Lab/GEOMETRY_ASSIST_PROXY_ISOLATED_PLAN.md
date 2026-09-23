@@ -499,3 +499,53 @@ Final r2 package:
 - artifact ID: `10780358333`
 
 Upgrade is in-place inside the owned isolated runtime; r1 does not need to be uninstalled.
+
+## r3 runtime hotfix status — 2026-09-23
+
+Second RTX 2080 Ti hardware execution result:
+- isolated installer/verification PASS;
+- private Torch/CUDA/model self-test PASS;
+- Canny structural hint aligned exactly to 1024x768;
+- ControlNet load PASS;
+- SDXL ControlNet img2img load PASS;
+- IP-Adapter load PASS;
+- execution stopped before denoising at the explicit CLIP context guard.
+
+Observed token evidence:
+- positive prompt: 96 tokens;
+- negative prompt: 74 tokens;
+- SDXL CLIP maximum: 77 tokens.
+
+Root cause:
+- r2 correctly added a fail-closed 77-token runtime guard, but its replacement positive prompt was still too long under the actual SDXL CLIP tokenizer;
+- the r2 static regression checked whitespace word count rather than model-token count;
+- the installer self-test did not validate the packaged prompts with the real local SDXL tokenizers, so verification could report PASS before this defect was exercised.
+
+r3 fixes:
+- much shorter conservative positive and negative default prompts;
+- explicit contract marker BOTH_SDXL_CLIP_TOKENIZERS;
+- shared prompt-contract validator used by both verification and runtime;
+- verification loads the private SDXL tokenizer and tokenizer_2 and fails before PASS if either prompt exceeds the configured context;
+- runtime repeats the same validation against pipe.tokenizer and pipe.tokenizer_2 before diffusion;
+- static regression now requires the v3 config, both-tokenizer contract, validator markers and a large lexical safety margin.
+
+Validation:
+- Geometry Assist Isolated Package run 35931725035: SUCCESS;
+- ConceptGhost Tests run 35931725054: SUCCESS;
+- P10 DR9 Source Snapshot run 35931725178: SUCCESS;
+- implementation/package head: 3722956cbf96f3ef2aa9330f77917806f7759c39;
+- GitHub Actions artifact ID: 10781605703.
+
+Canonical r3 evaluation bundle:
+- `ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r3.zip`
+- SHA-256: `69d15f106600e068f1520004b8d7e61f35ace01da1bf982e910810f7e9c9f149`
+- Google Drive Evaluation_Builds file ID: `1rhhLRtSiURFqTrrozqDgc0cO-h7J4_YF`
+
+Upgrade from r2:
+- do NOT uninstall the private runtime;
+- extract r3 and run `01_INSTALL_GEOMETRY_ASSIST_DIAGNOSTIC.bat`;
+- run `02_VERIFY_GEOMETRY_ASSIST_DIAGNOSTIC.bat`;
+- verification must now print the prompt-tokenizer contract as PASS;
+- then re-run the same input image.
+
+Hardware generation acceptance remains pending until the r3 run reaches and completes diffusion on the target RTX 2080 Ti.
