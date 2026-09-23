@@ -424,6 +424,8 @@ class ConceptGhostP10WanSequentialSampler:
             if owned.exists():
                 shutil.rmtree(owned)
             owned.mkdir(parents=True,exist_ok=True)
+        if previous_manifest_path.exists():
+            previous_manifest_path.unlink()
 
         conditioner = ConceptGhostP10WanMaskedConditioning()
         records = []
