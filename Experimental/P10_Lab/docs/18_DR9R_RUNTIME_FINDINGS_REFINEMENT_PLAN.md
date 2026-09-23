@@ -111,7 +111,7 @@ Purpose: isolate camera matrices, intrinsics, crop/resize mapping, ConceptGhost�
 This is diagnostic only. P9 remains accepted authority regardless of the audit result.
 
 #### DR9R-B4 — Multi-Mission / Per-Drone Reconstruction Audit
-Status: **ACTIVE**
+Status: **COMPLETE / CI PASS / RUNTIME EVIDENCE DEFERRED**
 
 - stop treating only the largest match component as sufficient geometric evidence;
 - report contribution and match connectivity per mission;
@@ -120,7 +120,7 @@ Status: **ACTIVE**
 - expose used/dropped frame counts and reasons.
 
 #### DR9R-B5 — Metric P9/P10 Reconstruction Overlay
-Status: **PLANNED**
+Status: **NEXT**
 
 Add a metric-isotropic diagnostic surface showing:
 - P9 authoritative geometry;
@@ -228,3 +228,17 @@ GitHub authority:
 - Audit source inputs are hash-bound to control/camera manifests and can be reused only when the exact context matches.
 - Unit/CI coverage validates dataset identity, camera mapping and WAN exclusion.
 - Runtime geometric evidence from the audit is intentionally deferred until the final DR9R-E user test; implementation/CI is complete.
+
+
+### DR9R-B4 implementation checkpoint — 2026-09-23
+
+- Sparse matching no longer promotes only the largest verified graph component.
+- Every verified component containing at least two feature-bearing images is preserved in the same fixed P9 world model.
+- Featureless/isolated images remain excluded and are explicitly reported.
+- Database-alignment diagnostics now expose verified component count, component membership, image names, mission names and verified pair counts.
+- Per-mission contribution reports dataset frames, feature-ready frames, selected frames, dropped frames, component indices and whether the mission contributes to sparse reconstruction.
+- A mission with no verified sparse contribution is explicit WARN evidence; silent mission disappearance is forbidden.
+- Dense reconstruction and pre-fusion manifests carry the sparse component count and per-mission provenance forward.
+- Gate 6 runtime exposes the same contribution evidence.
+- CI includes a two-independent-component regression proving both components and both drone missions remain selected.
+- Runtime geometric evidence is intentionally deferred until DR9R-E.
