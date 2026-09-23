@@ -35,6 +35,30 @@ class Gate6WorkflowIntegrationTests(unittest.TestCase):
             "links":[],
         }
 
+    def test_gate6_defaults_master_geometry_to_split_clean(self):
+        from p10_lab.workflow_integration import integrate_gate6_refined_preview
+
+        workflow=self._base()
+        workflow["nodes"].append({
+            "id":2,
+            "type":"ConceptGhostMasterConfig",
+            "order":0,
+            "widgets_values":[
+                "concept_scene",
+                "Max Reference",
+                "Auto",
+                "MoGe-3",
+                "High Fidelity",
+                False,
+                r"G:\\My Drive\\ConceptGhost\\Outputs\\ConceptGhost",
+            ],
+            "inputs":[],
+            "outputs":[],
+        })
+        wf=integrate_gate6_refined_preview(workflow)
+        master=next(node for node in wf["nodes"] if node.get("id")==2)
+        self.assertEqual(master["widgets_values"][4],"High Fidelity Split Clean")
+
     def test_gate6_patch_connects_wan_and_camera_manifests(self):
         from p10_lab.workflow_integration import integrate_gate6_refined_preview
         wf=integrate_gate6_refined_preview(self._base())
