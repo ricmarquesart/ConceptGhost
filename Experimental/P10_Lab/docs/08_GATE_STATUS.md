@@ -1,5 +1,19 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-23 DR9R r6 ready for runtime acceptance
+
+- P9 remains accepted immutable upstream authority; P10 must operate on that geometry as delivered.
+- DR9R-A and DR9R-B1..B6 are COMPLETE / CI PASS.
+- DR9R-C explicit two-stage handoff is COMPLETE / CI PASS.
+- DR9R-D immutable P10 attempts is COMPLETE / CI PASS.
+- DR9R-E implementation/package work is COMPLETE; one real user runtime acceptance pass remains.
+- Final package: `ConceptGhost_v1.54_P10_DR9R_COMPLETE_TWO_STAGE_INSTALLER_r6.zip`.
+- Normal new-scene execution is three Queue Prompt clicks: Route Setup #1 -> edit -> Route Setup #2 commit -> Production #1.
+- Only the first Route Setup queue performs the expensive P9 solve; Route Setup commit should reuse cached P9; Production contains no P9 solver.
+- r6 ZIP SHA-256: `be3e3fc5ef84f404a41cd7177b16a5aa9331ba0420c6013397a4f641413226d5`.
+- Gate 7 must not start until this runtime acceptance is reviewed.
+
+
 ## Authoritative reconciliation — 2026-09-23 DR9R r5 published
 
 - P9 remains the accepted immutable upstream authority.
