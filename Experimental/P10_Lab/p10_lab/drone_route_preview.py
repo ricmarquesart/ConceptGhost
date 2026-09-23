@@ -93,6 +93,70 @@ def _local_vertices(primary_mesh: str | Path, camera: CameraAuthority):
     ))
 
 
+def build_route_preview_geometry(
+    primary_mesh: str | Path,
+    camera: CameraAuthority,
+    *,
+    source_image: str | Path | None = None,
+    max_points: int = 12000,
+) -> dict[str, object]:
+    """Return a bounded colored P9-local point sample for the interactive orbit view."""
+
+    try:
+        import numpy as np
+        from PIL import Image
+    except ImportError as error:
+        raise ContractError("Route preview geometry requires NumPy and Pillow") from error
+
+    if type(max_points) is not int or max_points < 500:
+        raise ContractError("max_points must be an integer >= 500")
+
+    local = _local_vertices(primary_mesh, camera)
+    stride = max(1, (len(local) + max_points - 1) // max_points)
+    sampled = local[::stride]
+    colors = np.full((sampled.shape[0], 3), 150, dtype=np.uint8)
+
+    source_path = Path(source_image) if source_image is not None else None
+    if source_path is not None and source_path.is_file():
+        try:
+            with np.load(Path(primary_mesh), allow_pickle=False) as payload:
+                if "grid_xy" in payload.files:
+                    grid = np.asarray(payload["grid_xy"], dtype=np.int64)
+                elif "source_uv" in payload.files:
+                    grid = np.rint(np.asarray(payload["source_uv"], dtype=np.float64)).astype(np.int64)
+                else:
+                    grid = None
+            if grid is not None and grid.shape == (local.shape[0], 2):
+                with Image.open(source_path) as opened:
+                    source = np.asarray(opened.convert("RGB"), dtype=np.uint8)
+                gx = np.clip(grid[:, 0], 0, source.shape[1] - 1)
+                gy = np.clip(grid[:, 1], 0, source.shape[0] - 1)
+                colors = source[gy, gx][::stride]
+        except Exception:
+            pass
+
+    minimum = sampled.min(axis=0)
+    maximum = sampled.max(axis=0)
+    center = (minimum + maximum) * 0.5
+    radius = float(max(np.linalg.norm(sampled - center[None, :], axis=1).max(), 1.0e-3))
+
+    return {
+        "schema": "ConceptGhost.P10RoutePreviewGeometry.v0.1",
+        "coordinate_space": "P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+        "sample_stride": int(stride),
+        "point_count": int(sampled.shape[0]),
+        "center": [float(v) for v in center],
+        "radius": radius,
+        "points": [
+            [
+                float(point[0]), float(point[1]), float(point[2]),
+                int(color[0]), int(color[1]), int(color[2]),
+            ]
+            for point, color in zip(sampled, colors)
+        ],
+    }
+
+
 def measure_route_preview_bounds(
     local_vertices,
     *,
@@ -141,10 +205,6 @@ def _projection_manifest(bounds: RoutePreviewBounds, panel_width: int, panel_hei
     usable_h=panel_height-2*margin
 
     def isotropic_extents(x_extent: AxisExtent, y_extent: AxisExtent):
-        # Orthographic viewports must preserve metric shape. The previous
-        # implementation independently stretched X and Y to fill the panel,
-        # which made buildings/routes look skewed and made path placement
-        # visually misleading.
         pixels_per_meter=min(
             usable_w/max(x_extent.span,1.0e-9),
             usable_h/max(y_extent.span,1.0e-9),
@@ -159,10 +219,10 @@ def _projection_manifest(bounds: RoutePreviewBounds, panel_width: int, panel_hei
             pixels_per_meter,
         )
 
-    def panel(index,name,x_axis,y_axis,x_extent,y_extent,y_flip=True):
+    def ortho_panel(name,row,column,x_axis,y_axis,x_extent,y_extent):
         x_extent,y_extent,pixels_per_meter=isotropic_extents(x_extent,y_extent)
-        x0=gap+index*(panel_width+gap)
-        y0=gap
+        x0=gap+column*(panel_width+gap)
+        y0=gap+row*(panel_height+gap)
         return {
             "name":name,
             "panel_rect_px":{"x":x0,"y":y0,"width":panel_width,"height":panel_height},
@@ -176,27 +236,45 @@ def _projection_manifest(bounds: RoutePreviewBounds, panel_width: int, panel_hei
             "y_axis":y_axis,
             "x_extent":x_extent.to_dict(),
             "y_extent":y_extent.to_dict(),
-            "y_screen_inverted":bool(y_flip),
+            "y_screen_inverted":True,
             "pixels_per_meter":float(pixels_per_meter),
-            "projection_mode":"ORTHOGRAPHIC_ISOTROPIC",
+            "projection_mode":"PERSPECTIVE_PLUS_ORTHOGRAPHIC_ISOTROPIC",
         }
 
+    perspective={
+        "name":"PERSPECTIVE",
+        "panel_rect_px":{"x":gap,"y":gap,"width":panel_width,"height":panel_height},
+        "plot_rect_px":{
+            "x":gap+margin,
+            "y":gap+margin,
+            "width":usable_w,
+            "height":usable_h,
+        },
+        "projection_mode":"PERSPECTIVE_ORBIT",
+        "interaction":"ORBIT_INSPECTION_ONLY",
+        "default_yaw_deg":-35.0,
+        "default_pitch_deg":-18.0,
+        "default_zoom":1.0,
+    }
+
     return {
-        "schema":"ConceptGhost.P10DroneRouteTriViewProjection.v0.2",
+        "schema":"ConceptGhost.P10DroneRouteFourViewProjection.v0.3",
         "coordinate_space":"P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
-        "projection_mode":"ORTHOGRAPHIC_ISOTROPIC",
+        "projection_mode":"PERSPECTIVE_PLUS_ORTHOGRAPHIC_ISOTROPIC",
+        "layout":"2X2_PERSPECTIVE_TOP_SIDE_FRONT",
         "interaction_rule":{
+            "PERSPECTIVE":"orbit/zoom inspection; no depth-ambiguous waypoint creation",
             "TOP":"drag edits RIGHT + FORWARD",
             "SIDE":"drag edits FORWARD + UP",
             "FRONT":"drag edits RIGHT + UP",
         },
+        "perspective_panel":perspective,
         "panels":[
-            panel(0,"TOP","right","forward",bounds.right,bounds.forward,True),
-            panel(1,"SIDE","forward","up",bounds.forward,bounds.up,True),
-            panel(2,"FRONT","right","up",bounds.right,bounds.up,True),
+            ortho_panel("TOP",0,1,"right","forward",bounds.right,bounds.forward),
+            ortho_panel("SIDE",1,0,"forward","up",bounds.forward,bounds.up),
+            ortho_panel("FRONT",1,1,"right","up",bounds.right,bounds.up),
         ],
     }
-
 
 def render_route_authoring_preview(
     primary_mesh: str | Path,
@@ -250,10 +328,28 @@ def render_route_authoring_preview(
                 # Color is a readability enhancement only. Route geometry and
                 # projection authority remain the PrimaryMesh coordinates.
                 point_colors=None
-    canvas_w=panel_width*3+gap*4
-    canvas_h=panel_height+gap*2
+    canvas_w=panel_width*2+gap*3
+    canvas_h=panel_height*2+gap*3
     image=Image.new("RGB",(canvas_w,canvas_h),(18,18,18))
     draw=ImageDraw.Draw(image)
+
+    perspective=projection["perspective_panel"]
+    prect=perspective["panel_rect_px"]
+    pplot=perspective["plot_rect_px"]
+    draw.rectangle(
+        (prect["x"],prect["y"],prect["x"]+prect["width"],prect["y"]+prect["height"]),
+        fill=(24,24,24),outline=(82,82,82),width=1,
+    )
+    draw.rectangle(
+        (pplot["x"],pplot["y"],pplot["x"]+pplot["width"],pplot["y"]+pplot["height"]),
+        outline=(52,52,52),width=1,
+    )
+    draw.text((prect["x"]+12,prect["y"]+9),"PERSPECTIVE",fill=(240,240,240))
+    draw.text(
+        (prect["x"]+12,prect["y"]+27),
+        "ORBIT / ZOOM INSPECTION IN COMFYUI",
+        fill=(150,150,150),
+    )
 
     axis_index={"right":0,"up":1,"forward":2}
     extent_map={"right":bounds.right,"up":bounds.up,"forward":bounds.forward}
@@ -326,7 +422,7 @@ def render_route_authoring_preview(
     tensor=torch.from_numpy(arr).unsqueeze(0)
     diagnostics={
         "status":"PASS",
-        "preview":"P10_DRONE_ROUTE_TRIVIEW",
+        "preview":"P10_DRONE_ROUTE_FOUR_VIEW",
         "vertex_count":int(local.shape[0]),
         "rendered_geometry_points":int(points.shape[0]),
         "geometry_sampling_stride":int(stride),
