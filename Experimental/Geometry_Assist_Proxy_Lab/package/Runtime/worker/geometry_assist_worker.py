@@ -24,7 +24,6 @@ def set_private_env(root: Path) -> None:
     os.environ["PYTHONNOUSERSITE"] = "1"
     os.environ["HF_HOME"] = str(cache / "huggingface")
     os.environ["HUGGINGFACE_HUB_CACHE"] = str(cache / "huggingface" / "hub")
-    os.environ["TRANSFORMERS_CACHE"] = str(cache / "transformers")
     os.environ["TORCH_HOME"] = str(cache / "torch")
     os.environ["XDG_CACHE_HOME"] = str(cache)
     os.environ["TEMP"] = str(temp)
@@ -76,9 +75,12 @@ def self_test(root: Path) -> int:
     return 0
 
 def fit_work_size(w: int, h: int, max_dim: int) -> tuple[int, int]:
+    # ControlNet Aux resize_image quantizes to 64-pixel blocks. Keep the img2img
+    # image and control image on the same 64-aligned canvas so latent/control
+    # feature maps cannot diverge.
     scale = min(1.0, float(max_dim) / float(max(w, h)))
-    nw = max(64, int(round((w * scale) / 8.0)) * 8)
-    nh = max(64, int(round((h * scale) / 8.0)) * 8)
+    nw = max(64, int(round((w * scale) / 64.0)) * 64)
+    nh = max(64, int(round((h * scale) / 64.0)) * 64)
     return nw, nh
 
 def label_image(img, label: str):
@@ -174,7 +176,15 @@ def run(root: Path, input_path: Path) -> int:
         try:
             from controlnet_aux import CannyDetector
             detector = CannyDetector()
-            hint = detector(work, low_threshold=int(d["canny_low"]), high_threshold=int(d["canny_high"]))
+            control_resolution = min(work_size)
+            hint = detector(
+                work,
+                low_threshold=int(d["canny_low"]),
+                high_threshold=int(d["canny_high"]),
+                detect_resolution=control_resolution,
+                image_resolution=control_resolution,
+                output_type="pil",
+            )
             if not isinstance(hint, Image.Image):
                 hint = Image.fromarray(np.asarray(hint))
             hint = hint.convert("RGB")
@@ -183,9 +193,17 @@ def run(root: Path, input_path: Path) -> int:
             arr = np.asarray(work)
             edge = cv2.Canny(cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY), int(d["canny_low"]), int(d["canny_high"]))
             hint = Image.fromarray(np.repeat(edge[..., None], 3, axis=2), mode="RGB")
+        # Final hard alignment guard. The Diffusers ControlNet img2img pipeline
+        # requires control features to align with the image latent geometry.
+        if hint.size != work.size:
+            log(f"Control hint resize guard: {hint.size[0]}x{hint.size[1]} -> {work.width}x{work.height}")
+            hint = hint.resize(work.size, Image.Resampling.NEAREST)
+        if hint.size != work.size:
+            raise RuntimeError(f"Control hint alignment failed: image={work.size}, hint={hint.size}")
         hint_up = hint.resize(original_size, Image.Resampling.NEAREST)
         hint_up.save(run_dir / "01_control_hint_canny.png")
         log(f"Structural preprocessor: {preprocessor}")
+        log(f"Aligned control hint: {hint.width}x{hint.height}")
 
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is unavailable.")
@@ -227,6 +245,15 @@ def run(root: Path, input_path: Path) -> int:
 
         generator = torch.Generator(device="cpu").manual_seed(int(d["seed"]))
         start = time.perf_counter()
+        prompt_tokens = len(pipe.tokenizer(cfg["prompt"], truncation=False)["input_ids"])
+        negative_tokens = len(pipe.tokenizer(cfg["negative_prompt"], truncation=False)["input_ids"])
+        max_prompt_tokens = int(d.get("prompt_max_tokens", pipe.tokenizer.model_max_length))
+        log(f"CLIP token counts: prompt={prompt_tokens}, negative={negative_tokens}, max={max_prompt_tokens}")
+        if prompt_tokens > max_prompt_tokens or negative_tokens > max_prompt_tokens:
+            raise RuntimeError(
+                f"Prompt contract exceeded CLIP context: prompt={prompt_tokens}, negative={negative_tokens}, max={max_prompt_tokens}"
+            )
+
         log("Starting conservative proxy generation...")
         result = pipe(
             prompt=cfg["prompt"],
@@ -234,6 +261,8 @@ def run(root: Path, input_path: Path) -> int:
             image=work,
             control_image=hint,
             ip_adapter_image=work,
+            height=work.height,
+            width=work.width,
             strength=float(d["strength"]),
             controlnet_conditioning_scale=float(d["controlnet_scale"]),
             num_inference_steps=int(d["steps"]),
@@ -270,6 +299,9 @@ def run(root: Path, input_path: Path) -> int:
         manifest.update({
             "status": "PASS",
             "preprocessor": preprocessor,
+            "control_hint_working_size": [hint.width, hint.height],
+            "prompt_tokens": prompt_tokens,
+            "negative_prompt_tokens": negative_tokens,
             "runtime_seconds": round(elapsed, 3),
             "peak_cuda_allocated_gb": peak_vram,
             "metrics": {
