@@ -4,7 +4,7 @@ Date: 2026-09-23
 
 ## Runtime acceptance state
 
-DR9R implementation/package closeout is complete. **User runtime acceptance is now the only remaining DR9R step before Gate 7.**
+DR9R-F r7 implementation/package closeout is complete. **User runtime acceptance of r7 is now the only remaining step before Gate 7.**
 
 The next user runtime test is intentionally deferred until the complete DR9R improvement set below is implemented and internally checkpointed. Intermediate DR9R subgates are recovery/development checkpoints only and are not user-test releases.
 
@@ -351,3 +351,25 @@ DR9R-F is now active and covers:
 Detailed authority: `docs/20_DR9R_F_WORKFLOW_UX_STORAGE_CONTINUITY_PLAN.md`.
 
 No user retest until DR9R-F F1–F8 are complete and the replacement bundle is published.
+
+
+### DR9R-F r7 package published — 2026-09-23
+
+The r6 runtime attempt exposed route-editor reset, viewport, observability and storage-lifecycle issues. These are addressed by DR9R-F and superseded by r7.
+
+- Numbered workflows: 01 Route Setup / 02 Production.
+- In-workflow instructions explicitly show Run #1 → edit → Run #2 commit → workflow 02 Run #3.
+- Resetar rota preserves scene/P9 and repairs invalid numeric widget state; Enquadrar tudo changes only viewport framing.
+- All four views now render dynamically; the frozen Perspective duplicate is removed.
+- Wheel zoom works on all four views; orthographic pan remains axis-locked.
+- Route/target visibility guard prevents edits from silently disappearing outside another orthographic view.
+- Production AUTO_LATEST exposes exact resolved paths/ids/hashes.
+- P9 dependency inventory proves the split workflow still references the complete persisted P9 run.
+- Safe P10-only cleanup tooling is included.
+- Legacy Master v1.53 is not left installed as a user workflow.
+- Dual Maya contract is locked: P9 .ma immutable; later P10 Refined .ma separate and non-overwriting.
+
+Final r7 SHA-256:
+`0e38a75b5b4736a6b09e99fcfe71f3a361cf03946ac0bed0ef47eed889d8f756`
+
+Runtime acceptance remains PENDING.
