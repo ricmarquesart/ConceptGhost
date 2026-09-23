@@ -876,3 +876,25 @@ Evidence:
 - expanded Evaluation_Builds folder ID: `1RYy_gkp83lcIFHHGgwG00t1DpEPXf4PU`, verified at 155 files.
 
 Status remains **Gate 6.6 PREVIEW READY / USER RUNTIME PENDING**. Do not begin required Gate 7 implementation until the integrated r7 runtime is accepted, although roadmap/design work already recorded for Gate 7.2C remains valid.
+
+
+## DR9R active correction block — 2026-09-23
+
+P9 is now explicitly treated as accepted upstream authority. Its current depth span/shell structure is not a DR9R correction target; P10 must work from that P9 world.
+
+DR9R-A is COMPLETE / CI PASS.
+
+DR9R-B is ACTIVE and is decomposed into:
+- B1 4-view Perspective + TOP/SIDE/FRONT route workspace;
+- B2 LOOK_AT_TARGET / LOOK_ALONG_PATH / MANUAL_DIRECTION orientation authority + frustums;
+- B3 P9-only known-camera reconstruction round-trip audit;
+- B4 per-drone/multi-mission reconstruction preservation and dropped-frame diagnostics;
+- B5 metric P9/P10 sparse/dense/mesh/camera overlay;
+- B6 geometry-quality PASS/WARN/FAIL authority.
+
+Then:
+- DR9R-C explicit P9 Route Setup → P10 Production handoff;
+- DR9R-D immutable p10_attempt_id output directories;
+- DR9R-E one complete runtime regression/user-test bundle.
+
+The user requested **no intermediate runtime test**. Each partial subgate must nevertheless be saved to GitHub and a Google Drive recovery checkpoint before continuing.
