@@ -777,8 +777,8 @@ def integrate_p10_production_from_entry(workflow: dict) -> dict:
             {"name":"diagnostics_json","type":"STRING","links":None,"slot_index":4},
         ],
         "properties":{"Node name for S&R":"ConceptGhostP10ProductionEntryLoader"},
-        "widgets_values":[""],
-        "title":"P10 PRODUCTION · LOAD COMMITTED P9 + ARTIST ROUTE",
+        "widgets_values":["AUTO_LATEST"],
+        "title":"P10 PRODUCTION · LOAD LATEST COMMITTED P9 + ARTIST ROUTE",
     }
     kept_nodes.append(loader)
     by_id[2098]=loader
