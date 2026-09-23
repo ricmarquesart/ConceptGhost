@@ -139,6 +139,9 @@ class DatabaseSyncedModel:
     dropped_image_count: int
     verified_pair_count: int
     selected_image_ids: tuple[int, ...]
+    verified_component_count: int = 1
+    components: tuple[dict[str, object], ...] = ()
+    mission_contribution: tuple[dict[str, object], ...] = ()
 
     def manifest(self) -> dict[str, object]:
         return {
@@ -149,6 +152,9 @@ class DatabaseSyncedModel:
             "dropped_image_count": self.dropped_image_count,
             "verified_pair_count": self.verified_pair_count,
             "selected_image_ids": list(self.selected_image_ids),
+            "verified_component_count": self.verified_component_count,
+            "components": list(self.components),
+            "mission_contribution": list(self.mission_contribution),
         }
 
 
@@ -162,37 +168,52 @@ def _decode_pair_id(pair_id: int) -> tuple[int, int]:
     return int(image_id1), int(image_id2)
 
 
-def _largest_connected_component(
+def _verified_connected_components(
     image_ids: set[int],
     edges: list[tuple[int, int]],
-) -> tuple[int, ...]:
-    adjacency = {image_id: set() for image_id in image_ids}
-    for a, b in edges:
-        if a in adjacency and b in adjacency and a != b:
+) -> tuple[tuple[int, ...], ...]:
+    """Return every triangulatable verified component (size >= 2).
+
+    Gate 6 cameras already share the fixed P9 world. Separate feature-match
+    components therefore do not need a similarity solve to coexist in one known
+    camera model. Isolated/featureless images are excluded, but every component
+    with at least one verified edge is preserved.
+    """
+
+    adjacency={image_id:set() for image_id in image_ids}
+    for a,b in edges:
+        if a in adjacency and b in adjacency and a!=b:
             adjacency[a].add(b)
             adjacency[b].add(a)
 
-    visited: set[int] = set()
-    components: list[tuple[int, ...]] = []
-    for start in sorted(image_ids):
-        if start in visited or not adjacency[start]:
+    visited:set[int]=set()
+    components:list[tuple[int,...]]=[]
+    for start_id in sorted(image_ids):
+        if start_id in visited or not adjacency[start_id]:
             continue
-        stack = [start]
-        component: list[int] = []
+        stack=[start_id]
+        component=[]
         while stack:
-            current = stack.pop()
+            current=stack.pop()
             if current in visited:
                 continue
             visited.add(current)
             component.append(current)
-            stack.extend(sorted(adjacency[current] - visited, reverse=True))
-        if component:
+            stack.extend(sorted(adjacency[current]-visited,reverse=True))
+        if len(component)>=2:
             components.append(tuple(sorted(component)))
+    components.sort(key=lambda component:(-len(component),component))
+    return tuple(components)
 
-    if not components:
-        return ()
-    components.sort(key=lambda component: (-len(component), component))
-    return components[0]
+
+def _largest_connected_component(
+    image_ids: set[int],
+    edges: list[tuple[int, int]],
+) -> tuple[int, ...]:
+    """Backward-compatible helper; primary component is the first ranked one."""
+
+    components=_verified_connected_components(image_ids,edges)
+    return components[0] if components else ()
 
 
 def _read_database_camera_params(
@@ -241,9 +262,10 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
     represents images through rigs/frames. Before point_triangulator runs we
     therefore rebuild the known model using the exact database-assigned
     image/camera/rig/frame ids while preserving the authoritative P9 qvec/tvec
-    and intrinsics. Only the largest verified-match component is triangulated,
-    so disconnected or featureless generated views cannot crash the native
-    triangulator.
+    and intrinsics. Every verified match component with at least two images is
+    preserved in the same fixed P9 world; only isolated/featureless images are
+    excluded. This prevents a valid drone mission from disappearing merely
+    because WAN-generated views form a separate match component.
     """
 
     manifest = _read_json(plan.dataset_root / "dataset_manifest.json", "dataset manifest")
@@ -437,19 +459,71 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
         for image_id in dataset_ids
         if keypoint_rows.get(image_id, 0) > 0 and descriptor_rows.get(image_id, 0) > 0
     }
-    selected = _largest_connected_component(feature_ready_ids, verified_edges)
-    if len(selected) < 2:
+    components=_verified_connected_components(feature_ready_ids,verified_edges)
+    if not components:
         raise ContractError(
             "COLMAP matching produced no triangulatable connected component with at least "
             "two feature-bearing images. Inspect logs/gate6_3 and the generated "
             "database_alignment.json diagnostics."
         )
 
-    selected_set = set(selected)
-    selected_frames = [
-        (image_id, frame_by_db_id[image_id])
-        for image_id in sorted(selected)
+    selected=tuple(sorted({image_id for component in components for image_id in component}))
+    selected_set=set(selected)
+    selected_frames=[
+        (image_id,frame_by_db_id[image_id])
+        for image_id in selected
     ]
+
+    component_records=[]
+    component_index_by_image={}
+    for component_index,component in enumerate(components):
+        component_set=set(component)
+        for image_id in component:
+            component_index_by_image[image_id]=component_index
+        component_pairs=[
+            pair for pair in verified_pairs_detail
+            if pair["image_id1"] in component_set and pair["image_id2"] in component_set
+        ]
+        component_records.append({
+            "component_index":component_index,
+            "image_count":len(component),
+            "image_ids":list(component),
+            "image_names":[
+                str(frame_by_db_id[image_id].get("image_name") or "")
+                for image_id in component
+            ],
+            "mission_names":sorted({
+                str(frame_by_db_id[image_id].get("path_name") or "UNASSIGNED")
+                for image_id in component
+            }),
+            "verified_pair_count":len(component_pairs),
+        })
+
+    mission_names=[]
+    for frame in frames:
+        name=str(frame.get("path_name") or "UNASSIGNED")
+        if name not in mission_names:
+            mission_names.append(name)
+    mission_contribution=[]
+    for mission_name in mission_names:
+        mission_ids={
+            image_id for image_id,frame in frame_by_db_id.items()
+            if str(frame.get("path_name") or "UNASSIGNED")==mission_name
+        }
+        feature_ids=mission_ids & feature_ready_ids
+        selected_ids=mission_ids & selected_set
+        mission_contribution.append({
+            "mission_name":mission_name,
+            "dataset_frame_count":len(mission_ids),
+            "feature_ready_frame_count":len(feature_ids),
+            "selected_frame_count":len(selected_ids),
+            "dropped_frame_count":len(mission_ids-selected_set),
+            "component_indices":sorted({
+                component_index_by_image[image_id]
+                for image_id in selected_ids
+            }),
+            "contributes_to_sparse":bool(selected_ids),
+        })
     used_db_cameras = sorted(
         {db_images_by_name[str(frame["image_name"])][1] for _, frame in selected_frames}
     )
@@ -592,15 +666,30 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
         encoding="utf-8",
     )
 
-    dropped = sorted(dataset_ids - selected_set)
+    dropped=sorted(dataset_ids-selected_set)
+    missing_missions=[
+        item["mission_name"]
+        for item in mission_contribution
+        if not item["contributes_to_sparse"]
+    ]
     diagnostics = {
-        "schema": "ConceptGhost.P10ColmapDatabaseAlignment.v0.2",
-        "status": "PASS",
+        "schema": "ConceptGhost.P10ColmapDatabaseAlignment.v0.3",
+        "status": "WARN" if missing_missions else "PASS",
+        "alerts":(
+            ["ONE_OR_MORE_MISSIONS_HAVE_NO_VERIFIED_SPARSE_COMPONENT"]
+            if missing_missions else []
+        ),
         "dataset_frame_count": len(dataset_ids),
         "database_image_count": len(db_images_by_name),
         "feature_ready_count": len(feature_ready_ids),
         "verified_pair_count": len(verified_edges),
+        # Kept for v0.2 readers: this historical field means selected images,
+        # not graph-component cardinality.
         "selected_component_count": len(selected),
+        "verified_component_count":len(components),
+        "components":component_records,
+        "mission_contribution":mission_contribution,
+        "missing_missions":missing_missions,
         "dropped_image_count": len(dropped),
         "selected_image_ids": list(selected),
         "dropped_image_ids": dropped,
@@ -612,7 +701,9 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
         ],
         "camera_id_policy": "DATABASE_ASSIGNED_IDS_WITH_AUTHORITATIVE_P9_INTRINSICS",
         "image_id_policy": "DATABASE_ASSIGNED_IDS_WITH_AUTHORITATIVE_P9_POSES",
-        "component_policy": "LARGEST_VERIFIED_MATCH_COMPONENT",
+        "component_policy": "ALL_VERIFIED_MATCH_COMPONENTS_FIXED_P9_WORLD",
+        "all_verified_components_preserved":True,
+        "silent_mission_drop_allowed":False,
         "rig_frame_policy": "DATABASE_ASSIGNED_TRIVIAL_RIG_AND_FRAME_IDS",
         "verified_pairs": verified_pairs_detail,
         "known_text_model": str(text_root),
@@ -631,6 +722,9 @@ def _write_database_synced_model(plan: SparseTriangulationPlan) -> DatabaseSynce
         dropped_image_count=len(dropped),
         verified_pair_count=len(verified_edges),
         selected_image_ids=tuple(selected),
+        verified_component_count=len(components),
+        components=tuple(component_records),
+        mission_contribution=tuple(mission_contribution),
     )
 
 
@@ -910,6 +1004,23 @@ def run_sparse_triangulation(
         "binary_model_files": model_files,
         "sparse_point_count": point_count,
         "sparse_point_cloud_available": point_count > 0,
+        "quality_status":(
+            "WARN"
+            if synchronized_model is not None
+            and any(
+                not bool(item.get("contributes_to_sparse"))
+                for item in synchronized_model.mission_contribution
+            )
+            else ("PASS" if point_count>0 else "FAIL")
+        ),
+        "verified_component_count":(
+            synchronized_model.verified_component_count
+            if synchronized_model is not None else 0
+        ),
+        "mission_contribution":(
+            list(synchronized_model.mission_contribution)
+            if synchronized_model is not None else []
+        ),
         "known_camera_pose_refinement": False,
         "known_camera_intrinsics_refinement": False,
         "database_policy": "FRESH_REBUILD_PER_SPARSE_ATTEMPT",
