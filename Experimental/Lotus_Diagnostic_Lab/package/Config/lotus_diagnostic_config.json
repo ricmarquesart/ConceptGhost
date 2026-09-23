@@ -46,5 +46,11 @@
       "ComfyUI/user/default/workflows/Lotus_Depth_Diagnostic.json"
     ]
   },
-  "installer_revision": "r2-bootstrap-root-detection-hotfix"
+  "installer_revision": "r4-windows-inference-adapter-cpu-offload-log-tail",
+  "runtime_inference": {
+    "adapter": "Worker/lotus_infer_adapter.py",
+    "memory_mode": "AUTO_CPU_OFFLOAD_AT_OR_BELOW_13GB",
+    "failure_log_tail_to_comfyui": true,
+    "official_pipeline_class": "LotusDPipeline"
+  }
 }
