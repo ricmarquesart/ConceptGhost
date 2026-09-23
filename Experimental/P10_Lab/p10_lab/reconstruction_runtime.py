@@ -85,6 +85,29 @@ def _stage_manifest(path: Path, *, require_status: bool=False) -> dict | None:
     return payload
 
 
+def _source_image_set_sha256_from_dataset_manifest(manifest: dict) -> str | None:
+    frames=manifest.get("frames")
+    if not isinstance(frames,list) or not frames:
+        return None
+    digest=hashlib.sha256()
+    for frame in frames:
+        if not isinstance(frame,dict):
+            return None
+        index=frame.get("global_frame_index")
+        path_name=str(frame.get("path_name") or "")
+        source_path=Path(str(frame.get("source_image_path") or ""))
+        expected_hash=str(frame.get("source_image_sha256") or "").strip().lower()
+        if type(index) is not int or not path_name or not source_path.is_file() or not expected_hash:
+            return None
+        actual_hash=_sha256_file(source_path)
+        if actual_hash!=expected_hash:
+            return "MISMATCH"
+        digest.update(
+            f"{index}\0{path_name}\0{actual_hash}\n".encode("utf-8")
+        )
+    return digest.hexdigest()
+
+
 def _validate_dataset_reuse(
     manifest: dict | None,
     *,
@@ -104,6 +127,16 @@ def _validate_dataset_reuse(
         return False, "WAN_MANIFEST_CHANGED"
     if source_inputs.get("camera_manifest_sha256") != expected_camera:
         return False, "CAMERA_MANIFEST_CHANGED"
+    expected_image_set=str(source_inputs.get("source_image_set_sha256") or "").strip().lower()
+    actual_image_set=_source_image_set_sha256_from_dataset_manifest(manifest)
+    if not expected_image_set:
+        return False, "MISSING_SOURCE_IMAGE_HASHES"
+    if actual_image_set=="MISMATCH":
+        return False, "SOURCE_COMPOSITE_IMAGE_CHANGED"
+    if actual_image_set is None:
+        return False, "SOURCE_COMPOSITE_IMAGE_MISSING"
+    if actual_image_set!=expected_image_set:
+        return False, "SOURCE_IMAGE_SET_CHANGED"
     if manifest.get("camera_image_mapping_policy") != "COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE":
         return False, "STALE_CAMERA_VIEWPORT_POLICY"
     if not manifest.get("frame_count"):
@@ -222,6 +255,9 @@ def run_reconstruction_pipeline(
         "run_id":run_id,
         "wan_manifest_path":str(wan_manifest_path),
         "camera_manifest_path":str(camera_manifest_path),
+        "route_authority":wan.get("route_authority"),
+        "route_plan_sha256":wan.get("route_plan_sha256"),
+        "mission_order":wan.get("mission_order"),
         "output_root":str(output_root),
         "dataset_root":str(dataset_root),
         "pre_fusion_mesh_path":str((dataset_root/"dense"/"pre_fusion_mesh.ply").resolve()),
