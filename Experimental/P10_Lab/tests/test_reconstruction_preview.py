@@ -70,6 +70,41 @@ class Gate6WorkflowIntegrationTests(unittest.TestCase):
         self.assertTrue(any(link[1]==2100 and link[2]==8 and link[4]==1 for link in incoming))
         self.assertFalse(any(link[1]==15 for link in incoming))
 
+    def test_gate6_artist_route_chain_is_connected_end_to_end(self):
+        from p10_lab.workflow_integration import integrate_gate6_refined_preview
+        wf=integrate_gate6_refined_preview(self._base())
+        nodes={node["type"]:node for node in wf["nodes"] if node.get("type") in {
+            "ConceptGhostP10DroneRouteAuthoring",
+            "ConceptGhostP10RefinedEvidencePreview",
+            "ConceptGhostP10WanSequentialSampler",
+            "ConceptGhostP10ReconstructionRuntime",
+        }}
+        route=nodes["ConceptGhostP10DroneRouteAuthoring"]
+        evidence=nodes["ConceptGhostP10RefinedEvidencePreview"]
+        wan=nodes["ConceptGhostP10WanSequentialSampler"]
+        reconstruction=nodes["ConceptGhostP10ReconstructionRuntime"]
+
+        self.assertTrue(any(
+            link[1]==route["id"] and link[2]==1
+            and link[3]==evidence["id"] and link[4]==4
+            for link in wf["links"]
+        ))
+        self.assertTrue(any(
+            link[1]==evidence["id"] and link[2]==7
+            and link[3]==wan["id"] and link[4]==6
+            for link in wf["links"]
+        ))
+        self.assertTrue(any(
+            link[1]==wan["id"] and link[2]==2
+            and link[3]==reconstruction["id"] and link[4]==0
+            for link in wf["links"]
+        ))
+        self.assertTrue(any(
+            link[1]==evidence["id"] and link[2]==8
+            and link[3]==reconstruction["id"] and link[4]==1
+            for link in wf["links"]
+        ))
+
     def test_gate6_preview_is_connected_to_reconstruction_output(self):
         from p10_lab.workflow_integration import integrate_gate6_refined_preview
         wf=integrate_gate6_refined_preview(self._base())
