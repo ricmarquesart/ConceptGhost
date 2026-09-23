@@ -1,5 +1,5 @@
 {
-  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v1",
+  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v2",
   "runtime_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic",
   "outputs_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic\\Outputs",
   "hardware_target": "RTX 2080 Ti 11GB",
@@ -30,15 +30,17 @@
     "strength": 0.24,
     "controlnet_scale": 0.95,
     "ip_adapter_scale": 0.8,
-    "guidance_scale": 4.0,
+    "guidance_scale": 4,
     "steps": 24,
     "seed": 1701,
     "canny_low": 100,
     "canny_high": 200,
-    "jpeg_quality": 95
+    "jpeg_quality": 95,
+    "prompt_max_tokens": 77,
+    "control_hint_alignment": "EXACT_WORKING_SIZE"
   },
-  "prompt": "Create a geometry-assist proxy of the exact same scene. Preserve the exact camera, perspective, composition, silhouettes, object layout, architectural proportions, positions, scale relationships, openings, doors, windows, stairs, roofs, street elements and major surface boundaries. Do not redesign the scene. Do not add, remove, move or duplicate objects. Reduce painterly ambiguity. Make materials, lighting, cast shadows, occlusion boundaries, planar surfaces and foreground/midground/background separation physically legible and realistic. Use neutral plausible lighting and realistic material response only where it helps clarify the existing structure. Preserve every major edge and structural relationship from the input. Avoid inventing unseen details.",
-  "negative_prompt": "changed camera, changed perspective, changed framing, crop, fisheye, altered architecture, extra windows, extra doors, added objects, removed objects, moved objects, duplicated objects, changed proportions, warped geometry, dramatic lighting, fantasy lighting, heavy stylization, painterly effect, blurred edges, melted structure, simplified scene, invented structures, hallucinated background, text, watermark",
+  "prompt": "Geometry-assist proxy of the exact same scene. Preserve camera, perspective, framing, silhouettes, object positions, scale relationships, architecture, openings, doors, windows, stairs, roofs, and major edges. Do not add, remove, move, duplicate, redesign, crop, or warp anything. Reduce painterly ambiguity. Use neutral realistic materials and lighting to clarify planes, occlusion boundaries, and foreground-to-background depth. Preserve structure.",
+  "negative_prompt": "changed camera, changed perspective, changed framing, crop, fisheye, altered architecture, extra windows, extra doors, added objects, removed objects, moved objects, duplicates, changed proportions, warped geometry, dramatic lighting, fantasy lighting, painterly effect, blurred edges, melted structure, simplified scene, invented structures, hallucinated background, text, watermark",
   "host_policy": {
     "shared_comfy_mutation": "FORBIDDEN",
     "shared_python_pip_install": "FORBIDDEN",
