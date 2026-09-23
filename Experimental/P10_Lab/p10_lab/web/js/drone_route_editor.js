@@ -181,6 +181,7 @@ function setupEditor(node) {
         dragHistoryPushed: false,
         history: [],
         metadata: null,
+        collisionStale: false,
     };
 
     function pushHistory() {
@@ -193,6 +194,7 @@ function setupEditor(node) {
         if (!validPlan(state.plan)) return;
         routeWidget.value = JSON.stringify(state.plan, null, 2);
         routeWidget.callback?.(routeWidget.value);
+        state.collisionStale = true;
         node.graph?.setDirtyCanvas?.(true, true);
         updateToolbar();
         draw();
@@ -233,8 +235,24 @@ function setupEditor(node) {
         undo.disabled = state.history.length === 0;
 
         const planStatus = statusForPlan(state.plan);
-        status.textContent = planStatus.text;
-        status.style.color = planStatus.ok ? "#86e276" : "#ffb040";
+        const collision = state.metadata?.collision_preflight;
+        if (!planStatus.ok) {
+            status.textContent = planStatus.text;
+            status.style.color = "#ffb040";
+        } else if (state.collisionStale) {
+            status.textContent = planStatus.text + " · colisão precisa ser revalidada";
+            status.style.color = "#ffdc5a";
+        } else if (collision?.blocked_mission_count > 0) {
+            status.textContent =
+                planStatus.text + ` · ${collision.blocked_segment_count} trecho(s) bloqueado(s)`;
+            status.style.color = "#ff6868";
+        } else if (collision) {
+            status.textContent = planStatus.text + " · clearance OK";
+            status.style.color = "#86e276";
+        } else {
+            status.textContent = planStatus.text;
+            status.style.color = "#86e276";
+        }
         selected.textContent =
             state.selectedPoint == null
                 ? "Nenhum ponto selecionado"
@@ -299,6 +317,19 @@ function setupEditor(node) {
         return best;
     }
 
+    function collisionMissionReport(mission) {
+        if (state.collisionStale) return null;
+        const reports = state.metadata?.collision_preflight?.missions;
+        if (!Array.isArray(reports)) return null;
+        return reports.find((item) => item.mission_name === mission.name) || null;
+    }
+
+    function blockedSegment(report, index) {
+        if (!report?.segments) return false;
+        const segment = report.segments.find((item) => Number(item.segment_index) === index);
+        return Boolean(segment?.blocked);
+    }
+
     function draw() {
         if (!canvas.width || !canvas.height) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -320,20 +351,28 @@ function setupEditor(node) {
             for (const panel of state.projection.panels || []) {
                 const projected = points.map((point) => project(panel, point));
 
+                const collisionReport = collisionMissionReport(mission);
                 if (mission.mode === "PATH" && projected.length > 1) {
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = missionIndex === state.activeMission ? 3 : 2;
-                    ctx.setLineDash(missionIndex === state.activeMission ? [] : [7, 5]);
-                    ctx.beginPath();
-                    projected.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-                    ctx.stroke();
+                    for (let segmentIndex = 0; segmentIndex < projected.length - 1; segmentIndex++) {
+                        const blocked = blockedSegment(collisionReport, segmentIndex);
+                        const a = projected[segmentIndex];
+                        const b = projected[segmentIndex + 1];
+                        ctx.strokeStyle = blocked ? "#ff3b58" : color;
+                        ctx.lineWidth = blocked ? 5 : (missionIndex === state.activeMission ? 3 : 2);
+                        ctx.setLineDash(blocked ? [10, 5] : (missionIndex === state.activeMission ? [] : [7, 5]));
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y);
+                        ctx.lineTo(b.x, b.y);
+                        ctx.stroke();
+                    }
                     ctx.setLineDash([]);
                 }
 
                 if (mission.mode === "SPIN_360" && projected.length) {
                     const p = projected[0];
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 3;
+                    const blocked = Boolean(collisionReport?.blocked);
+                    ctx.strokeStyle = blocked ? "#ff3b58" : color;
+                    ctx.lineWidth = blocked ? 5 : 3;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
                     ctx.stroke();
@@ -379,7 +418,10 @@ function setupEditor(node) {
         if (!meta?.projection || !meta?.plan) return;
         state.metadata = meta;
         state.projection = meta.projection;
+        state.collisionStale = false;
         setPlan(meta.plan, true);
+        state.collisionStale = false;
+        updateToolbar();
         loadBackground(meta.editor_base_preview || meta.preview);
     }
 
@@ -537,7 +579,11 @@ function setupEditor(node) {
     // Restore the serialized route immediately when a workflow is reopened.
     try {
         const saved = JSON.parse(String(routeWidget.value || "").trim());
-        if (validPlan(saved)) setPlan(saved, false);
+        if (validPlan(saved)) {
+            setPlan(saved, false);
+            state.collisionStale = true;
+            updateToolbar();
+        }
     } catch (_) {
         // First execution will seed a valid plan.
     }
