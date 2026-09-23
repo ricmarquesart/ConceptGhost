@@ -5,7 +5,10 @@ from pathlib import Path
 
 class DroneRoutePreviewTests(unittest.TestCase):
     def test_bounds_cover_long_scene_without_using_one_global_square_scale(self):
-        import numpy as np
+        try:
+            import numpy as np
+        except ImportError as error:
+            self.skipTest(str(error))
         from p10_lab.drone_route_preview import measure_route_preview_bounds
 
         vertices=np.asarray([
