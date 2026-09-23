@@ -277,6 +277,10 @@ def prepare_known_camera_colmap_dataset(
         "reconstruction_strategy": "KNOWN_CAMERA_COLMAP_PRIMARY",
         "camera_authority": "P9_BASELINE_WORLD_DERIVED",
         "image_authority": "SOURCE_PRESERVED_P10_COMPOSITE",
+        "route_authority": reconstruction.get("route_authority"),
+        "route_plan_sha256": reconstruction.get("route_plan_sha256"),
+        "mission_order": reconstruction.get("mission_order"),
+        "mission_modes": reconstruction.get("mission_modes"),
         "camera_image_mapping_policy": reconstruction.get("camera_image_mapping_policy"),
         "composite_dimensions": reconstruction.get("composite_dimensions"),
         "source_inputs": {
