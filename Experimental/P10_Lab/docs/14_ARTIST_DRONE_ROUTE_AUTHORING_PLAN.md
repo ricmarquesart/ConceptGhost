@@ -177,11 +177,22 @@ CI evidence:
 - `35817184829` — SUCCESS on `3c8ef10772799cd73c63c198794a0fe198bf37ab` for the formal preview-index contract;
 - `35817189070` — SUCCESS on `397074acc741f6277d551dd29e2f84734b4185e0` for Gate 5 workflow/output surfacing.
 
-#### DR8D — Preview invalidation / freshness — NEXT
-- route/control/WAN/composite changes invalidate old previews;
-- no stale GIF/index can remain authoritative after regeneration.
+#### DR8D — Preview invalidation / freshness — COMPLETED / CI PASS
+- previous preview state is classified before regeneration with explicit reasons such as `ROUTE_PLAN_CHANGED`, `CONTROL_MANIFEST_CHANGED`, `WAN_SETTINGS_CHANGED`, `PREVIEW_INDEX_MISSING`, `PREVIEW_INDEX_HASH_MISSING`, `PREVIEW_INDEX_HASH_CHANGED` or `SAME_CONTEXT_EXPLICIT_REGENERATION`;
+- previous preview-index bytes are checked against the SHA-256 recorded by the prior WAN manifest before deletion;
+- every Gate 5 regeneration deletes the ConceptGhost-owned `drone_previews` package before publishing new previews, so a stale index/GIF set cannot remain authoritative;
+- preview freshness is tied to route-plan hash + control-manifest hash + WAN generation-context hash + exact final-composite bytes;
+- after GIF generation, the current final-composite sequence is reassembled again and its ordered SHA-256 is compared with every preview's recorded `source_frame_set_sha256`;
+- changing a composite PNG after GIF creation makes freshness validation fail closed;
+- GIF hash validation remains mandatory, so edited/corrupted GIF bytes also fail closed;
+- the WAN manifest and diagnostics now record both previous-output and previous-preview invalidation reasons plus the freshness policy;
+- preview package policy is `ROUTE_CONTROL_WAN_CONTEXT_PLUS_EXACT_FINAL_COMPOSITE_BYTES`.
 
-#### DR8E — Final regression closeout — PENDING
+CI evidence:
+- `35817845135` — SUCCESS on implementation commit `5ee52c8edf0b84ecbaec0c3f3458fb6543ef8e2e`;
+- `35817871526` — SUCCESS on regression commit `1dc4c5c44b88cd313adf48ae0da92e8bb96b5c3d`.
+
+#### DR8E — Final regression closeout — NEXT
 - GIF/frame-order regressions;
 - multi-window same-drone grouping;
 - multi-drone separation;
@@ -208,7 +219,7 @@ Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
 Implemented / awaiting CI + user runtime: DR5
 Completed at code/CI level; user runtime acceptance pending: DR6, DR7
-DR8 active: DR8A–DR8C complete; DR8D next; DR8E pending
+DR8 active: DR8A–DR8D complete; DR8E next
 Pending: DR9
 
 There are 10 subgates total. DR0–DR2 are complete; DR3–DR7 are implemented and CI-green but still need real ComfyUI runtime acceptance where applicable; DR8 remains the active engineering subgate and DR9 is the final packaged user acceptance.
