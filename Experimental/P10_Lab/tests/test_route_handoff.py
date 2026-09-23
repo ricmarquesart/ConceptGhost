@@ -28,7 +28,9 @@ class RouteHandoffTests(unittest.TestCase):
     def test_seed_route_waits_without_starting_production(self):
         from p10_lab.route_handoff import commit_route_setup
         boundary=SimpleNamespace(scene_contract_id="scene1",run_id="run1")
-        with tempfile.TemporaryDirectory() as tmp,              patch("p10_lab.route_handoff.validate_official_run",return_value=boundary):
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch("p10_lab.route_handoff.validate_official_run",return_value=boundary), \
+             patch("p10_lab.route_handoff.write_p9_dependency_inventory",return_value={"inventory_sha256":"i"*64,"persisted_file_count":7}):
             result=commit_route_setup(
                 Path(tmp)/"p9",
                 json.dumps(self._bound_plan("EDITABLE_SEED")),
@@ -41,7 +43,10 @@ class RouteHandoffTests(unittest.TestCase):
     def test_artist_route_commits_and_loads_without_modifying_p9(self):
         from p10_lab.route_handoff import commit_route_setup,load_production_entry
         boundary=SimpleNamespace(scene_contract_id="scene1",run_id="run1")
-        with tempfile.TemporaryDirectory() as tmp,              patch("p10_lab.route_handoff.validate_official_run",return_value=boundary):
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch("p10_lab.route_handoff.validate_official_run",return_value=boundary), \
+             patch("p10_lab.route_handoff.write_p9_dependency_inventory",return_value={"inventory_sha256":"i"*64,"persisted_file_count":7}), \
+             patch("p10_lab.route_handoff.validate_p9_dependency_inventory",return_value={"inventory_sha256":"i"*64,"persisted_file_count":7}):
             p9=Path(tmp)/"p9"
             p9.mkdir()
             result=commit_route_setup(
@@ -59,7 +64,10 @@ class RouteHandoffTests(unittest.TestCase):
     def test_committed_route_tamper_fails_closed(self):
         from p10_lab.route_handoff import commit_route_setup,load_production_entry
         boundary=SimpleNamespace(scene_contract_id="scene1",run_id="run1")
-        with tempfile.TemporaryDirectory() as tmp,              patch("p10_lab.route_handoff.validate_official_run",return_value=boundary):
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch("p10_lab.route_handoff.validate_official_run",return_value=boundary), \
+             patch("p10_lab.route_handoff.write_p9_dependency_inventory",return_value={"inventory_sha256":"i"*64,"persisted_file_count":7}), \
+             patch("p10_lab.route_handoff.validate_p9_dependency_inventory",return_value={"inventory_sha256":"i"*64,"persisted_file_count":7}):
             result=commit_route_setup(
                 Path(tmp)/"p9",
                 json.dumps(self._bound_plan()),
