@@ -1,0 +1,50 @@
+{
+  "schema": "ConceptGhost.LotusDiagnostic.Config.v1",
+  "runtime_root": "%LOCALAPPDATA%\\ConceptGhost-LotusDiagnostic",
+  "outputs_root": "%LOCALAPPDATA%\\ConceptGhost-LotusDiagnostic\\Outputs",
+  "source_repo": "https://github.com/EnVision-Research/Lotus.git",
+  "source_archive": "https://github.com/EnVision-Research/Lotus/archive/refs/heads/main.zip",
+  "python": {
+    "version": "3.10.11",
+    "embed_url": "https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip"
+  },
+  "models": {
+    "depth": {
+      "repo_id": "jingheya/lotus-depth-d-v2-0-disparity",
+      "task": "depth",
+      "mode": "regression",
+      "disparity": true,
+      "authority": "LOTUS_NATIVE_DISPARITY_RELATIVE_NON_METRIC"
+    },
+    "normal": {
+      "repo_id": "jingheya/lotus-normal-d-v1-1",
+      "task": "normal",
+      "mode": "regression",
+      "disparity": false,
+      "authority": "LOTUS_NATIVE_SURFACE_NORMAL"
+    }
+  },
+  "defaults": {
+    "processing_res": 768,
+    "half_precision": true,
+    "save_raw_outputs": false,
+    "enable_3d_preview": false,
+    "enable_extended_diagnostics": true,
+    "assumed_fov_degrees_for_relative_pointcloud": 60.0
+  },
+  "host_policy": {
+    "shared_comfy_mutation": "FORBIDDEN",
+    "shared_python_pip_install": "FORBIDDEN",
+    "shared_model_install": "FORBIDDEN",
+    "protected_paths": [
+      "%LOCALAPPDATA%\\ConceptGhost-MoGeRuntime-v1",
+      "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Shared\\models",
+      "%LOCALAPPDATA%\\Comfy-Desktop\\ComfyUI-Installs\\ComfyUI\\ComfyUI\\models"
+    ],
+    "allowed_host_writes": [
+      "ComfyUI/custom_nodes/ConceptGhost_Lotus_Diagnostic",
+      "ComfyUI/user/default/workflows/Lotus_Depth_Diagnostic.json"
+    ]
+  },
+  "installer_revision": "r2-bootstrap-root-detection-hotfix"
+}
