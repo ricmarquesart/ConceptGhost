@@ -152,7 +152,7 @@ Required diagnostics include:
 Gate 6 file existence remains a runtime check, not geometry acceptance.
 
 ### DR9R-C — Explicit Two-Stage P9→P10 Handoff
-Status: **NEXT**
+Status: **COMPLETE / CI PASS**
 
 - Route Setup path stops before WAN/Gate 6.
 - Commit route against scene_contract_id + P9 run_id.
@@ -160,7 +160,7 @@ Status: **NEXT**
 - No second P9 solve is required.
 
 ### DR9R-D — Immutable P10 Attempt Directories
-Status: **PLANNED**
+Status: **COMPLETE / CI PASS**
 
 - introduce p10_attempt_id independent from parent p9_run_id;
 - every P10 production execution gets a unique attempt folder;
@@ -169,7 +169,7 @@ Status: **PLANNED**
 - LATEST_P10_RUN is a pointer only.
 
 ### DR9R-E — Complete Runtime Regression + User Test Bundle
-Status: **PLANNED / USER TEST DEFERRED**
+Status: **ACTIVE / FINAL PACKAGE BUILD**
 
 Only after DR9R-B1..B6, DR9R-C and DR9R-D are complete:
 - build one complete installer/workflow bundle;
@@ -268,3 +268,27 @@ GitHub authority:
 - CI run 35874519063 passed at the B6 implementation head.
 - User runtime evidence remains deferred until DR9R-E.
 - Next: DR9R-C — explicit P9 Route Setup → P10 Production handoff.
+
+
+### DR9R-C implementation checkpoint — 2026-09-23
+
+- Added explicit Stage A Route Setup and Stage B P10 Production handoff.
+- Stage A runs the accepted P9 scene, exposes the route workspace and intentionally contains no WAN or Gate 6 execution path.
+- First Stage-A execution may end in WAITING_FOR_ARTIST_ROUTE; this is a valid human-in-the-loop state, not an error.
+- ARTIST_AUTHORED routes are committed into a scene/run-bound `ConceptGhost.P10ProductionEntry.v0.1`.
+- Production entry validates P9 scene/run identity, route hash and committed route file digest before use.
+- Stage B contains no P9 solver/export dependency; it loads the existing immutable P9 run and the committed artist route.
+- This removes the wasteful default WAN/Gate6 pass that previously occurred only to reveal the route map.
+- CI at and after the handoff implementation passed; later run 35875820261 includes all handoff regressions.
+
+### DR9R-D implementation checkpoint — 2026-09-23
+
+- Every explicit Stage-B P10 Production queue creates a unique immutable `p10_attempt_id`.
+- Attempt root: `<ComfyUI output>/conceptghost/p10_attempts/<p9_run_id>/<p10_attempt_id>/`.
+- Gate 4 evidence, Gate 5 WAN/composites/GIFs and Gate 6 reconstruction are isolated under the same attempt root.
+- `LATEST_P10_RUN.json` is pointer-only; prior attempts are never overwritten.
+- Control/camera/WAN manifests propagate attempt identity.
+- Gate 6 rejects cross-attempt WAN/camera mixing.
+- Gate 6 closeout updates `attempt_manifest.json` to COMPLETE or COMPLETE_GEOMETRY_FAIL without deleting previous attempts.
+- CI run 35875820261 passed including unique-attempt and cross-attempt fail-closed regressions.
+- Next: DR9R-E — aggregate regression, final two-workflow installer package and one user runtime acceptance pass.
