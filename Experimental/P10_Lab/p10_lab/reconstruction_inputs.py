@@ -134,6 +134,31 @@ def build_reconstruction_input_manifest(
     if not isinstance(camera_frames,list) or not camera_frames:
         raise ContractError("Camera manifest requires non-empty frames")
 
+    wan_route_hash=wan.get("route_plan_sha256")
+    camera_route_hash=cameras.get("route_plan_sha256")
+    wan_route_authority=wan.get("route_authority")
+    camera_route_authority=cameras.get("route_authority")
+    if wan_route_authority != camera_route_authority:
+        raise ContractError(
+            "Gate 6 route authority mismatch between WAN and camera manifests: "
+            f"WAN={wan_route_authority!r}, camera={camera_route_authority!r}"
+        )
+    if wan_route_hash != camera_route_hash:
+        raise ContractError(
+            "Gate 6 route-plan identity mismatch between WAN and camera manifests"
+        )
+
+    wan_mission_order=wan.get("mission_order")
+    camera_mission_order=cameras.get("mission_order")
+    if not isinstance(wan_mission_order,list) or not wan_mission_order:
+        raise ContractError("WAN manifest requires non-empty mission_order")
+    if not isinstance(camera_mission_order,list) or not camera_mission_order:
+        raise ContractError("Camera manifest requires non-empty mission_order")
+    if wan_mission_order != camera_mission_order:
+        raise ContractError(
+            "Gate 6 mission order mismatch between WAN and camera manifests"
+        )
+
     effective_dimensions = wan.get("effective_dimensions")
     if not isinstance(effective_dimensions, dict):
         raise ContractError(
@@ -173,12 +198,15 @@ def build_reconstruction_input_manifest(
         decoded=window.get("decoded_frame_count")
         composite_dir=Path(str(window.get("composite_dir") or ""))
         name=str(window.get("name") or "").strip()
+        mission_name=str(window.get("mission_name") or "").strip()
         if type(start) is not int or start<0:
             raise ContractError("WAN source_start must be a nonnegative integer")
         if type(decoded) is not int or decoded<1:
             raise ContractError("WAN decoded_frame_count must be a positive integer")
         if not name:
             raise ContractError("WAN window name cannot be empty")
+        if not mission_name:
+            raise ContractError("WAN window mission_name cannot be empty")
 
         for local_index in range(decoded):
             global_index=start+local_index
@@ -194,11 +222,10 @@ def build_reconstruction_input_manifest(
                 raise ContractError(f"Missing source-preserved composite frame: {image_path}")
 
             path_name=str(camera_record.get("path_name") or "").strip()
-            base_window_name=name.split("__part",1)[0]
-            if path_name and path_name!=base_window_name:
+            if path_name and path_name!=mission_name:
                 raise ContractError(
                     f"Mission mismatch for frame {global_index}: "
-                    f"WAN={base_window_name!r}, camera={path_name!r}"
+                    f"WAN={mission_name!r}, camera={path_name!r}"
                 )
 
             composite_camera, camera_transform = transform_camera_for_composite(
@@ -208,7 +235,7 @@ def build_reconstruction_input_manifest(
             )
             frames.append({
                 "global_frame_index":global_index,
-                "path_name":path_name or base_window_name,
+                "path_name":path_name or mission_name,
                 "path_frame_index":camera_record.get("path_frame_index"),
                 "image_path":str(image_path.resolve()),
                 "image_provenance":"P10_WAN_SOURCE_PRESERVED_COMPOSITE",
@@ -220,13 +247,26 @@ def build_reconstruction_input_manifest(
 
     frames.sort(key=lambda item:item["global_frame_index"])
     indexes=[item["global_frame_index"] for item in frames]
+    if len(frames) != len(camera_frames):
+        raise ContractError(
+            "Gate 6 requires exact WAN/camera frame parity: "
+            f"WAN composites={len(frames)}, camera frames={len(camera_frames)}"
+        )
+    observed_order=[]
+    for item in frames:
+        if item["path_name"] not in observed_order:
+            observed_order.append(item["path_name"])
+    if observed_order != wan_mission_order:
+        raise ContractError(
+            "Gate 6 reconstructed frame mission order does not match authored mission order"
+        )
     if indexes!=list(range(len(frames))):
         raise ContractError(
             "Gate 6 first-pass reconstruction requires a contiguous generated frame sequence"
         )
 
     return {
-        "schema":"ConceptGhost.P10ReconstructionInputs.v0.1",
+        "schema":"ConceptGhost.P10ReconstructionInputs.v0.2",
         "run_id":wan.get("run_id"),
         "scene_contract_id":cameras.get("scene_contract_id"),
         "source_wan_manifest":str(wan_path.resolve()),
@@ -234,6 +274,10 @@ def build_reconstruction_input_manifest(
         "frame_count":len(frames),
         "image_authority":"SOURCE_PRESERVED_P10_COMPOSITE",
         "camera_authority":"P9_BASELINE_WORLD_DERIVED",
+        "route_authority":wan_route_authority,
+        "route_plan_sha256":wan_route_hash,
+        "mission_order":wan_mission_order,
+        "mission_modes":wan.get("mission_modes"),
         "camera_image_mapping_policy":"COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
         "composite_dimensions":{"width":target_width,"height":target_height},
         "frames":frames,
