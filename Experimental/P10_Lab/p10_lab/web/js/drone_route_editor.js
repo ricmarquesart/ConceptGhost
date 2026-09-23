@@ -143,7 +143,8 @@ function setupEditor(node) {
 
     const help = document.createElement("div");
     help.textContent =
-        "Clique para criar pontos. Arraste um ponto em TOP, SIDE ou FRONT; as três vistas editam o mesmo ponto 3D.";
+        "Clique para criar pontos. Arraste em TOP, SIDE ou FRONT; as três vistas editam o mesmo ponto 3D. " +
+        "As vistas ortográficas preservam escala métrica. Após editar, execute Queue Prompt para aplicar a rota ao P10.";
     help.style.cssText = "color:#aaa;line-height:1.3;";
 
     const canvasWrap = document.createElement("div");
@@ -244,7 +245,7 @@ function setupEditor(node) {
             status.textContent = planStatus.text;
             status.style.color = "#ffb040";
         } else if (state.collisionStale) {
-            status.textContent = planStatus.text + " · colisão precisa ser revalidada";
+            status.textContent = planStatus.text + " · rota editada · execute Queue Prompt para aplicar/revalidar";
             status.style.color = "#ffdc5a";
         } else if (collision?.blocked_mission_count > 0) {
             status.textContent =
