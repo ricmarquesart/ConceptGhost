@@ -8,6 +8,11 @@ from .contracts import ContractError
 _REFINED_EXPORT_ID = 1015
 _EVIDENCE_NODE_ID = 2100
 _ROUTE_AUTHOR_NODE_ID = 2099
+_MOGE_DIAG_CONTROL_ID = 2084
+_MOGE_DIAG_NOTES_ID = 2085
+_MOGE_DIAG_PROFILE_TAP_ID = 2086
+_MOGE_DIAG_EXPORT_ID = 2087
+_MOGE_DIAG_PREVIEW_ID = 2088
 _DEFAULT_GEOMETRY_PROFILE = "High Fidelity Split Clean"
 
 # Dedicated P10 visual lane below the existing Refined/P9 graph.
@@ -644,6 +649,238 @@ def _remove_links_touching_nodes(workflow: dict, removed_node_ids: set[int]) -> 
                 input_slot["link"]=None
 
 
+def integrate_moge_depth_diagnostics(workflow: dict) -> dict:
+    """Attach an optional MoGe-native diagnostic side branch to Refined/P9.
+
+    OFF is the serialized default. The side branch never feeds official geometry.
+    When ON, it requests optional per-step MoGe evidence through a copied profile
+    contract and writes diagnostics under the configured ConceptGhost output root.
+    """
+
+    nodes=workflow.get("nodes")
+    links=workflow.get("links")
+    if not isinstance(nodes,list) or not isinstance(links,list):
+        raise ContractError("Workflow must contain nodes and links arrays")
+    by_id={node.get("id"):node for node in nodes}
+    required=(2,68,1038,1036)
+    missing=[node_id for node_id in required if node_id not in by_id]
+    if missing:
+        raise ContractError(f"MoGe diagnostics requires Refined/P9 nodes {missing}")
+    if any(node.get("id") in {
+        _MOGE_DIAG_CONTROL_ID,_MOGE_DIAG_NOTES_ID,_MOGE_DIAG_PROFILE_TAP_ID,
+        _MOGE_DIAG_EXPORT_ID,_MOGE_DIAG_PREVIEW_ID,
+    } for node in nodes):
+        return workflow
+
+    master=by_id[2]
+    run_mode=by_id[68]
+    profile=by_id[1038]
+    moge=by_id[1036]
+
+    # Replace only the profile->MoGe edge. Projection/Evidence retain the original
+    # profile_config, so the diagnostic tap can request extra return arrays without
+    # becoming geometry authority.
+    old_link=next(
+        (
+            link for link in links
+            if isinstance(link,list) and len(link)>=6
+            and int(link[1])==1038 and int(link[2])==0
+            and int(link[3])==1036 and int(link[4])==3
+        ),
+        None,
+    )
+    if old_link is None:
+        raise ContractError("Refined/P9 GeometryProfile -> MoGe inference link is missing")
+    old_link_id=int(old_link[0])
+    links.remove(old_link)
+    profile_links=profile["outputs"][0].get("links")
+    if isinstance(profile_links,list):
+        profile["outputs"][0]["links"]=[value for value in profile_links if int(value)!=old_link_id] or None
+    moge["inputs"][3]["link"]=None
+
+    next_link=max(
+        int(workflow.get("last_link_id") or 0)+1,
+        max((int(link[0]) for link in links if isinstance(link,list) and link),default=0)+1,
+    )
+    order=max((int(node.get("order") or 0) for node in nodes),default=0)+1
+
+    notes_text=(
+        "Purpose\n"
+        "Inspect how MoGe interprets scene depth/planes without changing official P9/P10 authority.\n\n"
+        "Inputs\n"
+        "Refined/P9 source image + raw MoGe geometry/report + scene/output root.\n\n"
+        "What it does\n"
+        "When enabled, saves native depth/points/normals/mask/intrinsics when available and derives "
+        "grayscale depth, heatmap, inverse depth, depth bands, contours, depth discontinuities, "
+        "point-cloud preview, sampled PLY and a comparison mosaic. Optional per-step MoGe evidence "
+        "is requested only for diagnostics.\n\n"
+        "Outputs\n"
+        "Diagnostic mosaic + diagnostics folder + manifest.json + report. Files are stored under "
+        "<ConceptGhost output root>/_diagnostics/moge_depth/<scene>/<diagnostic run>.\n\n"
+        "Authority\n"
+        "DIAGNOSTIC ONLY. This branch never feeds Canonical PrimaryMesh, scale, camera, fusion or export.\n\n"
+        "Geometry impact\n"
+        "NONE. OFF and ON both leave official geometry behavior unchanged; ON only asks MoGe to return "
+        "additional evidence and writes side artifacts.\n\n"
+        "Default state\n"
+        "Enable MoGe Diagnostics = OFF. Sub-switches are prepared but inert while OFF.\n\n"
+        "Failure/fallback\n"
+        "FAIL-OPEN diagnostic branch: partial diagnostics/manifest are preserved when possible and "
+        "the official pipeline is not replaced or mutated.\n\n"
+        "TEMP / retention\n"
+        "Explicit diagnostic runs are PRESERVED until manual cleanup. Auto-clean must not remove them "
+        "while diagnostic mode was explicitly enabled. Raw/per-step files can be large.\n\n"
+        "Next stage\n"
+        "Official Refined/P9 continues through normal evidence/canonical/export unchanged. The existing "
+        "Primary Master later in P9 remains the authoritative mesh preview; this group does not duplicate it."
+    )
+
+    control={
+        "id":_MOGE_DIAG_CONTROL_ID,
+        "type":"ConceptGhostMoGeDiagnosticsControl",
+        "pos":[2140,8580],
+        "size":[610,220],
+        "flags":{},
+        "order":order,
+        "mode":0,
+        "inputs":[
+            {"name":"enable_moge_diagnostics","type":"BOOLEAN","widget":{"name":"enable_moge_diagnostics"},"link":None},
+            {"name":"save_raw_outputs","type":"BOOLEAN","widget":{"name":"save_raw_outputs"},"link":None},
+            {"name":"generate_3d_previews","type":"BOOLEAN","widget":{"name":"generate_3d_previews"},"link":None},
+            {"name":"generate_extra_depth_visuals","type":"BOOLEAN","widget":{"name":"generate_extra_depth_visuals"},"link":None},
+        ],
+        "outputs":[
+            {"name":"enabled","type":"BOOLEAN","links":[],"slot_index":0},
+            {"name":"save_raw","type":"BOOLEAN","links":[],"slot_index":1},
+            {"name":"render_3d","type":"BOOLEAN","links":[],"slot_index":2},
+            {"name":"extra_visuals","type":"BOOLEAN","links":[],"slot_index":3},
+            {"name":"control_report","type":"STRING","links":None,"slot_index":4},
+        ],
+        "properties":{"Node name for S&R":"ConceptGhostMoGeDiagnosticsControl"},
+        "widgets_values":[False,True,True,True],
+        "title":"P9 · MoGe Depth Diagnostics · ENABLE = OFF BY DEFAULT",
+    }
+    notes={
+        "id":_MOGE_DIAG_NOTES_ID,
+        "type":"ConceptGhostP10WorkflowInstructions",
+        "pos":[2790,8500],
+        "size":[1040,720],
+        "flags":{},
+        "order":order+1,
+        "mode":0,
+        "inputs":[{
+            "name":"instructions","type":"STRING","widget":{"name":"instructions"},"link":None,
+        }],
+        "outputs":[{"name":"instructions","type":"STRING","links":None,"slot_index":0}],
+        "properties":{"Node name for S&R":"ConceptGhostP10WorkflowInstructions"},
+        "widgets_values":[notes_text],
+        "title":"P9 · MoGe Depth Diagnostics · NOTES · READ BEFORE ENABLING",
+    }
+    tap={
+        "id":_MOGE_DIAG_PROFILE_TAP_ID,
+        "type":"ConceptGhostMoGeDiagnosticProfileTap",
+        "pos":[2140,8840],
+        "size":[610,160],
+        "flags":{},
+        "order":order+2,
+        "mode":0,
+        "inputs":[
+            {"name":"profile_config","type":"CG_GEOMETRY_PROFILE","link":next_link},
+            {"name":"enable_moge_diagnostics","type":"BOOLEAN","link":next_link+1},
+        ],
+        "outputs":[
+            {"name":"profile_config","type":"CG_GEOMETRY_PROFILE","links":[next_link+2],"slot_index":0},
+            {"name":"tap_report","type":"STRING","links":None,"slot_index":1},
+        ],
+        "properties":{"Node name for S&R":"ConceptGhostMoGeDiagnosticProfileTap"},
+        "widgets_values":[],
+        "title":"P9 · MoGe Depth Diagnostics · OPTIONAL PER-STEP TAP",
+    }
+    exporter={
+        "id":_MOGE_DIAG_EXPORT_ID,
+        "type":"ConceptGhostMoGeDepthDiagnostics",
+        "pos":[3880,8500],
+        "size":[760,520],
+        "flags":{},
+        "order":order+3,
+        "mode":0,
+        "inputs":[
+            {"name":"moge_geometry","type":"MOGE_GEOMETRY","link":next_link+3},
+            {"name":"source_image","type":"IMAGE","link":next_link+4},
+            {"name":"scene_name","type":"STRING","link":next_link+5},
+            {"name":"output_root","type":"STRING","link":next_link+6},
+            {"name":"enabled","type":"BOOLEAN","link":next_link+7},
+            {"name":"save_raw","type":"BOOLEAN","link":next_link+8},
+            {"name":"render_3d","type":"BOOLEAN","link":next_link+9},
+            {"name":"extra_visuals","type":"BOOLEAN","link":next_link+10},
+            {"name":"moge_report","type":"STRING","link":next_link+11},
+        ],
+        "outputs":[
+            {"name":"diagnostic_mosaic","type":"IMAGE","links":[next_link+12],"slot_index":0},
+            {"name":"diagnostics_dir","type":"STRING","links":None,"slot_index":1},
+            {"name":"manifest_path","type":"STRING","links":None,"slot_index":2},
+            {"name":"report_json","type":"STRING","links":None,"slot_index":3},
+        ],
+        "properties":{"Node name for S&R":"ConceptGhostMoGeDepthDiagnostics"},
+        "widgets_values":[],
+        "title":"P9 · MoGe Depth Diagnostics · EXPORT · DIAGNOSTIC ONLY",
+    }
+    preview={
+        "id":_MOGE_DIAG_PREVIEW_ID,
+        "type":"PreviewImage",
+        "pos":[4680,8500],
+        "size":[980,720],
+        "flags":{},
+        "order":order+4,
+        "mode":0,
+        "inputs":[{"name":"images","type":"IMAGE","link":next_link+12}],
+        "outputs":[],
+        "properties":{"Node name for S&R":"PreviewImage"},
+        "widgets_values":[],
+        "title":"P9 · MoGe Depth Diagnostics · COMPARISON MOSAIC",
+    }
+    nodes.extend([control,notes,tap,exporter,preview])
+
+    # profile -> diagnostic tap -> MoGe
+    links.extend([
+        [next_link,1038,0,_MOGE_DIAG_PROFILE_TAP_ID,0,"CG_GEOMETRY_PROFILE"],
+        [next_link+1,_MOGE_DIAG_CONTROL_ID,0,_MOGE_DIAG_PROFILE_TAP_ID,1,"BOOLEAN"],
+        [next_link+2,_MOGE_DIAG_PROFILE_TAP_ID,0,1036,3,"CG_GEOMETRY_PROFILE"],
+        [next_link+3,1036,0,_MOGE_DIAG_EXPORT_ID,0,"MOGE_GEOMETRY"],
+        [next_link+4,68,1,_MOGE_DIAG_EXPORT_ID,1,"IMAGE"],
+        [next_link+5,2,5,_MOGE_DIAG_EXPORT_ID,2,"STRING"],
+        [next_link+6,2,6,_MOGE_DIAG_EXPORT_ID,3,"STRING"],
+        [next_link+7,_MOGE_DIAG_CONTROL_ID,0,_MOGE_DIAG_EXPORT_ID,4,"BOOLEAN"],
+        [next_link+8,_MOGE_DIAG_CONTROL_ID,1,_MOGE_DIAG_EXPORT_ID,5,"BOOLEAN"],
+        [next_link+9,_MOGE_DIAG_CONTROL_ID,2,_MOGE_DIAG_EXPORT_ID,6,"BOOLEAN"],
+        [next_link+10,_MOGE_DIAG_CONTROL_ID,3,_MOGE_DIAG_EXPORT_ID,7,"BOOLEAN"],
+        [next_link+11,1036,1,_MOGE_DIAG_EXPORT_ID,8,"STRING"],
+        [next_link+12,_MOGE_DIAG_EXPORT_ID,0,_MOGE_DIAG_PREVIEW_ID,0,"IMAGE"],
+    ])
+    profile["outputs"][0]["links"]=(profile["outputs"][0].get("links") or [])+[next_link]
+    control["outputs"][0]["links"]=[next_link+1,next_link+7]
+    control["outputs"][1]["links"]=[next_link+8]
+    control["outputs"][2]["links"]=[next_link+9]
+    control["outputs"][3]["links"]=[next_link+10]
+    moge["inputs"][3]["link"]=next_link+2
+    moge["outputs"][0]["links"]=(moge["outputs"][0].get("links") or [])+[next_link+3]
+    moge["outputs"][1]["links"]=(moge["outputs"][1].get("links") or [])+[next_link+11]
+    run_mode["outputs"][1]["links"]=(run_mode["outputs"][1].get("links") or [])+[next_link+4]
+    master["outputs"][5]["links"]=(master["outputs"][5].get("links") or [])+[next_link+5]
+    master["outputs"][6]["links"]=(master["outputs"][6].get("links") or [])+[next_link+6]
+
+    groups=workflow.setdefault("groups",[])
+    groups.append({
+        "title":"P9 · MoGe Depth Diagnostics · OPTIONAL · OFF BY DEFAULT",
+        "bounding":[2020,8420,3700,850],
+        "color":"#6f4a2f",
+        "font_size":24,
+        "flags":{},
+    })
+    workflow["last_link_id"]=next_link+12
+    return workflow
+
+
 def integrate_route_setup_refined_preview(workflow: dict) -> dict:
     """Stage A: solve P9 once, expose the route workspace, commit route, stop.
 
@@ -661,6 +898,8 @@ def integrate_route_setup_refined_preview(workflow: dict) -> dict:
 
     nodes[:]=[node for node in nodes if node.get("id")!=_EVIDENCE_NODE_ID]
     _remove_links_touching_nodes(patched,{_EVIDENCE_NODE_ID})
+    integrate_moge_depth_diagnostics(patched)
+    nodes=patched["nodes"]
     by_id={node.get("id"):node for node in nodes}
 
     refined_export=by_id[_REFINED_EXPORT_ID]
