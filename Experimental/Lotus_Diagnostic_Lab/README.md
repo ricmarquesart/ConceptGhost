@@ -67,3 +67,10 @@ r3 removes Hugging Face `snapshot_download` from model installation. On Windows 
 r3 writes ordinary files directly to `Models\depth` and `Models\normal`, supports resumable `.part` downloads, reuses valid complete/partial blobs from the failed r2 owned cache when possible, verifies declared size and LFS SHA-256 metadata, and removes the obsolete owned cache only after both models are complete.
 
 Recovery path: re-run `01_INSTALL_LOTUS_DIAGNOSTIC.bat`. No manual cleanup, Administrator mode, or Windows Developer Mode is required by the installer.
+
+
+### Installer r4 — Windows inference hardening
+
+The r3 hardware run reached the isolated Lotus depth process but the child traceback was hidden in depth_inference.log. r4 adds an isolated adapter around the official upstream LotusDPipeline. GPUs at or below 13 GB VRAM use Diffusers/Accelerate model CPU offload automatically; larger GPUs use full CUDA placement. The adapter remains diagnostic-only and uses the same official discriminative depth/normal checkpoints.
+
+The worker in the r4 distribution also propagates the child log tail into the ComfyUI exception so subsequent hardware failures contain the actual internal traceback.
