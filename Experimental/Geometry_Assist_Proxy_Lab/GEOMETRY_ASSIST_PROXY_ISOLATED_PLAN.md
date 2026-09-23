@@ -549,3 +549,45 @@ Upgrade from r2:
 - then re-run the same input image.
 
 Hardware generation acceptance remains pending until the r3 run reaches and completes diffusion on the target RTX 2080 Ti.
+
+## r4 self-test/runtime-state hotfix status — 2026-09-23
+
+The first r3 install on the target RTX 2080 Ti reached the new prompt self-test and exposed a coding regression before inference.
+
+Observed r3 failure:
+- private Torch/CUDA/models remained healthy;
+- CUDA = RTX 2080 Ti / 11 GB;
+- all required model files present;
+- failure: `NameError: name 'prompt_contract' is not defined`.
+
+Root cause:
+- while converting runtime manifest fields from the old single-tokenizer variables to the new both-tokenizer structure, an over-broad text replacement also modified the local `details[name]` dictionary inside `validate_prompt_contract()`;
+- that dictionary referenced `prompt_contract` before `validate_prompt_contract()` could return it;
+- inspection also found a second latent r3 defect in the PASS manifest path: stale references to `prompt_tokens` and `negative_prompt_tokens` would have raised another NameError after a successful inference.
+
+r4 corrections:
+- restore per-tokenizer fields: prompt_tokens, negative_prompt_tokens, max_tokens;
+- store the returned both-tokenizer structure under manifest field prompt_tokenizers;
+- add `Tests/test_prompt_contract.py`, which imports the worker without GPU dependencies, executes the validator with deterministic fake tokenizers, verifies fail-closed oversize behavior, and checks that stale runtime-state fields are absent;
+- run this regression explicitly in the Geometry Assist package workflow before compilation/packaging.
+
+Validation:
+- Geometry Assist Isolated Package run 35932543332 — SUCCESS;
+- ConceptGhost Tests run 35932543400 — SUCCESS;
+- P10 DR9 Source Snapshot run 35932543303 — SUCCESS;
+- r4 package commit: 67287bddb0bd2b6578ea41344721d6fe32f9ab27;
+- GitHub Actions artifact ID: 10782040237.
+
+Canonical r4:
+- `ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r4.zip`
+- SHA-256: `22f6f782beb3533803a0965bcc6392e9ede8a44db0f19d6a7fa85150f34e0a8b`
+- Google Drive Evaluation_Builds file ID: `1FT-u_e3_kH0OMlDFpSpuoyunwP-wnyIY`
+
+Upgrade from r3:
+- do NOT uninstall the isolated runtime;
+- extract r4 and run `01_INSTALL_GEOMETRY_ASSIST_DIAGNOSTIC.bat`;
+- the installer reuses all already-downloaded private packages/models;
+- the self-test must print `Prompt contract: PASS` and per-tokenizer counts before installation is accepted;
+- then run `02_VERIFY_GEOMETRY_ASSIST_DIAGNOSTIC.bat` and retry the same source image.
+
+Hardware inference acceptance remains pending after this self-test/runtime-state correction.
