@@ -380,6 +380,7 @@ def _save_evidence_images(
     route_plan_payload,
     source_run_id,
     source_p9_run_dir,
+    p10_attempt_root,
     mission_modes,
     np,
     Image,
@@ -387,10 +388,29 @@ def _save_evidence_images(
 ):
     try:
         import folder_paths
-        root = Path(folder_paths.get_output_directory()) / "conceptghost" / "p10_gate4" / run_id
+        comfy_output=Path(folder_paths.get_output_directory()).resolve()
+        if str(p10_attempt_root or "").strip():
+            attempt_root=Path(str(p10_attempt_root)).resolve()
+            try:
+                attempt_root.relative_to(comfy_output)
+            except ValueError as error:
+                raise ContractError("p10_attempt_root must live under the ComfyUI output directory") from error
+            root=attempt_root/"gate4"
+        else:
+            root=comfy_output/"conceptghost"/"p10_gate4"/run_id
+        try:
+            ui_subfolder=root.relative_to(comfy_output).as_posix()
+        except ValueError:
+            ui_subfolder=f"conceptghost/p10_gate4/{run_id}"
     except ImportError:
-        root = Path.cwd() / "conceptghost_p10_gate4" / run_id
+        root=(
+            Path(str(p10_attempt_root)).resolve()/"gate4"
+            if str(p10_attempt_root or "").strip()
+            else Path.cwd()/"conceptghost_p10_gate4"/run_id
+        )
+        ui_subfolder=f"conceptghost/p10_gate4/{run_id}"
     root.mkdir(parents=True, exist_ok=True)
+    attempt_id=Path(str(p10_attempt_root)).name if str(p10_attempt_root or "").strip() else None
 
     def save_ui(filename, array, *, mode="RGB"):
         if mode == "L":
@@ -400,7 +420,7 @@ def _save_evidence_images(
         image.save(root / filename)
         ui_images.append({
             "filename": filename,
-            "subfolder": f"conceptghost/p10_gate4/{run_id}",
+            "subfolder": ui_subfolder,
             "type": "output",
         })
 
@@ -529,6 +549,8 @@ def _save_evidence_images(
         scene_contract_id=scene_contract_id,
         source_run_id=source_run_id,
         source_p9_run_dir=source_p9_run_dir,
+        p10_attempt_id=attempt_id,
+        p10_attempt_root=(str(Path(p10_attempt_root).resolve()) if str(p10_attempt_root or "").strip() else None),
         mission_modes=tuple(mission_modes),
     )
     control_manifest_path = control_root / "manifest.json"
@@ -546,6 +568,8 @@ def _save_evidence_images(
         route_plan_file=("route_plan.json" if route_plan_payload is not None else None),
         source_run_id=source_run_id,
         source_p9_run_dir=source_p9_run_dir,
+        p10_attempt_id=attempt_id,
+        p10_attempt_root=(str(Path(p10_attempt_root).resolve()) if str(p10_attempt_root or "").strip() else None),
         mission_modes=tuple(mission_modes),
     )
     camera_manifest_path = control_root / "camera_manifest.json"
@@ -568,6 +592,7 @@ def build_refined_evidence(
     view_width: int = 640,
     steps_per_segment: int = 4,
     route_plan_json: str = "",
+    p10_attempt_root: str = "",
 ) -> RefinedEvidenceResult:
     if type(panorama_width) is not int or panorama_width < 512 or panorama_width % 2:
         raise ContractError("panorama_width must be an even integer >= 512")
@@ -782,6 +807,7 @@ def build_refined_evidence(
         route_plan_payload=route_plan_payload,
         source_run_id=boundary.run_id,
         source_p9_run_dir=str(boundary.root),
+        p10_attempt_root=str(p10_attempt_root or ""),
         mission_modes=mission_modes,
         np=np,
         Image=Image,
@@ -813,6 +839,8 @@ def build_refined_evidence(
         "subgate": "4.2",
         "source_run_id": boundary.run_id,
         "source_p9_run_dir": str(boundary.root),
+        "p10_attempt_root": (str(Path(p10_attempt_root).resolve()) if str(p10_attempt_root or "").strip() else None),
+        "p10_attempt_id": (Path(str(p10_attempt_root)).name if str(p10_attempt_root or "").strip() else None),
         "scene_contract_id": boundary.scene_contract_id,
         "source_stage": boundary.source_stage,
         "preview_kind": "INTEGRATED_REFINED_VISUAL_EVIDENCE",
