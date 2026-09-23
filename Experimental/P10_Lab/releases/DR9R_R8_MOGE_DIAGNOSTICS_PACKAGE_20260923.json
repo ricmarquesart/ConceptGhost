@@ -1,0 +1,42 @@
+{
+  "schema": "ConceptGhost.P10DR9RMoGeDiagnosticsPackage.v0.8",
+  "package": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r8.zip",
+  "date": "2026-09-23",
+  "source_commit": "e6823e4617c394aedec4796a2e277d8f9bf4429b",
+  "ci": {
+    "tests_run": 35900795172,
+    "status": "SUCCESS",
+    "snapshot_run": 35900795335
+  },
+  "zip": {
+    "bytes": 12752338,
+    "sha256": "9774a887e397e18d9dcb76c65dea29ce4496ec95f0fa75570b400238dad0139c",
+    "members": 283
+  },
+  "google_drive": {
+    "file_id": "1wyRBo_RqXJQXm8JCmRUpMyaPHk11X0Vr",
+    "folder": "ConceptGhost/Storage/Evaluation_Builds"
+  },
+  "github": {
+    "tag": "p10-dr9r-r8",
+    "release_url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r8",
+    "asset_digest": "sha256:9774a887e397e18d9dcb76c65dea29ce4496ec95f0fa75570b400238dad0139c"
+  },
+  "workflows": [
+    "01_ConceptGhost_P10_ROUTE_SETUP.json",
+    "02_ConceptGhost_P10_PRODUCTION.json"
+  ],
+  "diagnostic": {
+    "default_enabled": false,
+    "authority": "DIAGNOSTIC_ONLY",
+    "geometry_impact": false,
+    "retention": "PRESERVE_UNTIL_MANUAL_CLEANUP"
+  },
+  "validation": {
+    "bundle": "PASS",
+    "runtime_verifier_static": "PASS",
+    "extracted_sha256s": "PASS",
+    "drive_redownload_sha256": "PASS"
+  },
+  "runtime_acceptance": "PENDING"
+}
