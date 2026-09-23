@@ -81,7 +81,7 @@ Status: **ACTIVE**
 DR9R-B is decomposed into six bounded recovery checkpoints. No user runtime test is requested between them.
 
 #### DR9R-B1 — 4-View Route Workspace
-Status: **NEXT**
+Status: **COMPLETE / CI PASS**
 
 - one interactive Perspective/orbit viewport;
 - fixed metric-isotropic TOP / SIDE / FRONT views;
@@ -90,7 +90,7 @@ Status: **NEXT**
 - route direction and camera/frustum visualization.
 
 #### DR9R-B2 — Camera Orientation Authority
-Status: **PLANNED**
+Status: **COMPLETE / CI PASS**
 
 Add explicit per-mission orientation modes:
 - LOOK_AT_TARGET — production default for PATH;
@@ -101,7 +101,7 @@ Add explicit per-mission orientation modes:
 The route workspace must display the target/direction/frustum so camera position and camera aim cannot be confused.
 
 #### DR9R-B3 — P9-Only Reconstruction Round-Trip Audit
-Status: **PLANNED**
+Status: **NEXT**
 
 Run a diagnostic reconstruction using P9-rendered camera views without WAN generation:
 P9 PrimaryMesh → P10 known cameras → P9-only rendered frames → known-camera COLMAP → reconstructed cloud/mesh.
@@ -192,3 +192,27 @@ After every bounded implementation subgate:
 
 GitHub authority:
 `Experimental/P10_Lab/docs/18_DR9R_RUNTIME_FINDINGS_REFINEMENT_PLAN.md`
+
+
+### DR9R-B1 implementation checkpoint — 2026-09-23
+
+- 2×2 workspace contract is implemented: interactive Perspective + metric-isotropic TOP/SIDE/FRONT.
+- Perspective consumes the same P9-local sampled PrimaryMesh geometry/source color evidence as the orthographic workspace.
+- Perspective orbit/zoom is inspection-only; waypoint coordinates remain authored in orthographic views.
+- Backend/server preview and frontend now share the same isotropic panel extents.
+- Route-direction arrows are visible.
+- User runtime test remains intentionally deferred.
+
+### DR9R-B2 implementation checkpoint — 2026-09-23
+
+- Route schema v0.2 adds explicit camera orientation authority.
+- PATH supports LOOK_AT_TARGET, LOOK_ALONG_PATH and MANUAL_DIRECTION.
+- New route-editor seeds use LOOK_AT_TARGET toward the P9 scene center.
+- Existing v0.1 routes remain readable and retain tangent-follow behavior until explicitly rebound.
+- Existing v0.1 bound route hashes are verified without silently changing their digest.
+- Target editing and manual yaw/pitch controls are exposed in the route editor.
+- Camera aim cues are rendered in Perspective and all three orthographic views.
+- Collision HOLD_AND_RESUME re-applies orientation after position holds so LOOK_AT_TARGET remains geometrically exact.
+- Per-mission diagnostics now include orientation mode/target/direction without changing the DR8 diagnostics schema.
+- GitHub CI passed after the B2 implementation fixes; final B2 checkpoint includes the legacy-hash preservation follow-up.
+- User runtime test remains intentionally deferred.
