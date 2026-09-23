@@ -1,0 +1,34 @@
+{
+  "schema": "ConceptGhost.P10DR9RInstallerHotfixPackage.v0.9",
+  "package": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r9.zip",
+  "date": "2026-09-23",
+  "release_target_source_commit": "f9ca7c6070a10c9c39a241ef9ebe8c4822988f66",
+  "final_branch_head": "9fa358c7ad7078b4f7bfa4e2e181848daf37cf2b",
+  "zip": {
+    "bytes": 12234987,
+    "sha256": "1143e94e0fcbfcf25809efa0a21fae162fa79079c3223b8ea2eec677069609bf"
+  },
+  "google_drive": {
+    "file_id": "1YUTpjOJzAIwYJwhgk87f8Dr-WONzwo7T",
+    "folder": "ConceptGhost/Storage/Evaluation_Builds"
+  },
+  "github": {
+    "tag": "p10-dr9r-r9",
+    "release_url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r9",
+    "asset_digest": "sha256:1143e94e0fcbfcf25809efa0a21fae162fa79079c3223b8ea2eec677069609bf"
+  },
+  "ci": {
+    "tests_run": 35906865640,
+    "tests_status": "SUCCESS",
+    "snapshot_run": 35906865630,
+    "snapshot_status": "SUCCESS",
+    "snapshot_digest": "sha256:c3c5f642c2852ec73b7fb35c645fca16db036330ee6feac3f4226d9f854f479d"
+  },
+  "workflows": [
+    "01_ConceptGhost_P10_ROUTE_SETUP.json",
+    "02_ConceptGhost_P10_PRODUCTION.json"
+  ],
+  "status": "READY_FOR_USER_RUNTIME_ACCEPTANCE",
+  "runtime_acceptance": "PENDING",
+  "next_after_acceptance": "Gate 7"
+}
