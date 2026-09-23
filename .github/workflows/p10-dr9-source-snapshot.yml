@@ -1,0 +1,37 @@
+name: P10 DR9 Source Snapshot
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+      - name: Build P10 Lab source snapshot
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          root = Path("Experimental/P10_Lab")
+          out = Path("p10_dr9_source_snapshot.zip")
+          with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+              for relroot in ("p10_lab", "docs", "tests", "checkpoints"):
+                  base = root / relroot
+                  if base.exists():
+                      for p in sorted(base.rglob("*")):
+                          if p.is_file():
+                              z.write(p, p.relative_to(root))
+          print(out, out.stat().st_size)
+          PY
+      - name: Upload P10 Lab source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: p10-dr9-source-snapshot
+          path: p10_dr9_source_snapshot.zip
+          if-no-files-found: error
+          retention-days: 7
