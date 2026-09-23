@@ -74,3 +74,12 @@ Recovery path: re-run `01_INSTALL_LOTUS_DIAGNOSTIC.bat`. No manual cleanup, Admi
 The r3 hardware run reached the isolated Lotus depth process but the child traceback was hidden in depth_inference.log. r4 adds an isolated adapter around the official upstream LotusDPipeline. GPUs at or below 13 GB VRAM use Diffusers/Accelerate model CPU offload automatically; larger GPUs use full CUDA placement. The adapter remains diagnostic-only and uses the same official discriminative depth/normal checkpoints.
 
 The worker in the r4 distribution also propagates the child log tail into the ComfyUI exception so subsequent hardware failures contain the actual internal traceback.
+
+
+### r5 uninstall safety hotfix
+
+The r4 uninstaller used the helper name `R`, which collides with the Windows PowerShell `R -> Invoke-History` alias. In the observed uninstall, the owned Lotus bridge was removed first and the script then stopped when the alias intercepted the report call.
+
+r5 renames the helper to `Write-UninstallReport`, treats an already-absent owned bridge/workflow as a safe resumable state, keeps bridge deletion ownership-marker gated and workflow deletion install-hash gated, restores any pre-existing workflow backup before runtime deletion, and writes `UNINSTALL_REPORT.txt` outside the runtime.
+
+Canonical evaluation bundle: `ConceptGhost_Lotus_Diagnostic_Isolated_FULL_r5.zip`.
