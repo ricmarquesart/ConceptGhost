@@ -102,6 +102,22 @@ def commit_route_setup(
     entry_path=output_root/"production_entry.json"
     entry_path.write_text(json.dumps(entry,indent=2,sort_keys=True),encoding="utf-8")
     entry["production_entry_path"]=str(entry_path)
+
+    # Convenience pointer only. The committed entry and P9 run remain immutable.
+    latest_pointer_path=output_root.parent/"LATEST_PRODUCTION_ENTRY.json"
+    latest_pointer={
+        "schema":"ConceptGhost.P10LatestProductionEntryPointer.v0.1",
+        "production_entry_path":str(entry_path),
+        "scene_contract_id":boundary.scene_contract_id,
+        "source_run_id":boundary.run_id,
+        "route_plan_sha256":route_hash,
+        "updated_at_utc":datetime.now(timezone.utc).isoformat(),
+        "pointer_only":True,
+    }
+    temp_pointer=latest_pointer_path.with_suffix(".json.tmp")
+    temp_pointer.write_text(json.dumps(latest_pointer,indent=2,sort_keys=True),encoding="utf-8")
+    temp_pointer.replace(latest_pointer_path)
+    entry["latest_production_entry_pointer"]=str(latest_pointer_path)
     return entry
 
 
@@ -210,6 +226,26 @@ def create_p10_attempt(
     return manifest
 
 
+def _resolve_production_entry_path(value: str, comfy_output_root: str | Path) -> Path:
+    raw=str(value or "").strip()
+    if raw and raw.upper()!="AUTO_LATEST":
+        return Path(raw).expanduser().resolve()
+    pointer=(
+        Path(comfy_output_root).resolve()
+        /"conceptghost"/"p10_route_setup"/"LATEST_PRODUCTION_ENTRY.json"
+    )
+    if not pointer.is_file():
+        raise ContractError(
+            "AUTO_LATEST could not find a committed route. Run the Route Setup "
+            "workflow, edit the artist route, and Queue Prompt once more to commit it."
+        )
+    payload=_read_json(pointer,"latest production entry pointer")
+    target=str(payload.get("production_entry_path") or "").strip()
+    if not target:
+        raise ContractError("Latest production-entry pointer has no production_entry_path")
+    return Path(target).expanduser().resolve()
+
+
 class ConceptGhostP10RouteCommit:
     @classmethod
     def INPUT_TYPES(cls):
@@ -248,7 +284,7 @@ class ConceptGhostP10ProductionEntryLoader:
             "required":{
                 "production_entry_path":(
                     "STRING",
-                    {"default":"","multiline":False,"dynamicPrompts":False},
+                    {"default":"AUTO_LATEST","multiline":False,"dynamicPrompts":False},
                 ),
             }
         }
@@ -266,7 +302,11 @@ class ConceptGhostP10ProductionEntryLoader:
 
     def load(self,production_entry_path):
         import folder_paths
-        result=load_production_entry(production_entry_path)
+        resolved_entry=_resolve_production_entry_path(
+            production_entry_path,
+            folder_paths.get_output_directory(),
+        )
+        result=load_production_entry(resolved_entry)
         attempt=create_p10_attempt(result,folder_paths.get_output_directory())
         diagnostics={
             **{key:value for key,value in result.items() if key!="route_plan_json"},
