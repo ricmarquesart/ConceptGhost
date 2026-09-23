@@ -1,5 +1,19 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-23 DR9 runtime findings / DR9R active
+
+- DR9 runtime acceptance is **NOT CLOSED**.
+- The first real artist-route test exposed route-preview projection distortion, a stale duplicate fixed preview, the expected human-in-the-loop second-prompt boundary, and non-immutable per-attempt P10 output storage.
+- The second prompt did consume the edited multi-drone route and reused cached P9 rather than re-solving the expensive P9 geometry.
+- Corrective block **DR9R** is now active before Gate 7.
+- **DR9R-A implemented / CI pending:** isotropic metric orthographic projection, source-colored point preview, stale duplicate image removal, clearer next-Queue-Prompt execution guidance.
+- Next: **DR9R-B — interactive perspective + locked TOP/SIDE/FRONT four-view workspace**.
+- Architecture decision for DR9R-C: split P9 Scene Solve + Route Setup from P10 Production while reusing the immutable P9 run_dir; do not author routes on a different low-fidelity geometry profile.
+- DR9R-D will give every P10 attempt its own immutable directory under the parent P9 scene identity.
+- Current pre-fusion mesh from this test remains diagnostic-only and is not quality-accepted.
+- Detailed plan: `Experimental/P10_Lab/docs/18_DR9R_RUNTIME_FINDINGS_REFINEMENT_PLAN.md`.
+
+
 This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 16 ordered implementation items in `01_MASTER_IMPLEMENTATION_PLAN.md` to ten
 development gates. A gate is complete only when its acceptance evidence is
