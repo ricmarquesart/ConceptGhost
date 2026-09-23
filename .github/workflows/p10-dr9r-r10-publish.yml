@@ -1,0 +1,115 @@
+name: Publish DR9R r10 Bundle
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - '.github/workflows/p10-dr9r-r10-publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-r10:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download frozen r9 base release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-r10-build'
+          New-Item -ItemType Directory -Force -Path $build | Out-Null
+          gh release download p10-dr9r-r9 --repo ${{ github.repository }} --pattern 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r9.zip' --dir $build
+          $source = Join-Path $build 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r9.zip'
+          if (-not (Test-Path $source)) { throw 'Frozen r9 release asset was not downloaded.' }
+          $hash = (Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne '1143e94e0fcbfcf25809efa0a21fae162fa79079c3223b8ea2eec677069609bf') {
+            throw "Unexpected r9 base digest: $hash"
+          }
+
+      - name: Build deterministic r10 bundle
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-r10-build'
+          $source = Join-Path $build 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r9.zip'
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $zip = Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10.zip'
+          $extracted = Join-Path $build 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10'
+          python Experimental/P10_Lab/release_hotfixes/r10/build_r10_from_r9.py --source $source --output $zip --hotfix-commit $env:GITHUB_SHA --keep-extracted $extracted
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate PowerShell and Windows package contracts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-r10-build'
+          $root = Join-Path $build 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10'
+
+          foreach ($ps1 in Get-ChildItem (Join-Path $root 'Installer') -Filter '*.ps1' -File) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($ps1.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$($ps1.Name): $($_.Message)" }
+              throw "PowerShell parse failed: $($ps1.Name)"
+            }
+          }
+
+          foreach ($batName in @('03_INSTALL_ALL.bat','04_VERIFY_INSTALL.bat')) {
+            $bat = Join-Path $root $batName
+            $bytes = [System.IO.File]::ReadAllBytes($bat)
+            for ($i=0; $i -lt $bytes.Length; $i++) {
+              if ($bytes[$i] -eq 10 -and ($i -eq 0 -or $bytes[$i-1] -ne 13)) {
+                throw "CRLF validation failed for $batName"
+              }
+            }
+          }
+
+          python (Join-Path $root 'Installer/test_dr9_bundle.py') $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python (Join-Path $root 'Installer/test_r10_bundle.py') $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Write integrity sidecars
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10.zip'
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10.zip" | Set-Content -Encoding ascii release/ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10_SHA256.txt
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-r10-build'
+          Copy-Item (Join-Path $build 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10/P10_DR9_VALIDATION.txt') release/P10_DR9R_R10_VALIDATION.txt -Force
+          Write-Host "R10 SHA-256: $hash"
+          Write-Host "R10 bytes: $((Get-Item $zip).Length)"
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          gh release create p10-dr9r-r10 release/ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10.zip release/ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10_SHA256.txt release/P10_DR9R_R10_VALIDATION.txt --repo ${{ github.repository }} --target $env:GITHUB_SHA --title 'ConceptGhost P10 DR9R r10 — Nested Installer Compatibility' --notes 'r10 supersedes r9 for runtime acceptance. It fixes the inherited Gate5 failure and the same latent Gate6 dependency by using the current Production workflow only as a private verifier fixture in DR9R internal mode. Public workflows remain exactly 01 Route Setup and 02 Production. P9/P10 geometry authority is unchanged.'
+
+      - name: Upload r10 build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConceptGhost_DR9R_R10_READY
+          path: |
+            release/ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10.zip
+            release/ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10_SHA256.txt
+            release/P10_DR9R_R10_VALIDATION.txt
+          if-no-files-found: error
+          retention-days: 30
