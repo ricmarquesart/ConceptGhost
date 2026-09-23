@@ -237,6 +237,7 @@ class ConceptGhostP10RefinedEvidencePreview:
             },
             "optional": {
                 "route_plan_json": ("STRING", {"forceInput": True}),
+                "p10_attempt_root": ("STRING", {"forceInput": True}),
             },
         }
 
@@ -264,6 +265,7 @@ class ConceptGhostP10RefinedEvidencePreview:
         view_width: int,
         steps_per_segment: int,
         route_plan_json: str = "",
+        p10_attempt_root: str = "",
     ):
         from .refined_evidence import build_refined_evidence
 
@@ -273,6 +275,7 @@ class ConceptGhostP10RefinedEvidencePreview:
             view_width=view_width,
             steps_per_segment=steps_per_segment,
             route_plan_json=route_plan_json,
+            p10_attempt_root=p10_attempt_root,
         )
         rendered = _pretty(evidence.diagnostics)
         ui = {"text": [rendered]}
