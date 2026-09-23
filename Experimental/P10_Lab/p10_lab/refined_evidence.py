@@ -370,6 +370,10 @@ def _save_evidence_images(
     camera_frames,
     scene_contract_id,
     path_labels,
+    route_authority,
+    route_plan_schema,
+    route_plan_sha256,
+    mission_modes,
     np,
     Image,
     ImageDraw,
@@ -496,6 +500,10 @@ def _save_evidence_images(
         frames=tuple(records),
         width=int(flight_frames[0].shape[1]),
         height=int(flight_frames[0].shape[0]),
+        route_authority=route_authority,
+        route_plan_schema=route_plan_schema,
+        route_plan_sha256=route_plan_sha256,
+        mission_modes=tuple(mission_modes),
     )
     control_manifest_path = control_root / "manifest.json"
     control_manifest_path.write_text(
@@ -506,6 +514,10 @@ def _save_evidence_images(
     camera_manifest = CameraSequenceManifest(
         frames=tuple(camera_frames),
         scene_contract_id=scene_contract_id,
+        route_authority=route_authority,
+        route_plan_schema=route_plan_schema,
+        route_plan_sha256=route_plan_sha256,
+        mission_modes=tuple(mission_modes),
     )
     camera_manifest_path = control_root / "camera_manifest.json"
     camera_manifest_path.write_text(
@@ -603,6 +615,23 @@ def build_refined_evidence(
         clearance_fallback_to_unadapted = not clearance_batch.paths
         active_paths = clearance_batch.paths or flight_plan.paths
         route_authority = "AUTOMATIC_SEED_FALLBACK"
+
+    if authored_route_plan is not None:
+        canonical_route_payload=json.dumps(
+            authored_route_plan.to_dict(),
+            sort_keys=True,
+            separators=(",",":"),
+        ).encode("utf-8")
+        route_plan_schema="ConceptGhost.P10DroneRoutePlan.v0.1"
+        route_plan_sha256=hashlib.sha256(canonical_route_payload).hexdigest()
+        mission_modes=tuple(
+            (mission.name,mission.mode)
+            for mission in authored_route_plan.active_missions
+        )
+    else:
+        route_plan_schema=None
+        route_plan_sha256=None
+        mission_modes=tuple((path.name,"AUTO") for path in active_paths)
 
     resolved_paths = []
     flight_frames = []
@@ -704,6 +733,10 @@ def build_refined_evidence(
         camera_frames=camera_frames,
         scene_contract_id=boundary.scene_contract_id,
         path_labels=labels,
+        route_authority=route_authority,
+        route_plan_schema=route_plan_schema,
+        route_plan_sha256=route_plan_sha256,
+        mission_modes=mission_modes,
         np=np,
         Image=Image,
         ImageDraw=ImageDraw,
@@ -727,6 +760,10 @@ def build_refined_evidence(
         },
         "scene_footprint": footprint_evidence,
         "route_authority": route_authority,
+        "route_plan_schema": route_plan_schema,
+        "route_plan_sha256": route_plan_sha256,
+        "mission_order": [name for name,_mode in mission_modes],
+        "mission_modes": {name:mode for name,mode in mission_modes},
         "artist_route_plan": (
             authored_route_plan.to_dict() if authored_route_plan is not None else None
         ),
