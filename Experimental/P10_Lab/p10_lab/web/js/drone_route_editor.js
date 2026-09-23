@@ -137,8 +137,9 @@ function setupEditor(node) {
     const deletePoint = button("Excluir ponto", "Excluir waypoint selecionado");
     const undo = button("Desfazer", "Desfazer a última edição");
     const clearRoute = button("Limpar rota", "Limpar os pontos do drone atual");
+    const resetScene = button("Resetar cena", "Descartar a rota salva e gerar uma nova semente para a cena atual");
 
-    toolbar.append("Drone:", droneSelect, modeSelect, addDrone, removeDrone, deletePoint, undo, clearRoute);
+    toolbar.append("Drone:", droneSelect, modeSelect, addDrone, removeDrone, deletePoint, undo, clearRoute, resetScene);
 
     const help = document.createElement("div");
     help.textContent =
@@ -193,6 +194,8 @@ function setupEditor(node) {
     function persist() {
         if (!validPlan(state.plan)) return;
         state.plan.route_authority = "ARTIST_AUTHORED";
+        delete state.plan.route_plan_sha256;
+        state.plan.route_plan_dirty = true;
         routeWidget.value = JSON.stringify(state.plan, null, 2);
         routeWidget.callback?.(routeWidget.value);
         state.collisionStale = true;
@@ -420,7 +423,9 @@ function setupEditor(node) {
         state.metadata = meta;
         state.projection = meta.projection;
         state.collisionStale = false;
-        setPlan(meta.plan, true);
+        const cleanPlan = clone(meta.plan);
+        delete cleanPlan.route_plan_dirty;
+        setPlan(cleanPlan, true);
         state.collisionStale = false;
         updateToolbar();
         loadBackground(meta.editor_base_preview || meta.preview);
@@ -571,6 +576,23 @@ function setupEditor(node) {
         const previous = state.history.pop();
         if (!previous) return;
         setPlan(previous, true);
+    });
+
+    resetScene.addEventListener("click", () => {
+        state.history = [];
+        state.plan = null;
+        state.projection = null;
+        state.metadata = null;
+        state.selectedPoint = null;
+        state.collisionStale = true;
+        routeWidget.value = "";
+        routeWidget.callback?.("");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        status.textContent = "Rota descartada · execute o node para gerar a semente da cena atual";
+        status.style.color = "#ffdc5a";
+        selected.textContent = "";
+        node.graph?.setDirtyCanvas?.(true, true);
+        updateToolbar();
     });
 
     chainCallback(node, "onExecuted", function (message) {
