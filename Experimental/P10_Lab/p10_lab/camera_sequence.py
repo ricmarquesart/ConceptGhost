@@ -76,6 +76,7 @@ class CameraSequenceManifest:
     route_plan_sha256: str | None = None
     route_plan_file: str | None = None
     source_run_id: str | None = None
+    source_p9_run_dir: str | None = None
     mission_modes: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
@@ -133,6 +134,7 @@ class CameraSequenceManifest:
             "route_plan_sha256":self.route_plan_sha256,
             "route_plan_file":self.route_plan_file,
             "source_run_id":self.source_run_id,
+            "source_p9_run_dir":self.source_p9_run_dir,
             "mission_order":mission_order,
             "missions":[
                 {
