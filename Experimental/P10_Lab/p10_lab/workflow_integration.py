@@ -176,7 +176,7 @@ def integrate_gate4_refined_preview(workflow: dict) -> dict:
         "order": max((int(item.get("order") or 0) for item in nodes), default=0) + 1,
         "mode": 0,
         "inputs": [
-            {"name": "run_dir", "type": "STRING", "link": next_link},
+            {"name": "run_dir", "type": "STRING", "link": None},
             {
                 "name": "panorama_width",
                 "type": "INT",
@@ -223,6 +223,7 @@ def integrate_gate4_refined_preview(workflow: dict) -> dict:
     route_author["outputs"][1]["links"] = [route_plan_link]
     next_link += 1
     evidence_run_link = next_link
+    node["inputs"][0]["link"] = evidence_run_link
     links.append([evidence_run_link, _REFINED_EXPORT_ID, run_dir_index, _EVIDENCE_NODE_ID, 0, "STRING"])
 
     output_links = outputs[run_dir_index].get("links")
