@@ -330,3 +330,24 @@ GitHub authority:
 - ZIP bytes: 12,256,852.
 - ZIP SHA-256: `be3e3fc5ef84f404a41cd7177b16a5aa9331ba0420c6013397a4f641413226d5`.
 - Runtime acceptance remains PENDING until the target Windows/ComfyUI execution is completed.
+
+
+## DR9R-F follow-on corrective block — 2026-09-23
+
+The first r6 Route Setup runtime exposed additional artist-UX/lifecycle issues. Runtime acceptance remains open and Gate 7 stays blocked.
+
+DR9R-F is now active and covers:
+- numbered 01/02 workflow ordering and embedded execution instructions;
+- reset-safe four-view route workspace;
+- zoom/pan + higher-quality dynamic point rendering in all four views;
+- removal of frozen duplicate Perspective geometry;
+- orthographic route visibility/auto-fit;
+- explicit P10 storage/cache lifecycle and safe cleanup tooling;
+- AUTO_LATEST resolved-path observability;
+- P9 persisted-dependency audit for the split workflow;
+- current-only installer cleanup (no legacy Master v1.53 user workflow);
+- immutable dual Maya deliverables: P9 reference .ma + later P10 Refined .ma.
+
+Detailed authority: `docs/20_DR9R_F_WORKFLOW_UX_STORAGE_CONTINUITY_PLAN.md`.
+
+No user retest until DR9R-F F1–F8 are complete and the replacement bundle is published.
