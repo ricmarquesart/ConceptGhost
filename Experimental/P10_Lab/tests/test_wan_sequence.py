@@ -300,6 +300,153 @@ class WanSequentialSamplerTests(unittest.TestCase):
                     source_control_manifest_sha256="c"*64,
                 )
 
+    def test_preview_invalidation_reason_covers_route_control_settings_and_tamper(self):
+        from p10_lab.wan_sequence import determine_preview_invalidation_reason
+        import hashlib
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            index=root/"drone_preview_index.json"
+            index.write_text("{}",encoding="utf-8")
+            index_sha=hashlib.sha256(index.read_bytes()).hexdigest()
+            previous={
+                "route_plan_sha256":"routeA",
+                "source_control_manifest_sha256":"controlA",
+                "generation_context_sha256":"contextA",
+                "drone_preview_index_sha256":index_sha,
+            }
+            self.assertEqual(
+                determine_preview_invalidation_reason(
+                    previous,index,
+                    route_plan_sha256="routeA",
+                    source_control_manifest_sha256="controlA",
+                    generation_context_sha256="contextA",
+                ),
+                "SAME_CONTEXT_EXPLICIT_REGENERATION",
+            )
+            self.assertEqual(
+                determine_preview_invalidation_reason(
+                    previous,index,
+                    route_plan_sha256="routeB",
+                    source_control_manifest_sha256="controlA",
+                    generation_context_sha256="contextA",
+                ),
+                "ROUTE_PLAN_CHANGED",
+            )
+            self.assertEqual(
+                determine_preview_invalidation_reason(
+                    previous,index,
+                    route_plan_sha256="routeA",
+                    source_control_manifest_sha256="controlB",
+                    generation_context_sha256="contextA",
+                ),
+                "CONTROL_MANIFEST_CHANGED",
+            )
+            self.assertEqual(
+                determine_preview_invalidation_reason(
+                    previous,index,
+                    route_plan_sha256="routeA",
+                    source_control_manifest_sha256="controlA",
+                    generation_context_sha256="contextB",
+                ),
+                "WAN_SETTINGS_CHANGED",
+            )
+            index.write_text('{"tampered":true}',encoding="utf-8")
+            self.assertEqual(
+                determine_preview_invalidation_reason(
+                    previous,index,
+                    route_plan_sha256="routeA",
+                    source_control_manifest_sha256="controlA",
+                    generation_context_sha256="contextA",
+                ),
+                "PREVIEW_INDEX_HASH_CHANGED",
+            )
+
+    def test_preview_freshness_rejects_changed_final_composite_bytes(self):
+        try:
+            from PIL import Image
+        except ImportError as error:
+            self.skipTest(str(error))
+        from p10_lab.wan_sequence import (
+            MissionRange,write_per_drone_gif_previews,
+            validate_drone_preview_freshness,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            comp=root/"comp"
+            comp.mkdir()
+            for index in range(2):
+                Image.new("RGB",(320,180),(20+index*30,40,80)).save(
+                    comp/f"frame_{index:04d}.png"
+                )
+            records=[{
+                "window_index":0,"name":"drone_1","mission_name":"drone_1",
+                "source_start":0,"source_end":2,"decoded_frame_count":2,
+                "composite_dir":str(comp),
+            }]
+            missions=(MissionRange("drone_1",0,2,"drone_1"),)
+            modes={"drone_1":"PATH"}
+            preview_root=root/"previews"
+            index=write_per_drone_gif_previews(
+                records,missions,modes,preview_root,Image,
+                route_plan_sha256="a"*64,
+                generation_context_sha256="b"*64,
+                source_control_manifest_sha256="c"*64,
+                output_directory=root,
+            )
+            validate_drone_preview_freshness(
+                index,records,missions,modes,
+                route_plan_sha256="a"*64,
+                generation_context_sha256="b"*64,
+                source_control_manifest_sha256="c"*64,
+            )
+            Image.new("RGB",(320,180),(255,0,0)).save(comp/"frame_0001.png")
+            with self.assertRaises(ValueError):
+                validate_drone_preview_freshness(
+                    index,records,missions,modes,
+                    route_plan_sha256="a"*64,
+                    generation_context_sha256="b"*64,
+                    source_control_manifest_sha256="c"*64,
+                )
+
+    def test_preview_writer_removes_stale_previous_package_before_publish(self):
+        try:
+            from PIL import Image
+        except ImportError as error:
+            self.skipTest(str(error))
+        from p10_lab.wan_sequence import MissionRange,write_per_drone_gif_previews
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            preview_root=root/"previews"
+            preview_root.mkdir()
+            stale=preview_root/"stale_old_preview.gif"
+            stale.write_bytes(b"stale")
+            comp=root/"comp"
+            comp.mkdir()
+            Image.new("RGB",(320,180),(10,20,30)).save(comp/"frame_0000.png")
+            records=[{
+                "window_index":0,"name":"drone_1","mission_name":"drone_1",
+                "source_start":0,"source_end":1,"decoded_frame_count":1,
+                "composite_dir":str(comp),
+            }]
+            missions=(MissionRange("drone_1",0,1,"drone_1"),)
+            index=write_per_drone_gif_previews(
+                records,missions,{"drone_1":"SPIN_360"},preview_root,Image,
+                route_plan_sha256="a"*64,
+                generation_context_sha256="b"*64,
+                source_control_manifest_sha256="c"*64,
+                previous_preview_invalidation_reason="ROUTE_PLAN_CHANGED",
+                output_directory=root,
+            )
+            self.assertFalse(stale.exists())
+            self.assertEqual(
+                index["previous_preview_invalidation_reason"],
+                "ROUTE_PLAN_CHANGED",
+            )
+            self.assertEqual(
+                index["freshness_policy"],
+                "ROUTE_CONTROL_WAN_CONTEXT_PLUS_EXACT_FINAL_COMPOSITE_BYTES",
+            )
+
     def test_manifest_groups_contiguous_frames_by_mission(self):
         from p10_lab.wan_sequence import mission_ranges_from_manifest
         payload = {
