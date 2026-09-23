@@ -251,6 +251,40 @@ CI:
 Next: DR8E — final diagnostics/GIF/index/workflow regression closeout.
 
 
+### Gate 4R DR8E checkpoint — final regression closeout
+
+DR8E is COMPLETE / CI PASS. DR8 is now complete at code/CI level.
+
+Dedicated aggregate regression:
+`tests/test_dr8_closeout.py`
+
+Explicit GitHub Actions step:
+`Validate DR8 route-authoring closeout regressions`
+
+The closeout locks:
+- Baseline/P9 input workflow remains unmodified;
+- Baseline export node remains unchanged in the patched workflow;
+- P10-only High Fidelity Split Clean default;
+- artist route → Gate 4 → WAN → Gate 6 wiring;
+- PATH + SPIN_360 two-drone identity and exact sampling;
+- scene/run-bound route hashes and cross-run fail-closed behavior;
+- route diagnostics PASS/WARN semantics;
+- multi-window same-drone frame reconstruction;
+- multi-drone separation;
+- preview index/GIF/source-composite freshness;
+- frontend add/remove drone, SPIN_360, reset, dirty hash and blocked-route UI contracts.
+
+CI run `35818321869`:
+- Ubuntu / Python 3.12 — SUCCESS
+- Windows / Python 3.12 — SUCCESS
+- Windows / Python 3.14 — SUCCESS
+
+Formal matrix:
+`docs/15_DR8_FINAL_REGRESSION_CLOSEOUT.md`
+
+Next: DR9 — complete installer/workflow package + real ComfyUI runtime acceptance.
+
+
 ## Gate 5 — 5 subgates
 
 5.1 11 GB WAN runtime/resource policy — COMPLETED. Conservative first-pass profile: 832×480, max 33-frame WAN window, 4 steps, CFG 1.0, FP8 UNet, one window at a time, model/cache offload between windows. GitHub Actions run 35702692128 SUCCESS.
