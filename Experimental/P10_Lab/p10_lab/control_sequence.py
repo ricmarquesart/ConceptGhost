@@ -76,6 +76,18 @@ class ControlSequenceManifest:
             raise ContractError(
                 "mission_modes order must match the contiguous control-frame mission order"
             )
+        route_hash=str(self.route_plan_sha256 or "").strip().lower()
+        if route_hash:
+            if len(route_hash)!=64 or any(ch not in "0123456789abcdef" for ch in route_hash):
+                raise ContractError("route_plan_sha256 must be a 64-character lowercase hex digest")
+            if not str(self.route_plan_file or "").strip():
+                raise ContractError("Hashed control sequence requires route_plan_file")
+            if not str(self.scene_contract_id or "").strip():
+                raise ContractError("Hashed control sequence requires scene_contract_id")
+            if not str(self.source_run_id or "").strip():
+                raise ContractError("Hashed control sequence requires source_run_id")
+        elif self.route_plan_file is not None:
+            raise ContractError("Unhashed control sequence must not advertise route_plan_file")
 
     def to_dict(self) -> dict[str, object]:
         mission_order=[]
