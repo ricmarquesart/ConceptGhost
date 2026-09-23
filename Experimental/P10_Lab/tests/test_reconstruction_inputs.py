@@ -201,5 +201,37 @@ class ReconstructionInputManifestTests(unittest.TestCase):
                 build_reconstruction_input_manifest(root/"wan.json",root/"cameras.json")
 
 
+    def test_cross_attempt_wan_camera_mix_fails_closed(self):
+        from p10_lab.reconstruction_inputs import build_reconstruction_input_manifest
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            comp=root/"composite"/"00_a"
+            self._write_png_stub(comp/"frame_0000.png")
+            wan={
+                "run_id":"r","scene_contract_id":"s","source_run_id":"r",
+                "route_authority":"ARTIST_AUTHORED","route_plan_sha256":"hash",
+                "p10_attempt_id":"attempt_A","p10_attempt_root":str(root/"attempt_A"),
+                "mission_order":["a"],
+                "effective_dimensions":{"width":832,"height":480,"mode":"UNCHANGED"},
+                "windows":[{"name":"a","mission_name":"a","source_start":0,
+                            "decoded_frame_count":1,"composite_dir":str(comp)}],
+            }
+            camera={
+                "scene_contract_id":"s","source_run_id":"r",
+                "route_authority":"ARTIST_AUTHORED","route_plan_sha256":"hash",
+                "p10_attempt_id":"attempt_B","p10_attempt_root":str(root/"attempt_B"),
+                "mission_order":["a"],
+                "frames":[{"global_frame_index":0,"path_name":"a","path_frame_index":0,
+                           "camera":{"model":"PINHOLE","width":640,"height":360,
+                                     "fx":700,"fy":700,"cx":320,"cy":180,
+                                     "world_matrix":[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]}}],
+            }
+            wp=root/"wan.json"; cp=root/"cameras.json"
+            wp.write_text(json.dumps(wan),encoding="utf-8")
+            cp.write_text(json.dumps(camera),encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"attempt id mismatch"):
+                build_reconstruction_input_manifest(wp,cp)
+
+
 if __name__=="__main__":
     unittest.main()
