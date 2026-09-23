@@ -20,7 +20,7 @@ jobs:
           root = Path("Experimental/P10_Lab")
           out = Path("p10_dr9_source_snapshot.zip")
           with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-              for relroot in ("p10_lab", "docs", "tests", "checkpoints"):
+              for relroot in ("p10_lab", "docs", "tests", "checkpoints", "tools"):
                   base = root / relroot
                   if base.exists():
                       for p in sorted(base.rglob("*")):
