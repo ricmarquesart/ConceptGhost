@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
+import shutil
 
 from .contracts import ContractError
 from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
@@ -371,10 +372,58 @@ class ConceptGhostP10WanSequentialSampler:
             / "p10_gate5"
             / run_id
         )
+        output_root.mkdir(parents=True, exist_ok=True)
         raw_root = output_root / "wan_raw"
         composite_root = output_root / "composite"
-        raw_root.mkdir(parents=True, exist_ok=True)
-        composite_root.mkdir(parents=True, exist_ok=True)
+        previous_manifest_path=output_root/"wan_manifest.json"
+        previous_manifest=None
+        if previous_manifest_path.is_file():
+            try:
+                candidate=json.loads(previous_manifest_path.read_text(encoding="utf-8"))
+                if isinstance(candidate,dict):
+                    previous_manifest=candidate
+            except (OSError,json.JSONDecodeError):
+                previous_manifest=None
+
+        source_control_sha256=_sha256_file(manifest_path)
+        generation_context_payload={
+            "source_control_manifest_sha256":source_control_sha256,
+            "route_plan_sha256":control_payload.get("route_plan_sha256"),
+            "wan_seed":int(wan_seed),
+            "requested_width":int(width),
+            "requested_height":int(height),
+            "effective_width":effective_width,
+            "effective_height":effective_height,
+            "max_window_length":int(max_window_length),
+            "steps":int(steps),
+            "cfg":float(cfg),
+        }
+        generation_context_sha256=hashlib.sha256(
+            json.dumps(
+                generation_context_payload,
+                sort_keys=True,
+                separators=(",",":"),
+            ).encode("utf-8")
+        ).hexdigest()
+
+        if previous_manifest is None:
+            invalidation_reason="NO_PREVIOUS_WAN_OUTPUT"
+        elif previous_manifest.get("route_plan_sha256")!=control_payload.get("route_plan_sha256"):
+            invalidation_reason="ROUTE_PLAN_CHANGED"
+        elif previous_manifest.get("source_control_manifest_sha256")!=source_control_sha256:
+            invalidation_reason="CONTROL_MANIFEST_CHANGED"
+        elif previous_manifest.get("generation_context_sha256")!=generation_context_sha256:
+            invalidation_reason="WAN_SETTINGS_CHANGED"
+        else:
+            invalidation_reason="SAME_CONTEXT_EXPLICIT_REGENERATION"
+
+        # Gate 5 currently regenerates rather than resuming model inference.
+        # Remove only ConceptGhost-owned derived windows so shorter/new routes
+        # can never leave stale images that a later stage could discover.
+        for owned in (raw_root,composite_root):
+            if owned.exists():
+                shutil.rmtree(owned)
+            owned.mkdir(parents=True,exist_ok=True)
 
         conditioner = ConceptGhostP10WanMaskedConditioning()
         records = []
@@ -549,7 +598,9 @@ class ConceptGhostP10WanSequentialSampler:
             "schema": "ConceptGhost.P10WanSequential.v0.2",
             "run_id": run_id,
             "source_control_manifest": str(manifest_path.resolve()),
-            "source_control_manifest_sha256": _sha256_file(manifest_path),
+            "source_control_manifest_sha256": source_control_sha256,
+            "generation_context_sha256": generation_context_sha256,
+            "previous_output_invalidation_reason": invalidation_reason,
             "route_authority": control_payload.get("route_authority"),
             "route_plan_schema": control_payload.get("route_plan_schema"),
             "route_plan_sha256": control_payload.get("route_plan_sha256"),
@@ -611,6 +662,8 @@ class ConceptGhostP10WanSequentialSampler:
             "mission_modes": mission_modes,
             "route_authority": control_payload.get("route_authority"),
             "route_plan_sha256": control_payload.get("route_plan_sha256"),
+            "generation_context_sha256": generation_context_sha256,
+            "previous_output_invalidation_reason": invalidation_reason,
             "window_count": len(windows),
             "requested_dimensions": {
                 "width": dimensions.requested_width,
