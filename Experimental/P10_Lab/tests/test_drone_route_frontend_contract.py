@@ -37,6 +37,11 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'route_plan_dirty',
             '"Resetar cena"',
             'delete state.plan.route_plan_sha256',
+            'function perspectivePanel()',
+            'drawPerspectiveScene()',
+            'orbitDragging',
+            'wheel',
+            'inspection only',
         ):
             self.assertIn(required, source)
 
@@ -49,7 +54,7 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertIn("route_plan_json",required)
         self.assertIn("frames_per_drone",required)
         self.assertIn("min_clearance_m",required)
-        self.assertEqual(cls.RETURN_NAMES[0],"route_triview")
+        self.assertEqual(cls.RETURN_NAMES[0],"route_workspace")
 
 
 if __name__=="__main__":
