@@ -133,7 +133,7 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
             self.assertIn("wan_manifest_sha256", result["source_inputs"])
             self.assertIn("camera_manifest_sha256", result["source_inputs"])
             self.assertIn("source_image_set_sha256", result["source_inputs"])
-            self.assertEqual(len(result["source_image_set_sha256"]),64)
+            self.assertEqual(len(result["source_inputs"]["source_image_set_sha256"]),64)
             self.assertTrue(all(len(frame["source_image_sha256"])==64 for frame in result["frames"]))
 
             images_txt = (out / "sparse" / "known" / "images.txt").read_text(encoding="utf-8")
