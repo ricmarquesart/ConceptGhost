@@ -1,0 +1,33 @@
+{
+  "schema": "ConceptGhost.P10Checkpoint.v0.1",
+  "checkpoint": "DR7_COMPLETE_BEFORE_DR8",
+  "created_at": "2026-09-23T03:43:00Z",
+  "branch": "work/v1.54-p10-multiview-completion",
+  "source_head_before_checkpoint": "94c404936c961739f8c8e31eaae481d6d0309e33",
+  "last_green_actions_run": 35813807761,
+  "last_green_actions_conclusion": "success",
+  "base_full_installer": {
+    "release": "ConceptGhost_v1.54_P10_Gate06_REFINED_RECONSTRUCTION_COMPLETE_INSTALLER_r10",
+    "code_commit": "0fe68e1b90557993c3d7ade008ad52aeafa4a7db",
+    "note": "This remains the last full installer baseline. DR0-DR7 source changes live on the branch/head above and are checkpointed in GitHub before DR8."
+  },
+  "route_authoring": {
+    "status": "DR0_DR7_CODE_CI_COMPLETE_USER_RUNTIME_PENDING",
+    "completed": [
+      "DR0",
+      "DR1",
+      "DR2",
+      "DR3",
+      "DR4",
+      "DR5",
+      "DR6",
+      "DR7"
+    ],
+    "next": "DR8"
+  },
+  "recovery_contract": {
+    "github_authority": "Use the checkpoint branch/ref created from this checkpoint commit.",
+    "drive_authority": "Use the Drive checkpoint folder plus the r10 baseline installer and this manifest; source changes are reconstructed from the exact GitHub checkpoint ref.",
+    "baseline_p9_unchanged": true
+  }
+}
