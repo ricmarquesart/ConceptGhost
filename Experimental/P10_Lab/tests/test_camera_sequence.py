@@ -28,6 +28,7 @@ class CameraSequenceTests(unittest.TestCase):
             route_plan_schema="ConceptGhost.P10DroneRoutePlan.v0.1",
             route_plan_sha256="a"*64,
             route_plan_file="route_plan.json",
+            scene_contract_id="scene1",
             source_run_id="run1",
             mission_modes=(("entry_micro_orbit_360","SPIN_360"),),
         ).to_dict()
@@ -38,6 +39,7 @@ class CameraSequenceTests(unittest.TestCase):
         self.assertEqual(payload["schema"],"ConceptGhost.P10CameraSequence.v0.2")
         self.assertEqual(payload["route_plan_sha256"],"a"*64)
         self.assertEqual(payload["route_plan_file"],"route_plan.json")
+        self.assertEqual(payload["scene_contract_id"],"scene1")
         self.assertEqual(payload["source_run_id"],"run1")
         self.assertEqual(payload["mission_order"],["entry_micro_orbit_360"])
         self.assertEqual(payload["missions"][0]["mode"],"SPIN_360")
