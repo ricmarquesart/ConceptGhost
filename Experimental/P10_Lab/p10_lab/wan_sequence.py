@@ -729,13 +729,25 @@ class ConceptGhostP10WanSequentialSampler:
         if not windows:
             raise ContractError("No WAN windows were produced")
 
-        run_id = manifest_path.parent.parent.name or "unknown_run"
-        output_root = (
-            Path(folder_paths.get_output_directory())
-            / "conceptghost"
-            / "p10_gate5"
-            / run_id
-        )
+        run_id = str(control_payload.get("source_run_id") or "").strip()
+        if not run_id:
+            run_id = manifest_path.parent.parent.name or "unknown_run"
+        attempt_root_value=str(control_payload.get("p10_attempt_root") or "").strip()
+        if attempt_root_value:
+            comfy_output=Path(folder_paths.get_output_directory()).resolve()
+            attempt_root=Path(attempt_root_value).resolve()
+            try:
+                attempt_root.relative_to(comfy_output)
+            except ValueError as error:
+                raise ContractError("Control manifest p10_attempt_root is outside ComfyUI output") from error
+            output_root=attempt_root/"gate5"
+        else:
+            output_root = (
+                Path(folder_paths.get_output_directory())
+                / "conceptghost"
+                / "p10_gate5"
+                / run_id
+            )
         output_root.mkdir(parents=True, exist_ok=True)
         raw_root = output_root / "wan_raw"
         composite_root = output_root / "composite"
@@ -1011,6 +1023,8 @@ class ConceptGhostP10WanSequentialSampler:
             "scene_contract_id": control_payload.get("scene_contract_id"),
             "source_run_id": control_payload.get("source_run_id"),
             "source_p9_run_dir": control_payload.get("source_p9_run_dir"),
+            "p10_attempt_id": control_payload.get("p10_attempt_id"),
+            "p10_attempt_root": control_payload.get("p10_attempt_root"),
             "route_authority": control_payload.get("route_authority"),
             "route_plan_schema": control_payload.get("route_plan_schema"),
             "route_plan_sha256": control_payload.get("route_plan_sha256"),
@@ -1076,6 +1090,8 @@ class ConceptGhostP10WanSequentialSampler:
             "scene_contract_id": control_payload.get("scene_contract_id"),
             "source_run_id": control_payload.get("source_run_id"),
             "source_p9_run_dir": control_payload.get("source_p9_run_dir"),
+            "p10_attempt_id": control_payload.get("p10_attempt_id"),
+            "p10_attempt_root": control_payload.get("p10_attempt_root"),
             "route_authority": control_payload.get("route_authority"),
             "route_plan_sha256": control_payload.get("route_plan_sha256"),
             "generation_context_sha256": generation_context_sha256,
