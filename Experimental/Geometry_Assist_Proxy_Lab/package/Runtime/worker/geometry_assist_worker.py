@@ -18,6 +18,29 @@ def load_json(path: Path) -> dict:
 def save_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
+def validate_prompt_contract(tokenizers, prompt: str, negative_prompt: str, configured_max: int) -> dict:
+    details = {}
+    failures = []
+    for name, tokenizer in tokenizers:
+        if tokenizer is None:
+            failures.append(f"{name}=MISSING")
+            continue
+        tokenizer_limit = int(getattr(tokenizer, "model_max_length", configured_max))
+        effective_max = min(int(configured_max), tokenizer_limit)
+        prompt_tokens = len(tokenizer(prompt, truncation=False, add_special_tokens=True)["input_ids"])
+        negative_tokens = len(tokenizer(negative_prompt, truncation=False, add_special_tokens=True)["input_ids"])
+        details[name] = {
+            "prompt_tokenizers": prompt_contract,
+            "max_tokens": effective_max,
+        }
+        if prompt_tokens > effective_max or negative_tokens > effective_max:
+            failures.append(
+                f"{name}: prompt={prompt_tokens}, negative={negative_tokens}, max={effective_max}"
+            )
+    if failures:
+        raise RuntimeError("Prompt contract exceeded CLIP context: " + "; ".join(failures))
+    return details
+
 def set_private_env(root: Path) -> None:
     cache = root / "Cache"
     temp = root / "Temp"
@@ -48,6 +71,8 @@ def self_test(root: Path) -> int:
         root / "Models" / "controlnet_canny_sdxl_small" / "diffusion_pytorch_model.fp16.safetensors",
         root / "Models" / "ip_adapter" / "sdxl_models" / "ip-adapter_sdxl.bin",
         root / "Models" / "ip_adapter" / "models" / "image_encoder" / "model.safetensors",
+        root / "Models" / "sdxl_base" / "tokenizer" / "tokenizer_config.json",
+        root / "Models" / "sdxl_base" / "tokenizer_2" / "tokenizer_config.json",
     ]
     missing = [str(p) for p in required if not p.is_file()]
     payload = {
@@ -72,6 +97,31 @@ def self_test(root: Path) -> int:
     if missing:
         print("ERROR: private model materialization is incomplete.")
         return 3
+
+    try:
+        from transformers import CLIPTokenizer
+        cfg = load_json(root / "Manifests" / "geometry_assist_config.json")
+        configured_max = int(cfg["defaults"].get("prompt_max_tokens", 77))
+        tokenizer_1 = CLIPTokenizer.from_pretrained(
+            str(root / "Models" / "sdxl_base" / "tokenizer"),
+            local_files_only=True,
+        )
+        tokenizer_2 = CLIPTokenizer.from_pretrained(
+            str(root / "Models" / "sdxl_base" / "tokenizer_2"),
+            local_files_only=True,
+        )
+        prompt_contract = validate_prompt_contract(
+            [("tokenizer", tokenizer_1), ("tokenizer_2", tokenizer_2)],
+            cfg["prompt"],
+            cfg["negative_prompt"],
+            configured_max,
+        )
+        payload["prompt_tokenizers"] = prompt_contract
+        print("Prompt contract: PASS")
+        print(json.dumps(prompt_contract, indent=2))
+    except Exception as exc:
+        print(f"ERROR: prompt contract self-test failed: {type(exc).__name__}: {exc}")
+        return 4
     return 0
 
 def fit_work_size(w: int, h: int, max_dim: int) -> tuple[int, int]:
@@ -245,13 +295,18 @@ def run(root: Path, input_path: Path) -> int:
 
         generator = torch.Generator(device="cpu").manual_seed(int(d["seed"]))
         start = time.perf_counter()
-        prompt_tokens = len(pipe.tokenizer(cfg["prompt"], truncation=False)["input_ids"])
-        negative_tokens = len(pipe.tokenizer(cfg["negative_prompt"], truncation=False)["input_ids"])
-        max_prompt_tokens = int(d.get("prompt_max_tokens", pipe.tokenizer.model_max_length))
-        log(f"CLIP token counts: prompt={prompt_tokens}, negative={negative_tokens}, max={max_prompt_tokens}")
-        if prompt_tokens > max_prompt_tokens or negative_tokens > max_prompt_tokens:
-            raise RuntimeError(
-                f"Prompt contract exceeded CLIP context: prompt={prompt_tokens}, negative={negative_tokens}, max={max_prompt_tokens}"
+        max_prompt_tokens = int(d.get("prompt_max_tokens", 77))
+        prompt_contract = validate_prompt_contract(
+            [("tokenizer", pipe.tokenizer), ("tokenizer_2", getattr(pipe, "tokenizer_2", None))],
+            cfg["prompt"],
+            cfg["negative_prompt"],
+            max_prompt_tokens,
+        )
+        for tokenizer_name, counts in prompt_contract.items():
+            log(
+                f"CLIP token counts [{tokenizer_name}]: "
+                f"prompt={counts['prompt_tokens']}, negative={counts['negative_prompt_tokens']}, "
+                f"max={counts['max_tokens']}"
             )
 
         log("Starting conservative proxy generation...")
