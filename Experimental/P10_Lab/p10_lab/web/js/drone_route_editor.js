@@ -192,6 +192,7 @@ function setupEditor(node) {
 
     function persist() {
         if (!validPlan(state.plan)) return;
+        state.plan.route_authority = "ARTIST_AUTHORED";
         routeWidget.value = JSON.stringify(state.plan, null, 2);
         routeWidget.callback?.(routeWidget.value);
         state.collisionStale = true;
