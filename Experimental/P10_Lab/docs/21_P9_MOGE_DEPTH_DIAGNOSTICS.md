@@ -163,3 +163,19 @@ This diagnostic lane is for understanding, not correcting, MoGe.
 ## Next stage
 
 The official pipeline continues to normal Refined/P9 Canonical/Export, followed by Route Setup and P10 Production. Any later decision to use diagnostic evidence as authority would require a separate explicit gate and is outside this feature.
+
+
+## Implementation / package status
+
+Implementation is complete in the r8 diagnostic package.
+
+- Default state: OFF.
+- Diagnostic authority: side branch only.
+- Official geometry impact: NONE.
+- Package: `ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r8.zip`.
+- Source commit: `e6823e4617c394aedec4796a2e277d8f9bf4429b`.
+- CI run: `35900795172` — SUCCESS.
+- ZIP SHA-256: `9774a887e397e18d9dcb76c65dea29ce4496ec95f0fa75570b400238dad0139c`.
+- Google Drive: Evaluation_Builds, file id `1wyRBo_RqXJQXm8JCmRUpMyaPHk11X0Vr`.
+- GitHub Release: `p10-dr9r-r8`.
+- Runtime inspection on the target street scene is still required to judge the diagnostic usefulness, not its authority.
