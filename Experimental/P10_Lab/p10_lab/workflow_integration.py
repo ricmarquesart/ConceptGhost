@@ -439,6 +439,7 @@ def integrate_gate5_refined_preview(workflow: dict) -> dict:
                 {"name": "generated_dir", "type": "STRING", "links": None, "slot_index": 1},
                 {"name": "wan_manifest_path", "type": "STRING", "links": None, "slot_index": 2},
                 {"name": "diagnostics_json", "type": "STRING", "links": None, "slot_index": 3},
+                {"name": "drone_preview_index_path", "type": "STRING", "links": None, "slot_index": 4},
             ],
             "properties": {"Node name for S&R": "ConceptGhostP10WanSequentialSampler"},
             "widgets_values": [0, 832, 480, 33, 4, 1.0],
