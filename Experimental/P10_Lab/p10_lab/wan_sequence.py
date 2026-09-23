@@ -228,6 +228,173 @@ def mission_ranges_from_manifest(path: str | Path) -> tuple[MissionRange, ...]:
 
 
 
+def collect_mission_composite_frames(
+    records: list[dict] | tuple[dict,...],
+    missions: tuple[MissionRange,...],
+) -> dict[str,tuple[Path,...]]:
+    """Reassemble final-composite frames by authored mission.
+
+    A single mission may be split into multiple WAN windows. The preview
+    contract follows the original global frame indexes rather than window
+    names, so one drone always yields exactly one ordered frame sequence.
+    """
+
+    expected={mission.mission_name:list(range(mission.start,mission.end)) for mission in missions}
+    collected={mission.mission_name:{} for mission in missions}
+
+    for record in records:
+        if not isinstance(record,dict):
+            raise ContractError("WAN window records must be JSON-like objects")
+        mission_name=str(record.get("mission_name") or "").strip()
+        if mission_name not in collected:
+            raise ContractError(f"WAN preview record references unknown mission {mission_name!r}")
+        start=record.get("source_start")
+        end=record.get("source_end")
+        count=record.get("decoded_frame_count")
+        directory=Path(str(record.get("composite_dir") or ""))
+        if type(start) is not int or type(end) is not int or type(count) is not int:
+            raise ContractError("WAN preview record requires integer source range/count")
+        if end<=start or count!=end-start:
+            raise ContractError(
+                f"WAN preview record length mismatch for {mission_name}: "
+                f"range={start}:{end}, decoded={count}"
+            )
+        mission_expected=expected[mission_name]
+        if start<mission_expected[0] or end-1>mission_expected[-1]:
+            raise ContractError(
+                f"WAN preview record escapes authored mission range for {mission_name}"
+            )
+        for local_index,global_index in enumerate(range(start,end)):
+            frame_path=directory/f"frame_{local_index:04d}.png"
+            if not frame_path.is_file():
+                raise ContractError(f"Final composite frame is missing: {frame_path}")
+            if global_index in collected[mission_name]:
+                raise ContractError(
+                    f"Duplicate final composite frame {global_index} for {mission_name}"
+                )
+            collected[mission_name][global_index]=frame_path
+
+    result={}
+    for mission in missions:
+        name=mission.mission_name
+        actual=sorted(collected[name])
+        if actual!=expected[name]:
+            raise ContractError(
+                f"Final composite sequence for {name} does not match authored frame range: "
+                f"expected={expected[name]}, actual={actual}"
+            )
+        result[name]=tuple(collected[name][index] for index in expected[name])
+    return result
+
+
+def _ordered_frame_set_sha256(paths: tuple[Path,...]) -> str:
+    digest=hashlib.sha256()
+    for index,path in enumerate(paths):
+        digest.update(f"{index}\0{_sha256_file(path)}\n".encode("utf-8"))
+    return digest.hexdigest()
+
+
+def write_per_drone_gif_previews(
+    records: list[dict] | tuple[dict,...],
+    missions: tuple[MissionRange,...],
+    mission_modes: dict[str,object],
+    preview_root: str | Path,
+    Image,
+    *,
+    fps: int=10,
+    max_width: int=640,
+    route_plan_sha256: str | None=None,
+    generation_context_sha256: str | None=None,
+) -> dict[str,object]:
+    """Write one lightweight looping GIF from final composite frames per drone."""
+
+    if type(fps) is not int or not 1<=fps<=60:
+        raise ContractError("GIF preview fps must be an integer in [1,60]")
+    if type(max_width) is not int or not 128<=max_width<=2048:
+        raise ContractError("GIF preview max_width must be an integer in [128,2048]")
+
+    preview_root=Path(preview_root)
+    if preview_root.exists():
+        shutil.rmtree(preview_root)
+    preview_root.mkdir(parents=True,exist_ok=True)
+
+    grouped=collect_mission_composite_frames(records,missions)
+    duration_ms=max(1,int(round(1000.0/fps)))
+    entries=[]
+    for mission_index,mission in enumerate(missions):
+        name=mission.mission_name
+        source_paths=grouped[name]
+        frames=[]
+        preview_width=None
+        preview_height=None
+        for source_path in source_paths:
+            with Image.open(source_path) as source_image:
+                frame=source_image.convert("RGB")
+                if frame.width>max_width:
+                    height=max(1,round(frame.height*max_width/float(frame.width)))
+                    resampling=getattr(getattr(Image,"Resampling",Image),"LANCZOS",1)
+                    frame=frame.resize((max_width,height),resampling)
+                frame=frame.convert("P")
+                if preview_width is None:
+                    preview_width,preview_height=frame.size
+                elif frame.size!=(preview_width,preview_height):
+                    raise ContractError(
+                        f"GIF preview frame dimensions changed within mission {name}: "
+                        f"{frame.size} vs {(preview_width,preview_height)}"
+                    )
+                frames.append(frame.copy())
+
+        if not frames:
+            raise ContractError(f"No final composite frames available for GIF mission {name}")
+
+        gif_name=f"drone_{mission_index+1:02d}_{name}_preview.gif"
+        gif_path=preview_root/gif_name
+        frames[0].save(
+            gif_path,
+            format="GIF",
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration_ms,
+            loop=0,
+            optimize=False,
+            disposal=2,
+        )
+        entries.append({
+            "drone_index":mission_index+1,
+            "mission_name":name,
+            "mode":mission_modes.get(name),
+            "frame_count":len(frames),
+            "global_frame_start":mission.start,
+            "global_frame_end_exclusive":mission.end,
+            "fps":fps,
+            "frame_duration_ms":duration_ms,
+            "preview_width":preview_width,
+            "preview_height":preview_height,
+            "source_type":"GATE5_FINAL_COMPOSITE",
+            "source_frame_set_sha256":_ordered_frame_set_sha256(source_paths),
+            "gif_path":str(gif_path.resolve()),
+            "gif_sha256":_sha256_file(gif_path),
+        })
+
+    index={
+        "schema":"ConceptGhost.P10DronePreviewIndex.v0.1",
+        "status":"PASS",
+        "source_type":"GATE5_FINAL_COMPOSITE",
+        "route_plan_sha256":route_plan_sha256,
+        "generation_context_sha256":generation_context_sha256,
+        "mission_order":[mission.mission_name for mission in missions],
+        "drone_count":len(entries),
+        "fps":fps,
+        "max_width":max_width,
+        "loop":"INFINITE",
+        "previews":entries,
+    }
+    index_path=preview_root/"drone_preview_index.json"
+    index_path.write_text(json.dumps(index,indent=2,sort_keys=True),encoding="utf-8")
+    index["index_path"]=str(index_path.resolve())
+    return index
+
+
 def padded_wan_length(length: int) -> int:
     if type(length) is not int or length < 1:
         raise ContractError("WAN window length must be a positive integer")
@@ -402,6 +569,7 @@ class ConceptGhostP10WanSequentialSampler:
         output_root.mkdir(parents=True, exist_ok=True)
         raw_root = output_root / "wan_raw"
         composite_root = output_root / "composite"
+        preview_root = output_root / "drone_previews"
         previous_manifest_path=output_root/"wan_manifest.json"
         previous_manifest=None
         if previous_manifest_path.is_file():
@@ -447,7 +615,7 @@ class ConceptGhostP10WanSequentialSampler:
         # Gate 5 currently regenerates rather than resuming model inference.
         # Remove only ConceptGhost-owned derived windows so shorter/new routes
         # can never leave stale images that a later stage could discover.
-        for owned in (raw_root,composite_root):
+        for owned in (raw_root,composite_root,preview_root):
             if owned.exists():
                 shutil.rmtree(owned)
             owned.mkdir(parents=True,exist_ok=True)
@@ -623,6 +791,17 @@ class ConceptGhostP10WanSequentialSampler:
             if isinstance(item,dict) and str(item.get("name") or "").strip()
         }
         mission_order=[mission.mission_name for mission in missions]
+        drone_preview_index=write_per_drone_gif_previews(
+            records,
+            missions,
+            mission_modes,
+            preview_root,
+            Image,
+            fps=10,
+            max_width=640,
+            route_plan_sha256=control_payload.get("route_plan_sha256"),
+            generation_context_sha256=generation_context_sha256,
+        )
         wan_manifest = {
             "schema": "ConceptGhost.P10WanSequential.v0.2",
             "run_id": run_id,
@@ -647,6 +826,7 @@ class ConceptGhostP10WanSequentialSampler:
                 }
                 for mission in missions
             ],
+            "drone_previews": drone_preview_index,
             "policy": WanRuntimeProfile(
                 width=effective_width,
                 height=effective_height,
@@ -709,6 +889,9 @@ class ConceptGhostP10WanSequentialSampler:
             },
             "generated_dir": str(output_root),
             "wan_manifest_path": str(wan_manifest_path),
+            "drone_preview_index_path": drone_preview_index["index_path"],
+            "drone_preview_count": drone_preview_index["drone_count"],
+            "drone_previews": drone_preview_index["previews"],
             "known_pixels_replaced_by_wan": False,
             "sequential_only": True,
         }
