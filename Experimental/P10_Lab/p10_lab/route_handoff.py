@@ -9,6 +9,10 @@ import uuid
 from .contracts import ContractError
 from .drone_route_plan import parse_bound_route_plan
 from .p9_boundary import validate_official_run
+from .p9_dependency_inventory import (
+    validate_p9_dependency_inventory,
+    write_p9_dependency_inventory,
+)
 
 
 _ENTRY_SCHEMA="ConceptGhost.P10ProductionEntry.v0.1"
@@ -57,6 +61,15 @@ def commit_route_setup(
     output_root=Path(output_root).resolve()
     output_root.mkdir(parents=True,exist_ok=True)
 
+    dependency_inventory_path=output_root/"p9_dependency_inventory.json"
+    if dependency_inventory_path.is_file():
+        dependency_inventory=validate_p9_dependency_inventory(dependency_inventory_path)
+    else:
+        dependency_inventory=write_p9_dependency_inventory(
+            boundary.root,
+            dependency_inventory_path,
+        )
+
     if authority!="ARTIST_AUTHORED":
         # First Route Setup execution intentionally reaches this state: P9 has
         # been solved and the editor can now be used. This is not an error and
@@ -70,7 +83,10 @@ def commit_route_setup(
             "source_run_id":boundary.run_id,
             "source_p9_run_dir":str(Path(run_dir).resolve()),
             "active_mission_count":len(plan.active_missions),
-            "message":"Edit/confirm the route, then Queue Prompt again to commit the production entry.",
+            "p9_dependency_inventory_path":str(dependency_inventory_path),
+            "p9_dependency_inventory_sha256":dependency_inventory.get("inventory_sha256"),
+            "p9_persisted_file_count":dependency_inventory.get("persisted_file_count"),
+            "message":"RUN #1 complete. Edit/confirm the route, then Run again to commit before opening workflow 02.",
             "p9_authority_changed":False,
         }
         waiting_path=output_root/"route_setup_status.json"
@@ -96,6 +112,9 @@ def commit_route_setup(
         "committed_route_path":str(route_path),
         "committed_route_file_sha256":route_file_sha,
         "active_mission_count":len(plan.active_missions),
+        "p9_dependency_inventory_path":str(dependency_inventory_path),
+        "p9_dependency_inventory_sha256":dependency_inventory.get("inventory_sha256"),
+        "p9_persisted_file_count":dependency_inventory.get("persisted_file_count"),
         "p9_authority_changed":False,
         "handoff_policy":"P9_IMMUTABLE_ROUTE_SETUP_THEN_P10_PRODUCTION",
     }
@@ -158,6 +177,7 @@ def load_production_entry(entry_path: str | Path) -> dict[str,object]:
         "production_entry_path":str(entry_path),
         "source_p9_run_dir":str(run_dir),
         "route_plan_json":json.dumps(route_payload,indent=2,sort_keys=True),
+        "p9_dependency_inventory":inventory,
         "validated":True,
     }
 
@@ -200,6 +220,8 @@ def create_p10_attempt(
         "production_entry_path":str(loaded_entry["production_entry_path"]),
         "route_plan_sha256":route_hash,
         "route_authority":loaded_entry.get("route_authority"),
+        "p9_dependency_inventory_path":loaded_entry.get("p9_dependency_inventory_path"),
+        "p9_dependency_inventory_sha256":loaded_entry.get("p9_dependency_inventory_sha256"),
         "immutable_attempt_directory":True,
         "overwrite_policy":"NEVER_OVERWRITE_PRIOR_P10_ATTEMPT",
     }
@@ -226,14 +248,18 @@ def create_p10_attempt(
     return manifest
 
 
+def _latest_production_pointer_path(comfy_output_root: str | Path) -> Path:
+    return (
+        Path(comfy_output_root).resolve()
+        /"conceptghost"/"p10_route_setup"/"LATEST_PRODUCTION_ENTRY.json"
+    )
+
+
 def _resolve_production_entry_path(value: str, comfy_output_root: str | Path) -> Path:
     raw=str(value or "").strip()
     if raw and raw.upper()!="AUTO_LATEST":
         return Path(raw).expanduser().resolve()
-    pointer=(
-        Path(comfy_output_root).resolve()
-        /"conceptghost"/"p10_route_setup"/"LATEST_PRODUCTION_ENTRY.json"
-    )
+    pointer=_latest_production_pointer_path(comfy_output_root)
     if not pointer.is_file():
         raise ContractError(
             "AUTO_LATEST could not find a committed route. Run the Route Setup "
@@ -293,6 +319,7 @@ class ConceptGhostP10ProductionEntryLoader:
     RETURN_NAMES=("run_dir","route_plan_json","p10_attempt_root","p10_attempt_id","diagnostics_json")
     FUNCTION="load"
     CATEGORY="ConceptGhost/P10 Refined"
+    OUTPUT_NODE=True
 
     @classmethod
     def IS_CHANGED(cls,production_entry_path):
@@ -302,21 +329,46 @@ class ConceptGhostP10ProductionEntryLoader:
 
     def load(self,production_entry_path):
         import folder_paths
+        output_root=Path(folder_paths.get_output_directory()).resolve()
+        raw=str(production_entry_path or "").strip()
+        resolution_mode="AUTO_LATEST" if not raw or raw.upper()=="AUTO_LATEST" else "EXPLICIT_PATH"
+        pointer_path=_latest_production_pointer_path(output_root)
         resolved_entry=_resolve_production_entry_path(
             production_entry_path,
-            folder_paths.get_output_directory(),
+            output_root,
         )
         result=load_production_entry(resolved_entry)
-        attempt=create_p10_attempt(result,folder_paths.get_output_directory())
+        attempt=create_p10_attempt(result,output_root)
         diagnostics={
-            **{key:value for key,value in result.items() if key!="route_plan_json"},
+            "status":"PASS",
+            "workflow_step":"02_P10_PRODUCTION",
+            "resolution_mode":resolution_mode,
+            "latest_pointer_path":str(pointer_path),
+            "resolved_production_entry_path":str(resolved_entry),
+            "resolved_production_entry_name":resolved_entry.name,
+            "resolved_committed_route_path":result.get("committed_route_path"),
+            "resolved_source_p9_run_dir":result.get("source_p9_run_dir"),
+            "resolved_source_p9_run_id":result.get("source_run_id"),
+            "resolved_scene_contract_id":result.get("scene_contract_id"),
+            "resolved_route_plan_sha256":result.get("route_plan_sha256"),
+            "p9_dependency_inventory_path":result.get("p9_dependency_inventory_path"),
+            "p9_persisted_file_count":(
+                (result.get("p9_dependency_inventory") or {}).get("persisted_file_count")
+            ),
             "attempt":attempt,
+            **{
+                key:value for key,value in result.items()
+                if key not in {"route_plan_json","p9_dependency_inventory"}
+            },
         }
         rendered=json.dumps(diagnostics,indent=2,sort_keys=True)
-        return (
-            str(result["source_p9_run_dir"]),
-            str(result["route_plan_json"]),
-            str(attempt["attempt_root"]),
-            str(attempt["p10_attempt_id"]),
-            rendered,
-        )
+        return {
+            "ui":{"text":[rendered]},
+            "result":(
+                str(result["source_p9_run_dir"]),
+                str(result["route_plan_json"]),
+                str(attempt["attempt_root"]),
+                str(attempt["p10_attempt_id"]),
+                rendered,
+            ),
+        }
