@@ -72,6 +72,7 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertNotIn("editor_base_preview",source)
         self.assertNotIn('"Resetar cena"',source)
         self.assertIn('"Resetar rota"',source)
+        self.assertEqual(source.count('chainCallback(node, "onExecuted"'),1)
 
     def test_route_authoring_node_is_registered(self):
         import p10_lab
