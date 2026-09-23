@@ -30,6 +30,7 @@ class SparseTriangulationTests(unittest.TestCase):
                 "image_id": i + 1,
                 "camera_id": camera_id,
                 "global_frame_index": i,
+                "path_name": "drone_1" if i < max(1, frame_count // 2) else "drone_2",
                 "image_name": name,
                 "qvec": [1.0, 0.0, 0.0, 0.0],
                 "tvec": [float(i), 0.0, 0.0],
@@ -195,6 +196,11 @@ class SparseTriangulationTests(unittest.TestCase):
             self.assertEqual(diag["component_policy"], "ALL_VERIFIED_MATCH_COMPONENTS_FIXED_P9_WORLD")
             self.assertEqual(diag["dropped_image_count"], 0)
             self.assertEqual(set(diag["selected_image_ids"]), set(ids.values()))
+            contribution={item["mission_name"]:item for item in diag["mission_contribution"]}
+            self.assertTrue(contribution["drone_1"]["contributes_to_sparse"])
+            self.assertTrue(contribution["drone_2"]["contributes_to_sparse"])
+            self.assertEqual(contribution["drone_1"]["component_indices"],[0])
+            self.assertEqual(contribution["drone_2"]["component_indices"],[1])
             images_txt = (synced.text_path / "images.txt").read_text(encoding="utf-8")
             for index in range(4):
                 self.assertIn(f"frame_{index:06d}.png", images_txt)
