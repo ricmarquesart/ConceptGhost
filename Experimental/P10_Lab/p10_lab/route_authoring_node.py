@@ -155,12 +155,6 @@ class ConceptGhostP10DroneRouteAuthoring:
             plan,
             source_image=boundary.source_image,
         )
-        base_preview,base_projection,base_diagnostics=render_route_authoring_preview(
-            boundary.primary_mesh,
-            camera,
-            None,
-            source_image=boundary.source_image,
-        )
         preview_geometry=build_route_preview_geometry(
             boundary.primary_mesh,
             camera,
@@ -205,7 +199,7 @@ class ConceptGhostP10DroneRouteAuthoring:
             "route_ready_for_generation":collision_report.blocked_mission_count==0,
             "scene_footprint":footprint_evidence,
             "preview":render_diagnostics,
-            "base_preview":base_diagnostics,
+            "base_preview":None,
             "preview_png_path":None,
             "base_preview_png_path":None,
             "workspace_rendering":"DYNAMIC_GEOMETRY_NO_STATIC_BACKGROUND",
