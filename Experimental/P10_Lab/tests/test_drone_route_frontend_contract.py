@@ -29,6 +29,10 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'pointerdown',
             'pointermove',
             'onExecuted',
+            'collision_preflight',
+            'blockedSegment',
+            '#ff3b58',
+            'colisão precisa ser revalidada',
         ):
             self.assertIn(required, source)
 
