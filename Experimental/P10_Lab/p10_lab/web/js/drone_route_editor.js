@@ -102,8 +102,11 @@ function setupEditor(node) {
             if (!Number.isFinite(value) || value < 2 || value > 240) framesWidget.value = 30;
         }
         if (clearanceWidget) {
-            const value = Number(clearanceWidget.value);
-            if (!Number.isFinite(value) || value < 0 || value > 10) clearanceWidget.value = 0.20;
+            const raw = clearanceWidget.value;
+            const value = Number(raw);
+            if (raw == null || raw === "" || !Number.isFinite(value) || value < 0 || value > 10) {
+                clearanceWidget.value = 0.20;
+            }
         }
     }
     sanitizeNumericWidgets();
