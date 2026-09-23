@@ -1,5 +1,5 @@
 {
-  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v3",
+  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v4",
   "runtime_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic",
   "outputs_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic\\Outputs",
   "hardware_target": "RTX 2080 Ti 11GB",
@@ -20,8 +20,11 @@
       "repo_id": "h94/IP-Adapter",
       "subdir": "Models/ip_adapter",
       "subfolder": "sdxl_models",
-      "weight_name": "ip-adapter_sdxl.bin",
-      "image_encoder_folder": "models/image_encoder"
+      "weight_name": "ip-adapter_sdxl_vit-h.safetensors",
+      "image_encoder_folder": "models/image_encoder",
+      "image_encoder_family": "OpenCLIP-ViT-H-14",
+      "image_encoder_projection_dim": 1024,
+      "pairing_contract": "SDXL_VIT_H_1024"
     }
   },
   "defaults": {
