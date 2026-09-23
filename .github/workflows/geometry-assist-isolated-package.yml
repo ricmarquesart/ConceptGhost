@@ -30,7 +30,7 @@ jobs:
           src = Path("Experimental/Geometry_Assist_Proxy_Lab/package")
           out = Path("dist")
           out.mkdir(exist_ok=True)
-          base = out / "ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r1"
+          base = out / "ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r2"
           zip_path = Path(shutil.make_archive(str(base), "zip", root_dir=src))
           h = hashlib.sha256(zip_path.read_bytes()).hexdigest()
           (out / "SHA256.txt").write_text(f"{h}  {zip_path.name}\n", encoding="utf-8")
@@ -40,9 +40,9 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r1
+          name: ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r2
           path: |
-            dist/ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r1.zip
+            dist/ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r2.zip
             dist/SHA256.txt
           if-no-files-found: error
           retention-days: 30
