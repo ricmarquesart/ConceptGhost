@@ -277,3 +277,26 @@ Detailed spec: `docs/21_P9_MOGE_DEPTH_DIAGNOSTICS.md`.
 - Static runtime verifier: PASS.
 - Bundle contract test: PASS.
 - User runtime diagnostic acceptance remains pending.
+
+
+## r9 installer/runtime corrective checkpoint — 2026-09-23
+
+Status: IMPLEMENTED IN SOURCE / PACKAGE REBUILD IN PROGRESS / USER RUNTIME PENDING.
+
+The r8 target-machine install exposed two package-level issues and one source-audit issue:
+
+1. The shared-Python guard used raw `pip freeze` text hash as the mutation authority. r9 keeps raw freeze as evidence but enforces the complete normalized installed distribution name+version set. Actual package changes still fail closed with a package-level diff.
+2. The inherited v1.53 verifier could place `ConceptGhost_Master_v1.53.0.json` in the user workflow folder before the outer installer cleaned it. If installation failed during the base step, the old Master remained visible. r9 runs the base verifier in private-workflow mode and failure-cleanup removes legacy/internal workflows from the user tree.
+3. Route editor audit found a duplicated `onExecuted` callback wrapper. It is removed and a regression test now requires exactly one callback.
+
+Storage clarification:
+- route handoff is retained while P10 can still reuse it;
+- r9 exposes an explicit route-handoff-only cleanup action;
+- final closeout will auto-delete only artifacts proven disposable after final provenance/deliverables validate;
+- P9 remains outside P10 cleanup authority.
+
+F6 remains intentionally split:
+- dual-Maya **non-overwrite contract is implemented**;
+- actual P10 Refined Maya generation is deferred until the final refined P10 geometry/export gate exists.
+
+Detailed audit: `docs/22_DR9R_R9_INSTALLER_HOTFIX_AND_REQUIREMENT_AUDIT.md`.
