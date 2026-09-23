@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import numpy as np
+try:
+    import numpy as np
+except Exception:  # allow dependency-light bundle/release validation imports
+    np = None
 
 from .contracts import ContractError
 
@@ -473,6 +476,15 @@ class ConceptGhostMoGeDepthDiagnostics:
                 "geometry_impact":False,
                 "files_written":0,
                 "message":"MoGe diagnostics OFF; official pipeline is unchanged and no diagnostic folder is created.",
+            }
+            text=json.dumps(payload,indent=2,sort_keys=True)
+            return {"ui":{"text":[text]},"result":(self._blank(),"","",text)}
+
+        if np is None:
+            payload={
+                "schema":_SCHEMA,"status":"WARN","enabled":True,
+                "authority":"DIAGNOSTIC_ONLY","geometry_impact":False,
+                "message":"NumPy unavailable for diagnostic export. Diagnostics skipped; official pipeline continues unchanged.",
             }
             text=json.dumps(payload,indent=2,sort_keys=True)
             return {"ui":{"text":[text]},"result":(self._blank(),"","",text)}
