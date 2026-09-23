@@ -1,0 +1,11 @@
+diffusers==0.30.3
+transformers==4.44.2
+accelerate==0.34.2
+huggingface_hub==0.24.6
+safetensors==0.4.5
+controlnet-aux==0.0.10
+opencv-python-headless==4.10.0.84
+Pillow==10.4.0
+numpy==1.26.4
+scikit-image==0.24.0
+requests==2.32.3
