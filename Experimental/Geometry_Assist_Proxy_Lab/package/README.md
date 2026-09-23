@@ -96,3 +96,5 @@ r2 fixes the root cause by:
 The other warnings seen in the r1 run (missing optional MediaPipe, timm deprecations, no Flash Attention) are non-fatal for the Canny-only diagnostic path.
 
 Existing r1 installations do **not** need to be uninstalled. Running the r2 installer reuses the isolated Python/models and replaces only the owned worker/config as needed.
+
+Distribution revision: **r2** — first runtime hotfix after RTX 2080 Ti hardware attempt.
