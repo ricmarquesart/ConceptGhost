@@ -5,6 +5,21 @@ This is the persistent execution board for ConceptGhost v1.54 P10. It maps the
 development gates. A gate is complete only when its acceptance evidence is
 recorded and its checkpoint is mirrored to GitHub and Google Drive.
 
+## Authoritative reconciliation — 2026-09-23 DR8 complete
+
+This is the newest authoritative development status.
+
+- **DR8A–DR8E are COMPLETE at code/CI level.**
+- A dedicated aggregate closeout suite now validates the entire artist-route diagnostic/preview contract rather than relying only on isolated tests.
+- Baseline/P9 isolation is explicitly regression-tested: the original workflow object and Baseline export node remain unchanged.
+- Two-drone PATH + SPIN_360 identity, exact frame sampling, diagnostics, split-WAN reassembly, preview freshness and frontend controls are covered.
+- GitHub Actions has an explicit DR8 closeout gate in addition to the complete P10 test suite.
+- Closeout run `35818321869` completed SUCCESS on `de1201374c7a633dbdb1ff7654520cb79d08212d` across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
+- Formal closeout matrix: `Experimental/P10_Lab/docs/15_DR8_FINAL_REGRESSION_CLOSEOUT.md`.
+- **Next bounded development: DR9 — Preview Package + User Runtime Acceptance.**
+- DR9 must produce the next complete installer/workflow, pass extracted-bundle/release-integrity checks, synchronize GitHub/Google Drive, then be exercised in real ComfyUI with at least one curved/descending PATH plus one SPIN_360 mission and per-drone GIF inspection.
+- Required Gate 7 fusion/free-space work remains after this bounded route-authoring runtime acceptance.
+
 ## Authoritative reconciliation — 2026-09-23 DR8D complete
 
 This is the newest authoritative development status.
