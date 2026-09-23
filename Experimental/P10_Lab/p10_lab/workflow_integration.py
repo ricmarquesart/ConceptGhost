@@ -7,6 +7,7 @@ from .contracts import ContractError
 
 _REFINED_EXPORT_ID = 1015
 _EVIDENCE_NODE_ID = 2100
+_DEFAULT_GEOMETRY_PROFILE = "High Fidelity Split Clean"
 
 # Dedicated P10 visual lane below the existing Refined/P9 graph.
 # These positions intentionally leave the proven v1.53 Baseline/Refined layout
@@ -33,6 +34,33 @@ _P10_LAYOUT_POSITIONS = {
     2300: (14910, 9600),
     2301: (15650, 9600),
 }
+
+
+def apply_p10_master_defaults(workflow: dict) -> dict:
+    """Apply release-facing P10 defaults without changing runtime authority rules.
+
+    The existing ConceptGhost MasterConfig serializes widgets in the order:
+    scene_name, preset, camera_mode, moge_version, geometry_profile,
+    extra_diagnostics, output_root. P10 release workflows default to
+    High Fidelity Split Clean, while the artist can still override it manually.
+    """
+    nodes = workflow.get("nodes") if isinstance(workflow, dict) else None
+    if not isinstance(nodes, list):
+        raise ContractError("Workflow must contain a nodes array")
+    master = next(
+        (
+            node for node in nodes
+            if node.get("id") == 2 and node.get("type") == "ConceptGhostMasterConfig"
+        ),
+        None,
+    )
+    if master is None:
+        return workflow
+    values = master.get("widgets_values")
+    if not isinstance(values, list) or len(values) < 5:
+        raise ContractError("ConceptGhostMasterConfig widgets are incomplete")
+    values[4] = _DEFAULT_GEOMETRY_PROFILE
+    return workflow
 
 
 def organize_p10_layout(workflow: dict) -> dict:
@@ -62,6 +90,7 @@ def integrate_gate4_refined_preview(workflow: dict) -> dict:
     if not isinstance(workflow, dict):
         raise ContractError("Workflow must be a JSON object")
     patched = deepcopy(workflow)
+    apply_p10_master_defaults(patched)
     nodes = patched.get("nodes")
     links = patched.get("links")
     if not isinstance(nodes, list) or not isinstance(links, list):
