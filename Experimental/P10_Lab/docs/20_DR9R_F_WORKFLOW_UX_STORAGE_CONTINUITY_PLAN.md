@@ -281,7 +281,7 @@ Detailed spec: `docs/21_P9_MOGE_DEPTH_DIAGNOSTICS.md`.
 
 ## r9 installer/runtime corrective checkpoint — 2026-09-23
 
-Status: IMPLEMENTED IN SOURCE / PACKAGE REBUILD IN PROGRESS / USER RUNTIME PENDING.
+Status: **PACKAGE PUBLISHED / STATIC + CI VALIDATION PASS / USER RUNTIME PENDING**.
 
 The r8 target-machine install exposed two package-level issues and one source-audit issue:
 
@@ -300,3 +300,17 @@ F6 remains intentionally split:
 - actual P10 Refined Maya generation is deferred until the final refined P10 geometry/export gate exists.
 
 Detailed audit: `docs/22_DR9R_R9_INSTALLER_HOTFIX_AND_REQUIREMENT_AUDIT.md`.
+
+
+### r9 final package — 2026-09-23
+
+- `ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r9.zip`
+- SHA-256: `1143e94e0fcbfcf25809efa0a21fae162fa79079c3223b8ea2eec677069609bf`
+- bytes: `12,234,987`
+- Google Drive Evaluation_Builds file id: `1YUTpjOJzAIwYJwhgk87f8Dr-WONzwo7T`
+- GitHub Release: `p10-dr9r-r9`
+- final source/test head: `9fa358c7ad7078b4f7bfa4e2e181848daf37cf2b`
+- final tests: run `35906865640` SUCCESS
+- final source snapshot: run `35906865630` SUCCESS
+
+r9 is the only package to use for the next runtime pass.
