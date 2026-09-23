@@ -379,6 +379,7 @@ def _save_evidence_images(
     route_plan_sha256,
     route_plan_payload,
     source_run_id,
+    source_p9_run_dir,
     mission_modes,
     np,
     Image,
@@ -527,6 +528,7 @@ def _save_evidence_images(
         route_plan_file=("route_plan.json" if route_plan_payload is not None else None),
         scene_contract_id=scene_contract_id,
         source_run_id=source_run_id,
+        source_p9_run_dir=source_p9_run_dir,
         mission_modes=tuple(mission_modes),
     )
     control_manifest_path = control_root / "manifest.json"
@@ -543,6 +545,7 @@ def _save_evidence_images(
         route_plan_sha256=route_plan_sha256,
         route_plan_file=("route_plan.json" if route_plan_payload is not None else None),
         source_run_id=source_run_id,
+        source_p9_run_dir=source_p9_run_dir,
         mission_modes=tuple(mission_modes),
     )
     camera_manifest_path = control_root / "camera_manifest.json"
@@ -778,6 +781,7 @@ def build_refined_evidence(
         route_plan_sha256=route_plan_sha256,
         route_plan_payload=route_plan_payload,
         source_run_id=boundary.run_id,
+        source_p9_run_dir=str(boundary.root),
         mission_modes=mission_modes,
         np=np,
         Image=Image,
@@ -808,6 +812,7 @@ def build_refined_evidence(
         "gate": 4,
         "subgate": "4.2",
         "source_run_id": boundary.run_id,
+        "source_p9_run_dir": str(boundary.root),
         "scene_contract_id": boundary.scene_contract_id,
         "source_stage": boundary.source_stage,
         "preview_kind": "INTEGRATED_REFINED_VISUAL_EVIDENCE",
