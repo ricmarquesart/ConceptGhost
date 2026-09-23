@@ -120,7 +120,7 @@ Status: **COMPLETE / CI PASS / RUNTIME EVIDENCE DEFERRED**
 - expose used/dropped frame counts and reasons.
 
 #### DR9R-B5 — Metric P9/P10 Reconstruction Overlay
-Status: **NEXT**
+Status: **COMPLETE / CI PASS / RUNTIME EVIDENCE DEFERRED**
 
 Add a metric-isotropic diagnostic surface showing:
 - P9 authoritative geometry;
@@ -242,3 +242,16 @@ GitHub authority:
 - Gate 6 runtime exposes the same contribution evidence.
 - CI includes a two-independent-component regression proving both components and both drone missions remain selected.
 - Runtime geometric evidence is intentionally deferred until DR9R-E.
+
+
+### DR9R-B5 implementation checkpoint — 2026-09-23
+
+- Added a metric-isotropic P9/P10 reconstruction overlay diagnostic.
+- Overlay combines P9 authoritative geometry with P10 sparse reconstruction evidence in the same P9 world.
+- Sparse overlay sampling spans the full reconstruction instead of biasing to an initial subset.
+- Gate 6 publishes the metric overlay as the primary reconstruction preview surface.
+- The P9-only round-trip audit also exposes the same metric overlay for camera/COLMAP isolation.
+- The overlay is diagnostic and does not alter P9 or P10 geometry.
+- Latest CI for the B5 head passed successfully.
+- Runtime geometric evidence remains intentionally deferred until DR9R-E.
+- Next: DR9R-B6 — Gate 6 Geometry Quality Authority.
