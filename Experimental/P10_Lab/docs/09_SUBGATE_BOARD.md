@@ -898,3 +898,15 @@ Then:
 - DR9R-E one complete runtime regression/user-test bundle.
 
 The user requested **no intermediate runtime test**. Each partial subgate must nevertheless be saved to GitHub and a Google Drive recovery checkpoint before continuing.
+
+
+### DR9R-B progress checkpoint — 2026-09-23
+
+- DR9R-B1 — COMPLETE / CI PASS: four-view Perspective + TOP/SIDE/FRONT route workspace, shared P9 geometry, metric-isotropic ortho editing, orbit/zoom inspection.
+- DR9R-B2 — COMPLETE / CI PASS: explicit LOOK_AT_TARGET / LOOK_ALONG_PATH / MANUAL_DIRECTION authority, target/manual controls, visible aim cues, orientation-safe collision holds, v0.1 route/hash compatibility.
+- DR9R-B3 — NEXT: P9-only known-camera reconstruction round-trip audit.
+- DR9R-B4 — PLANNED: multi-mission/per-drone reconstruction preservation.
+- DR9R-B5 — PLANNED: metric P9/P10 reconstruction overlay.
+- DR9R-B6 — PLANNED: Gate 6 geometry-quality authority.
+
+No user runtime test is requested until DR9R-E after B1-B6/C/D are complete.
