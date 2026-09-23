@@ -1289,7 +1289,7 @@ function setupEditor(node) {
         status.style.color = "#86e276";
     });
 
-    chainCallback(node, "onExecuted", function (message) {    chainCallback(node, "onExecuted", function (message) {
+    chainCallback(node, "onExecuted", function (message) {
         ingestExecution(message);
     });
 
