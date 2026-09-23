@@ -239,7 +239,7 @@ $after = @()
 foreach ($p in $protected) { $after += [ordered]@{ path=$p; exists=(Test-Path $p); last_write_utc= if(Test-Path $p){(Get-Item $p).LastWriteTimeUtc.ToString('o')}else{$null} } }
 $after | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $ManifestDir 'protected_paths_after.json') -Encoding UTF8
 
-Write-Log 'Install completed. Running isolated self-test...'
+Write-Log 'Install completed. Running r4 isolated CUDA/import self-test...'
 & $PythonExe (Join-Path $RuntimeRoot 'Worker\lotus_diagnostic_worker.py') --runtime-root $RuntimeRoot --self-test
 if ($LASTEXITCODE -ne 0) { throw 'Isolated runtime self-test failed.' }
 Write-Log 'PASS. Restart ComfyUI, then open Lotus_Depth_Diagnostic.json.'
