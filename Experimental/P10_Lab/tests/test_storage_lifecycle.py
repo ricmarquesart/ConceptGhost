@@ -34,5 +34,22 @@ class P10StorageLifecycleTests(unittest.TestCase):
                 cleanup_p10_owned_cache(root,delete_attempt_paths=[p9])
 
 
+    def test_route_handoff_can_be_cleaned_without_touching_p9_or_attempts(self):
+        from p10_lab.storage_lifecycle import cleanup_p10_owned_cache,storage_roots
+        with tempfile.TemporaryDirectory() as tmp:
+            roots=storage_roots(tmp)
+            roots.route_setup_root.mkdir(parents=True)
+            (roots.route_setup_root/"LATEST_PRODUCTION_ENTRY.json").write_text("{}",encoding="utf-8")
+            attempt=roots.attempts_root/"p9"/"attempt1"
+            attempt.mkdir(parents=True)
+            (attempt/"attempt_manifest.json").write_text('{"status":"ACTIVE"}',encoding="utf-8")
+            p9=Path(tmp)/"p9_authority"; p9.mkdir()
+            (p9/"keep.txt").write_text("keep",encoding="utf-8")
+            result=cleanup_p10_owned_cache(tmp,delete_route_setup_state=True)
+            self.assertFalse(roots.route_setup_root.exists())
+            self.assertTrue(attempt.exists())
+            self.assertTrue((p9/"keep.txt").exists())
+            self.assertFalse(result["p9_deleted"])
+
 if __name__=="__main__":
     unittest.main()
