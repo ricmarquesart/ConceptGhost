@@ -524,7 +524,7 @@ def run_prefusion_meshing(
             source_dense = None
 
     result_manifest = {
-        "schema": "ConceptGhost.P10PreFusionMeshResult.v0.1",
+        "schema": "ConceptGhost.P10PreFusionMeshResult.v0.2",
         **plan.manifest(),
         "status": "PASS",
         "colmap_executable": executable,
@@ -538,6 +538,18 @@ def run_prefusion_meshing(
         "source_dense_vertex_count": (
             source_dense.get("fused_cloud", {}).get("vertex_count")
             if isinstance(source_dense, dict) else None
+        ),
+        "verified_sparse_component_count":(
+            source_dense.get("verified_sparse_component_count")
+            if isinstance(source_dense,dict) else None
+        ),
+        "mission_contribution":(
+            source_dense.get("mission_contribution",[])
+            if isinstance(source_dense,dict) else []
+        ),
+        "sparse_quality_status":(
+            source_dense.get("sparse_quality_status")
+            if isinstance(source_dense,dict) else None
         ),
     }
     result_path = plan.dataset_root / "prefusion_mesh_manifest.json"
