@@ -75,7 +75,7 @@ def patch_versions(root: Path) -> None:
 
     p = root / "Installer" / "verify_p10_dr9.py"
     s = read_text(p)
-    s = replace_required(s, "ConceptGhost.P10DR9RRuntimeVerify.v0.11", "ConceptGhost.P10DR9RRuntimeVerify.v0.11", "runtime schema")
+    s = replace_required(s, "ConceptGhost.P10DR9RRuntimeVerify.v0.9", "ConceptGhost.P10DR9RRuntimeVerify.v0.11", "runtime schema")
     s = replace_required(s, "CONCEPTGHOST_P10_DR9R_R9_INSTALLER_HOTFIX_RUNTIME_VERIFY_PASS", "CONCEPTGHOST_P10_DR9R_R11_NESTED_INSTALLER_RUNTIME_VERIFY_PASS", "runtime pass marker")
     write_text(p, s)
 
@@ -145,6 +145,13 @@ def main(root):
         errors.append("r11 release metadata missing")
     if release.get("schema") != "ConceptGhost.P10DR9RRelease.v0.11":
         errors.append("r11 release schema missing")
+    for rel in ("Installer/install_dr11.ps1", "Installer/verify_dr11.ps1"):
+        if not (root / rel).is_file():
+            errors.append(f"r11 BAT target missing: {rel}")
+    if "Installer\\install_dr11.ps1" not in (root / "03_INSTALL_ALL.bat").read_text(encoding="utf-8-sig"):
+        errors.append("03_INSTALL_ALL.bat target mismatch")
+    if "Installer\\verify_dr11.ps1" not in (root / "04_VERIFY_INSTALL.bat").read_text(encoding="utf-8-sig"):
+        errors.append("04_VERIFY_INSTALL.bat target mismatch")
 
     if errors:
         print("\n".join("[FAIL] " + e for e in errors))
@@ -166,9 +173,11 @@ def update_docs_and_release(root: Path, hotfix_commit: str) -> None:
     guide = guide.replace("DR9R R9", "DR9R R11").replace("DR9R r9", "DR9R r11")
     guide += """
 
-## r11 nested installer compatibility hotfix
+## r11 entrypoint + nested installer compatibility hotfix
 
-The r11 package fixes the target-machine failure discovered after the r9 base stack had already passed. The inherited Gate5 and Gate6 installers no longer require removed historical preview workflows while DR9R runs in private/internal verifier mode. Both stages reuse the current `02_ConceptGhost_P10_PRODUCTION.json` only as a private verifier fixture below `%LOCALAPPDATA%\\ConceptGhost\\internal\\workflows`; no legacy Gate5/Gate6 preview workflow is installed for the artist.
+The r11 package fixes the target-machine failure discovered in r10 where the user BAT entrypoints were relabeled to `install_dr11.ps1` / `verify_dr11.ps1` style names without those files existing. r11 now ships real versioned PowerShell entrypoint targets and validates them before packaging.
+
+It also retains the nested-installer compatibility correction discovered after the r9 base stack had already passed. The inherited Gate5 and Gate6 installers no longer require removed historical preview workflows while DR9R runs in private/internal verifier mode. Both stages reuse the current `02_ConceptGhost_P10_PRODUCTION.json` only as a private verifier fixture below `%LOCALAPPDATA%\\ConceptGhost\\internal\\workflows`; no legacy Gate5/Gate6 preview workflow is installed for the artist.
 
 This change is installer compatibility only. P9 authority, current P10 code, MoGe diagnostics, route authoring, WAN, COLMAP reconstruction, immutable P10 attempts, storage policy and the dual-Maya non-overwrite contract are unchanged.
 """
@@ -179,9 +188,9 @@ This change is installer compatibility only. P9 authority, current P10 code, MoG
     readme = readme.replace("# ConceptGhost P10 — DR9R r9 Two-Stage Installer", "# ConceptGhost P10 — DR9R r11 Two-Stage Installer")
     readme += """
 
-## r11 nested Gate5/Gate6 installer compatibility
+## r11 entrypoint and nested Gate5/Gate6 installer compatibility
 
-r11 supersedes r9 for runtime acceptance. The protected two-stage package still exposes only `01_ConceptGhost_P10_ROUTE_SETUP.json` and `02_ConceptGhost_P10_PRODUCTION.json`. During the inherited Gate5/Gate6 bootstrap, the current Production workflow is reused privately under `%LOCALAPPDATA%\\ConceptGhost\\internal\\workflows` for verifier compatibility, so removed historical Gate5/Gate6 preview workflows are no longer required or installed.
+r11 supersedes r10 for runtime acceptance. The `03_INSTALL_ALL.bat` and `04_VERIFY_INSTALL.bat` entrypoints now point to real `Installer\\install_dr11.ps1` and `Installer\\verify_dr11.ps1` files. The protected two-stage package still exposes only `01_ConceptGhost_P10_ROUTE_SETUP.json` and `02_ConceptGhost_P10_PRODUCTION.json`. During the inherited Gate5/Gate6 bootstrap, the current Production workflow is reused privately under `%LOCALAPPDATA%\\ConceptGhost\\internal\\workflows` for verifier compatibility, so removed historical Gate5/Gate6 preview workflows are no longer required or installed.
 """
     write_text(root / "README.md", readme)
 
@@ -191,9 +200,14 @@ Date: 2026-09-23
 
 ## Trigger
 
-The target-machine r9 installation passed the protected shared-Python fingerprint, MoGe runtime verification, Maya verification and the complete v1.53 base verification, then stopped inside inherited Gate5 because that legacy installer still required a removed Gate5 preview workflow. Gate6 contained the same latent dependency.
+The first r10 runtime attempt exposed a packaging-only entrypoint bug: `03_INSTALL_ALL.bat` referenced `Installer\\install_dr10.ps1`, but the package contained only `install_dr9.ps1`; `04_VERIFY_INSTALL.bat` had the same latent problem for `verify_dr10.ps1`.
+
+Before that, the target-machine r9 installation passed the protected shared-Python fingerprint, MoGe runtime verification, Maya verification and the complete v1.53 base verification, then stopped inside inherited Gate5 because that legacy installer still required a removed Gate5 preview workflow. Gate6 contained the same latent dependency.
 
 ## Correction
+
+- r11 ships real `Installer\\install_dr11.ps1` and `Installer\\verify_dr11.ps1` entrypoint files.
+- packaging validation fails closed if either BAT target is missing or mismatched.
 
 When `CONCEPTGHOST_INTERNAL_BASE_WORKFLOW_ONLY=1` is set by DR9R:
 
@@ -249,6 +263,8 @@ Bundle static contract: PASS
 Installer Python compile: PASS
 P10 code manifest/hash validation: PASS
 Current-only workflow policy: PASS
+03_INSTALL_ALL.bat target exists: PASS
+04_VERIFY_INSTALL.bat target exists: PASS
 Gate5 private current-Production verifier fixture: INCLUDED
 Gate6 private current-Production verifier fixture: INCLUDED
 Legacy Gate5/Gate6 preview requirement in DR9R mode: REMOVED
