@@ -25,7 +25,10 @@ class ControlSequenceContractTests(unittest.TestCase):
             height=480,
             route_authority="ARTIST_AUTHORED",
             route_plan_schema="ConceptGhost.P10DroneRoutePlan.v0.1",
-            route_plan_sha256="abc",
+            route_plan_sha256="a"*64,
+            route_plan_file="route_plan.json",
+            scene_contract_id="scene1",
+            source_run_id="run1",
             mission_modes=(("entry_micro_orbit_360","SPIN_360"),("scene_round_trip","PATH")),
         )
         payload = manifest.to_dict()
@@ -34,7 +37,10 @@ class ControlSequenceContractTests(unittest.TestCase):
         self.assertEqual(payload["frames"][0]["global_frame_index"], 0)
         self.assertEqual(payload["schema"],"ConceptGhost.P10ControlSequence.v0.2")
         self.assertEqual(payload["route_authority"],"ARTIST_AUTHORED")
-        self.assertEqual(payload["route_plan_sha256"],"abc")
+        self.assertEqual(payload["route_plan_sha256"],"a"*64)
+        self.assertEqual(payload["route_plan_file"],"route_plan.json")
+        self.assertEqual(payload["scene_contract_id"],"scene1")
+        self.assertEqual(payload["source_run_id"],"run1")
         self.assertEqual(payload["mission_order"],["entry_micro_orbit_360","scene_round_trip"])
         self.assertEqual(payload["missions"][0]["mode"],"SPIN_360")
 
