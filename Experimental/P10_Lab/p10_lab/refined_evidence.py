@@ -354,6 +354,7 @@ def _save_evidence_images(
     run_id: str,
     p9_erp,
     source_erp,
+    source_lock,
     trajectory,
     flight_frames,
     hole_masks,
@@ -375,15 +376,63 @@ def _save_evidence_images(
         root = Path.cwd() / "conceptghost_p10_gate4" / run_id
     root.mkdir(parents=True, exist_ok=True)
 
-    static = (
-        ("p9_3d_partial_erp.png", p9_erp),
-        ("source_authority_partial_erp.png", source_erp),
-        ("camera_paths_topdown.png", trajectory),
-    )
+    def save_ui(filename, array, *, mode="RGB"):
+        if mode == "L":
+            image = Image.fromarray(array.astype(np.uint8), mode="L").convert("RGB")
+        else:
+            image = Image.fromarray(array.astype(np.uint8))
+        image.save(root / filename)
+        ui_images.append({
+            "filename": filename,
+            "subfolder": f"conceptghost/p10_gate4/{run_id}",
+            "type": "output",
+        })
+
+    def contact_sheet(arrays, *, mask=False, max_items=6):
+        if not arrays:
+            return None
+        count=len(arrays)
+        if count<=max_items:
+            indexes=list(range(count))
+        else:
+            indexes=sorted({
+                int(round(i*(count-1)/float(max_items-1)))
+                for i in range(max_items)
+            })
+        tiles=[]
+        tile_w=320
+        for index in indexes:
+            raw=np.asarray(arrays[index])
+            if mask:
+                if raw.dtype != np.uint8:
+                    raw=(np.clip(raw,0.0,1.0)*255.0).round().astype(np.uint8)
+                if raw.ndim==2:
+                    image=Image.fromarray(raw,mode="L").convert("RGB")
+                else:
+                    image=Image.fromarray(raw.astype(np.uint8)).convert("RGB")
+            else:
+                image=Image.fromarray(raw.astype(np.uint8)).convert("RGB")
+            tile_h=max(1,round(image.height*tile_w/float(image.width)))
+            tiles.append(image.resize((tile_w,tile_h)))
+        tile_h=max(image.height for image in tiles)
+        sheet=Image.new("RGB",(tile_w*len(tiles),tile_h),(18,18,18))
+        for i,image in enumerate(tiles):
+            y=(tile_h-image.height)//2
+            sheet.paste(image,(i*tile_w,y))
+        return np.asarray(sheet,dtype=np.uint8)
+
     ui_images = []
-    for filename, array in static:
-        Image.fromarray(array).save(root / filename)
-        ui_images.append({"filename": filename, "subfolder": f"conceptghost/p10_gate4/{run_id}", "type": "output"})
+    save_ui("p9_3d_partial_erp.png", p9_erp)
+    save_ui("source_authority_partial_erp.png", source_erp)
+    lock_preview=(np.asarray(source_lock,dtype=np.float32)>0.5).astype(np.uint8)*255
+    save_ui("source_lock_known_unknown.png",lock_preview,mode="L")
+    flight_sheet=contact_sheet(flight_frames,mask=False)
+    if flight_sheet is not None:
+        save_ui("drone_flight_views_contact_sheet.png",flight_sheet)
+    hole_sheet=contact_sheet(hole_masks,mask=True)
+    if hole_sheet is not None:
+        save_ui("raw_holes_contact_sheet.png",hole_sheet)
+    save_ui("camera_paths_topdown.png", trajectory)
 
     gif_frames = []
     for index, raw in enumerate(flight_frames):
@@ -598,6 +647,7 @@ def build_refined_evidence(
         run_id=boundary.run_id,
         p9_erp=p9_erp,
         source_erp=source_erp,
+        source_lock=source_lock,
         trajectory=trajectory,
         flight_frames=flight_frames,
         hole_masks=hole_masks,
