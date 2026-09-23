@@ -192,16 +192,27 @@ CI evidence:
 - `35817845135` — SUCCESS on implementation commit `5ee52c8edf0b84ecbaec0c3f3458fb6543ef8e2e`;
 - `35817871526` — SUCCESS on regression commit `1dc4c5c44b88cd313adf48ae0da92e8bb96b5c3d`.
 
-#### DR8E — Final regression closeout — NEXT
-- GIF/frame-order regressions;
-- multi-window same-drone grouping;
-- multi-drone separation;
-- diagnostics/index consistency;
-- Linux/Windows CI;
-- workflow wiring regression tests;
-- no mutation of Baseline/P9.
+#### DR8E — Final regression closeout — COMPLETED / CI PASS
+- dedicated aggregate closeout suite: `tests/test_dr8_closeout.py`;
+- explicit CI gate: `Validate DR8 route-authoring closeout regressions`;
+- Baseline/P9 isolation is locked: workflow integration operates on a deep copy and the Baseline export node remains unchanged;
+- release-facing P10 workflow alone receives the `High Fidelity Split Clean` default;
+- two-drone PATH + SPIN_360 sampling/identity/diagnostics are tested together;
+- cross-run artist route reuse fails closed;
+- split WAN windows are reassembled into one exact sequence per drone without cross-drone mixing;
+- preview freshness is tested against route/control/WAN identity plus exact final-composite bytes;
+- frontend artist controls, stale-route hash removal and blocked-segment visualization are locked by the aggregate suite;
+- Linux/Windows matrix is green.
 
-Exit: GitHub Actions PASS, pre-WAN diagnostic manifest available, per-drone preview package validated, and DR8 ready for DR9 packaging.
+CI evidence: GitHub Actions run `35818321869` — SUCCESS on `de1201374c7a633dbdb1ff7654520cb79d08212d`:
+- Ubuntu latest / Python 3.12 — SUCCESS;
+- Windows latest / Python 3.12 — SUCCESS;
+- Windows latest / Python 3.14 — SUCCESS.
+
+Formal closeout matrix:
+`docs/15_DR8_FINAL_REGRESSION_CLOSEOUT.md`.
+
+Exit: DR8 is COMPLETE at code/CI level and ready for DR9 packaging/runtime acceptance.
 
 ### DR9 — Preview package + user runtime acceptance — PENDING
 - publish next complete installer/workflow;
@@ -219,14 +230,14 @@ Completed: DR0, DR1, DR2
 Implemented / awaiting user runtime: DR3, DR4
 Implemented / awaiting CI + user runtime: DR5
 Completed at code/CI level; user runtime acceptance pending: DR6, DR7
-DR8 active: DR8A–DR8D complete; DR8E next
-Pending: DR9
+DR8 COMPLETE: DR8A–DR8E code/CI PASS
+DR9 NEXT: complete package + real ComfyUI runtime acceptance
 
 There are 10 subgates total. DR0–DR2 are complete; DR3–DR7 are implemented and CI-green but still need real ComfyUI runtime acceptance where applicable; DR8 remains the active engineering subgate and DR9 is the final packaged user acceptance.
 
 ## Immediate implementation order
 
-1. close DR8 diagnostics, quality metrics and regression coverage;
-2. package DR9 with the complete route-editor workflow;
-3. perform real ComfyUI acceptance for DR3–DR7 using a curved/descending PATH plus a SPIN_360 mission;
+1. package DR9 with the complete route-editor workflow;
+2. validate installer/extracted bundle/release integrity and sync GitHub + Google Drive;
+3. perform real ComfyUI acceptance using a curved/descending PATH plus a SPIN_360 mission and inspect the per-drone GIFs;
 4. record final ergonomics refinements before returning to required Gate 7 fusion work.
