@@ -49,6 +49,10 @@ jobs:
         run: python -m unittest tests.test_release_integrity -v
         working-directory: Experimental/P10_Lab
 
+      - name: Validate DR8 route-authoring closeout regressions
+        run: python -m unittest tests.test_dr8_closeout -v
+        working-directory: Experimental/P10_Lab
+
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
