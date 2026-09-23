@@ -5,37 +5,38 @@
   "supersedes": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r10.zip",
   "reason": "r10 relabeled BAT entrypoints to install_dr10.ps1/verify_dr10.ps1 without shipping those targets. r11 ships real versioned PowerShell entrypoints and validates BAT target existence/matching before release.",
   "p10_payload_source_commit": "f9ca7c6070a10c9c39a241ef9ebe8c4822988f66",
-  "release_commit": "c326e242d92525d6abf1eee699d91c35485f6ea9",
+  "release_commit": "fc79cdade68efa455c76786b0678ef67ee4e85a7",
   "zip": {
-    "bytes": 12243641,
-    "sha256": "b9b308aaa013699fff909b07de7c245745702d438dda95e41569b6ae7c3015ec"
+    "bytes": 12243738,
+    "sha256": "5edaaaad1ca7c2a054bd019d48cc359a52146b6d10cb56e01cecea5880ce7e1c"
   },
   "google_drive": {
-    "file_id": "11y25LyM7W2GyQL3lPZ5wr18O4ilI0Qsm",
+    "file_id": "1cYEradqYNEH5mFA5BJnXaUtlMz_Zq0I1",
     "folder": "ConceptGhost/Storage/Evaluation_Builds",
-    "sha256_sidecar_file_id": "1lm2OuxmC_a1T7JiT5U50oUrwM2n8YZvn",
-    "validation_file_id": "1IZLbBaCB3t4d2_Sa14W8tYbNJpOWMx4y"
+    "sha256_sidecar_file_id": "1ed0qKv0wakypSSqphVptN2DnRjn_2poK",
+    "validation_file_id": "1qhuz6uAdbaUsEARdh2NyrtcRhURKqQ3U"
   },
   "github": {
     "tag": "p10-dr9r-r11",
     "release_url": "https://github.com/ricmarquesart/ConceptGhost/releases/tag/p10-dr9r-r11",
-    "asset_digest": "sha256:b9b308aaa013699fff909b07de7c245745702d438dda95e41569b6ae7c3015ec"
+    "asset_digest": "sha256:5edaaaad1ca7c2a054bd019d48cc359a52146b6d10cb56e01cecea5880ce7e1c"
   },
   "ci": {
-    "tests_run": 35917690438,
+    "tests_run": 35917993100,
     "tests_status": "SUCCESS",
-    "publish_run": 35917690543,
+    "publish_run": 35917993264,
     "publish_status": "SUCCESS",
-    "snapshot_run": 35917690442,
+    "snapshot_run": 35917993506,
     "snapshot_status": "SUCCESS",
-    "snapshot_digest": "sha256:b53cb8cc521473123e2736ad7e14fc503d8854f218c1c0d6bdc0e51f7901f6ad"
+    "snapshot_digest": "sha256:34010e8b7e55340f0bceabbac386ed5b8f3e923880f4de29472e0d1015580369"
   },
   "entrypoints": {
     "install_bat": "03_INSTALL_ALL.bat",
     "install_target": "Installer/install_dr11.ps1",
     "verify_bat": "04_VERIFY_INSTALL.bat",
     "verify_target": "Installer/verify_dr11.ps1",
-    "contract_status": "PASS"
+    "contract_status": "PASS",
+    "fail_closed_missing_target_preflight": "PASS"
   },
   "workflows": [
     "01_ConceptGhost_P10_ROUTE_SETUP.json",
