@@ -75,6 +75,70 @@ class ReconstructionInputManifestTests(unittest.TestCase):
                 "COMFY_COMMON_UPSCALE_CENTER_PIXEL_CENTER_AWARE",
             )
 
+    def test_two_mission_order_survives_split_windows(self):
+        from p10_lab.reconstruction_inputs import build_reconstruction_input_manifest
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            windows=[]
+            camera_frames=[]
+            definitions=[
+                ("drone_1__part00","drone_1",0,2),
+                ("drone_1__part01","drone_1",2,4),
+                ("drone_2","drone_2",4,6),
+            ]
+            for window_index,(window_name,mission_name,start,end) in enumerate(definitions):
+                comp=root/"composite"/f"{window_index:02d}_{window_name}"
+                for local_index in range(end-start):
+                    self._write_png_stub(comp/f"frame_{local_index:04d}.png")
+                windows.append({
+                    "window_index":window_index,
+                    "name":window_name,
+                    "mission_name":mission_name,
+                    "source_start":start,
+                    "source_end":end,
+                    "decoded_frame_count":end-start,
+                    "composite_dir":str(comp),
+                })
+            for index in range(6):
+                mission="drone_1" if index<4 else "drone_2"
+                local=index if index<4 else index-4
+                camera_frames.append({
+                    "global_frame_index":index,
+                    "path_name":mission,
+                    "path_frame_index":local,
+                    "camera":{
+                        "model":"PINHOLE","width":640,"height":360,
+                        "fx":700,"fy":700,"cx":320,"cy":180,
+                        "world_matrix":[[1,0,0,float(index)],[0,1,0,0],[0,0,1,0],[0,0,0,1]],
+                    },
+                })
+            wan={
+                "run_id":"r",
+                "route_authority":"ARTIST_AUTHORED",
+                "route_plan_sha256":"hash",
+                "mission_order":["drone_1","drone_2"],
+                "mission_modes":{"drone_1":"PATH","drone_2":"SPIN_360"},
+                "effective_dimensions":{"width":832,"height":480,"mode":"UNCHANGED"},
+                "windows":windows,
+            }
+            cameras={
+                "scene_contract_id":"s",
+                "route_authority":"ARTIST_AUTHORED",
+                "route_plan_sha256":"hash",
+                "mission_order":["drone_1","drone_2"],
+                "frames":camera_frames,
+            }
+            wp=root/"wan.json"; cp=root/"cameras.json"
+            wp.write_text(json.dumps(wan),encoding="utf-8")
+            cp.write_text(json.dumps(cameras),encoding="utf-8")
+            out=build_reconstruction_input_manifest(wp,cp)
+            self.assertEqual(out["mission_order"],["drone_1","drone_2"])
+            self.assertEqual(out["mission_modes"],{"drone_1":"PATH","drone_2":"SPIN_360"})
+            self.assertEqual([f["path_name"] for f in out["frames"]],[
+                "drone_1","drone_1","drone_1","drone_1","drone_2","drone_2"
+            ])
+            self.assertEqual([f["global_frame_index"] for f in out["frames"]],list(range(6)))
+
     def test_route_hash_mismatch_fails_closed(self):
         from p10_lab.reconstruction_inputs import build_reconstruction_input_manifest
         with tempfile.TemporaryDirectory() as tmp:
