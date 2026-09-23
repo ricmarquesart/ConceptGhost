@@ -140,7 +140,27 @@ def _projection_manifest(bounds: RoutePreviewBounds, panel_width: int, panel_hei
     usable_w=panel_width-2*margin
     usable_h=panel_height-2*margin
 
+    def isotropic_extents(x_extent: AxisExtent, y_extent: AxisExtent):
+        # Orthographic viewports must preserve metric shape. The previous
+        # implementation independently stretched X and Y to fill the panel,
+        # which made buildings/routes look skewed and made path placement
+        # visually misleading.
+        pixels_per_meter=min(
+            usable_w/max(x_extent.span,1.0e-9),
+            usable_h/max(y_extent.span,1.0e-9),
+        )
+        display_x_span=usable_w/pixels_per_meter
+        display_y_span=usable_h/pixels_per_meter
+        x_center=(x_extent.minimum+x_extent.maximum)*0.5
+        y_center=(y_extent.minimum+y_extent.maximum)*0.5
+        return (
+            AxisExtent(x_center-display_x_span*0.5,x_center+display_x_span*0.5),
+            AxisExtent(y_center-display_y_span*0.5,y_center+display_y_span*0.5),
+            pixels_per_meter,
+        )
+
     def panel(index,name,x_axis,y_axis,x_extent,y_extent,y_flip=True):
+        x_extent,y_extent,pixels_per_meter=isotropic_extents(x_extent,y_extent)
         x0=gap+index*(panel_width+gap)
         y0=gap
         return {
@@ -157,11 +177,14 @@ def _projection_manifest(bounds: RoutePreviewBounds, panel_width: int, panel_hei
             "x_extent":x_extent.to_dict(),
             "y_extent":y_extent.to_dict(),
             "y_screen_inverted":bool(y_flip),
+            "pixels_per_meter":float(pixels_per_meter),
+            "projection_mode":"ORTHOGRAPHIC_ISOTROPIC",
         }
 
     return {
-        "schema":"ConceptGhost.P10DroneRouteTriViewProjection.v0.1",
+        "schema":"ConceptGhost.P10DroneRouteTriViewProjection.v0.2",
         "coordinate_space":"P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+        "projection_mode":"ORTHOGRAPHIC_ISOTROPIC",
         "interaction_rule":{
             "TOP":"drag edits RIGHT + FORWARD",
             "SIDE":"drag edits FORWARD + UP",
@@ -180,6 +203,7 @@ def render_route_authoring_preview(
     camera: CameraAuthority,
     plan: DroneRoutePlan | None,
     *,
+    source_image: str | Path | None = None,
     panel_width: int=600,
     panel_height: int=560,
     gap: int=14,
@@ -203,6 +227,29 @@ def render_route_authoring_preview(
 
     stride=max(1,(len(local)+max_geometry_points-1)//max_geometry_points)
     points=local[::stride]
+
+    point_colors=None
+    if source_image is not None:
+        source_path=Path(source_image)
+        if source_path.is_file():
+            try:
+                with np.load(Path(primary_mesh),allow_pickle=False) as payload:
+                    if "grid_xy" in payload.files:
+                        grid=np.asarray(payload["grid_xy"],dtype=np.int64)
+                    elif "source_uv" in payload.files:
+                        grid=np.rint(np.asarray(payload["source_uv"],dtype=np.float64)).astype(np.int64)
+                    else:
+                        grid=None
+                if grid is not None and grid.shape==(local.shape[0],2):
+                    with Image.open(source_path) as opened:
+                        source=np.asarray(opened.convert("RGB"),dtype=np.uint8)
+                    gx=np.clip(grid[:,0],0,source.shape[1]-1)
+                    gy=np.clip(grid[:,1],0,source.shape[0]-1)
+                    point_colors=source[gy,gx][::stride]
+            except Exception:
+                # Color is a readability enhancement only. Route geometry and
+                # projection authority remain the PrimaryMesh coordinates.
+                point_colors=None
     canvas_w=panel_width*3+gap*4
     canvas_h=panel_height+gap*2
     image=Image.new("RGB",(canvas_w,canvas_h),(18,18,18))
@@ -242,10 +289,15 @@ def render_route_authoring_preview(
             f'{panel["x_axis"].upper()} / {panel["y_axis"].upper()}',
             fill=(150,150,150),
         )
-        for point in points:
+        for point_index,point in enumerate(points):
             x,y=project(panel,point)
             if plot["x"]<=x<=plot["x"]+plot["width"] and plot["y"]<=y<=plot["y"]+plot["height"]:
-                draw.point((x,y),fill=(92,92,92))
+                if point_colors is None:
+                    fill=(105,105,105)
+                else:
+                    raw=point_colors[point_index]
+                    fill=tuple(int(min(255,max(0,float(value)*0.78+42.0))) for value in raw[:3])
+                draw.point((x,y),fill=fill)
 
     if plan is not None:
         for mission_index,mission in enumerate(plan.active_missions):
@@ -278,6 +330,8 @@ def render_route_authoring_preview(
         "vertex_count":int(local.shape[0]),
         "rendered_geometry_points":int(points.shape[0]),
         "geometry_sampling_stride":int(stride),
+        "source_color_preview":bool(point_colors is not None),
+        "projection_mode":"ORTHOGRAPHIC_ISOTROPIC",
         "bounds":bounds.to_dict(),
         "projection":projection,
         "route_plan":plan.to_dict() if plan is not None else None,
