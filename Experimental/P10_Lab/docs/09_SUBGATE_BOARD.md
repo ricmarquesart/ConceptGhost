@@ -185,6 +185,47 @@ CI evidence: `35816862522` SUCCESS on `6c9931c63ed18ad3d6c3ad97b59175b44a4bad22`
 Next: DR8C — formal preview index/output surfacing contract.
 
 
+### Gate 4R DR8C checkpoint — preview index and output surfacing
+
+DR8C is COMPLETE / CI PASS.
+
+The per-drone preview package now has a formal output contract:
+`ConceptGhost.P10DronePreviewIndex.v0.2`
+
+Index identity:
+- run ID;
+- scene contract ID;
+- source run ID;
+- route-plan SHA-256;
+- source control-manifest SHA-256;
+- WAN generation-context SHA-256;
+- exact mission order/modes.
+
+Per preview:
+- drone index + mission name/mode;
+- exact global frame range/count;
+- GIF fps/dimensions;
+- ordered source-frame-set SHA-256;
+- GIF SHA-256;
+- Windows-safe filename;
+- portable ComfyUI output subfolder plus absolute path.
+
+Validation fails closed when GIF bytes, mission order/mode, frame count, route identity, control evidence or WAN generation context do not match.
+
+Surfacing:
+- WAN manifest stores preview-index path + SHA-256;
+- Gate 5 diagnostics expose the preview package;
+- WAN node has a new fifth output `drone_preview_index_path`;
+- existing outputs 0–3 keep their slot numbers;
+- per-drone GIFs are surfaced through standard ComfyUI output-image metadata.
+
+CI:
+- `35817184829` SUCCESS — formal index validation;
+- `35817189070` SUCCESS — Gate 5 workflow/output surfacing.
+
+Next: DR8D — preview invalidation / freshness.
+
+
 ## Gate 5 — 5 subgates
 
 5.1 11 GB WAN runtime/resource policy — COMPLETED. Conservative first-pass profile: 832×480, max 33-frame WAN window, 4 steps, CFG 1.0, FP8 UNet, one window at a time, model/cache offload between windows. GitHub Actions run 35702692128 SUCCESS.
