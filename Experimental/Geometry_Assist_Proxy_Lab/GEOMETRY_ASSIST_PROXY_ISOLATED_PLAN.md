@@ -465,3 +465,37 @@ No ComfyUI custom node or shared model installation is used in r1. This is delib
 
 Static contract + Python compile checks passed in GitHub Actions.
 Hardware inference acceptance on the RTX 2080 Ti remains pending and is the next checkpoint.
+
+
+## r2 runtime hotfix status — 2026-09-23
+
+First RTX 2080 Ti hardware execution result:
+- isolated installation PASS;
+- private Python/Torch/CUDA PASS;
+- SDXL load PASS;
+- ControlNet load PASS;
+- IP-Adapter load PASS;
+- failure occurred only when ControlNet entered the first denoising step.
+
+Root cause:
+- img2img canvas was 1024x768;
+- ControlNet Aux default Canny preprocessing resized the hint to 704x512;
+- Diffusers then produced incompatible latent/control feature widths (128 vs 88).
+
+r2 fixes:
+- 64-pixel-aligned working canvas;
+- exact ControlNet Aux detect/image resolution contract;
+- final exact control-image alignment guard;
+- explicit pipeline height/width;
+- CLIP-safe concise prompts;
+- explicit 77-token prompt contract;
+- removal of Python cache files from distribution.
+
+Final r2 package:
+- `ConceptGhost_Geometry_Assist_Diagnostic_Isolated_r2.zip`
+- SHA-256: `c8136e052b6197fa8cd19254c05949079acbd8c5f8394d97b6597af44d82c2a8`
+- Drive Evaluation_Builds ID: `1FqL2LxID2cPhDqLy8shBY48fhYhygjYz`
+- GitHub Actions final run: `35930843468` — SUCCESS
+- artifact ID: `10780358333`
+
+Upgrade is in-place inside the owned isolated runtime; r1 does not need to be uninstalled.
