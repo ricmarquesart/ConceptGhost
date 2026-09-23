@@ -231,6 +231,7 @@ def prepare_known_camera_colmap_dataset(
             "path_frame_index": frame["path_frame_index"],
             "image_name": image_name,
             "source_image_path": str(source_path),
+            "source_image_sha256": _sha256_file(source_path),
             "materialized_image_path": str(destination),
             "image_provenance": frame["image_provenance"],
             "camera_authority": frame["camera_authority"],
@@ -268,6 +269,17 @@ def prepare_known_camera_colmap_dataset(
         encoding="utf-8",
     )
 
+    source_image_set_digest = hashlib.sha256()
+    for frame in materialized_frames:
+        source_image_set_digest.update(
+            (
+                f'{frame["global_frame_index"]}\0'
+                f'{frame["path_name"]}\0'
+                f'{frame["source_image_sha256"]}\n'
+            ).encode("utf-8")
+        )
+    source_image_set_sha256 = source_image_set_digest.hexdigest()
+
     dataset_manifest = {
         "schema": "ConceptGhost.P10KnownCameraColmapDataset.v0.2",
         "run_id": reconstruction.get("run_id"),
@@ -288,6 +300,8 @@ def prepare_known_camera_colmap_dataset(
             "wan_manifest_sha256": _sha256_file(Path(wan_manifest_path).resolve()),
             "camera_manifest_path": str(Path(camera_manifest_path).resolve()),
             "camera_manifest_sha256": _sha256_file(Path(camera_manifest_path).resolve()),
+            "source_image_set_sha256": source_image_set_sha256,
+            "source_image_hash_policy": "ORDERED_GLOBAL_INDEX_PATH_NAME_FILE_SHA256",
         },
         "coordinate_conversion": {
             "source": "CONCEPTGHOST_MAYA_CAMERA_C2W_XRIGHT_YUP_MINUSZ_FORWARD",
