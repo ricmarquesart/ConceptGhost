@@ -20,6 +20,8 @@ class ReconstructionInputManifestTests(unittest.TestCase):
 
             wan={
                 "run_id":"run1",
+                "scene_contract_id":"scene1",
+                "source_run_id":"run1",
                 "route_authority":"ARTIST_AUTHORED",
                 "route_plan_sha256":"routehash",
                 "mission_order":["a"],
@@ -32,6 +34,7 @@ class ReconstructionInputManifestTests(unittest.TestCase):
             }
             cameras={
                 "scene_contract_id":"scene1",
+                "source_run_id":"run1",
                 "route_authority":"ARTIST_AUTHORED",
                 "route_plan_sha256":"routehash",
                 "mission_order":["a"],
@@ -114,6 +117,8 @@ class ReconstructionInputManifestTests(unittest.TestCase):
                 })
             wan={
                 "run_id":"r",
+                "scene_contract_id":"s",
+                "source_run_id":"r",
                 "route_authority":"ARTIST_AUTHORED",
                 "route_plan_sha256":"hash",
                 "mission_order":["drone_1","drone_2"],
@@ -123,6 +128,7 @@ class ReconstructionInputManifestTests(unittest.TestCase):
             }
             cameras={
                 "scene_contract_id":"s",
+                "source_run_id":"r",
                 "route_authority":"ARTIST_AUTHORED",
                 "route_plan_sha256":"hash",
                 "mission_order":["drone_1","drone_2"],
@@ -153,7 +159,7 @@ class ReconstructionInputManifestTests(unittest.TestCase):
                             "decoded_frame_count":1,"composite_dir":str(comp)}],
             }
             camera={
-                "scene_contract_id":"s","route_authority":"ARTIST_AUTHORED",
+                "scene_contract_id":"s","source_run_id":"r","route_authority":"ARTIST_AUTHORED",
                 "route_plan_sha256":"B","mission_order":["a"],
                 "frames":[{"global_frame_index":0,"path_name":"a","path_frame_index":0,
                            "camera":{"model":"PINHOLE","width":640,"height":360,
