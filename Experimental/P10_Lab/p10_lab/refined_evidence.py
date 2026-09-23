@@ -19,6 +19,7 @@ from .drone_route_plan import (
     apply_hold_and_resume_clearance,
     bind_route_plan,
     parse_bound_route_plan,
+    reorient_path_for_mission,
     sample_route_plan,
 )
 from .p9_boundary import validate_official_run
@@ -612,6 +613,7 @@ def build_refined_evidence(
         sampled_paths = sample_route_plan(authored_route_plan)
         if authored_route_plan.collision_mode == "HOLD_AND_RESUME":
             active = []
+            active_missions={mission.name:mission for mission in authored_route_plan.active_missions}
             for path in sampled_paths:
                 safe_path, report = apply_hold_and_resume_clearance(
                     path,
@@ -623,6 +625,8 @@ def build_refined_evidence(
                         authored_route_plan.min_clearance_m,
                     ),
                 )
+                mission=active_missions[path.name]
+                safe_path=reorient_path_for_mission(mission,safe_path)
                 active.append(safe_path)
                 authored_clearance_reports.append(report.to_dict())
             active_paths = tuple(active)
