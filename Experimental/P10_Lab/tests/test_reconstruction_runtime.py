@@ -38,7 +38,7 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             source_image.write_bytes(b"png")
             source_image_sha=hashlib.sha256(source_image.read_bytes()).hexdigest()
             image_set=hashlib.sha256(
-                f"0\\0a\\0{source_image_sha}\\n".encode("utf-8")
+                b"0\x00a\x00"+source_image_sha.encode("ascii")+b"\n"
             ).hexdigest()
             dataset_manifest={
                 "schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.2",
@@ -89,7 +89,7 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             source_image.write_bytes(b"old")
             source_image_sha=hashlib.sha256(source_image.read_bytes()).hexdigest()
             image_set=hashlib.sha256(
-                f"0\\0a\\0{source_image_sha}\\n".encode("utf-8")
+                b"0\x00a\x00"+source_image_sha.encode("ascii")+b"\n"
             ).hexdigest()
             out=root/"gate6"
             dataset=out/"dataset"
