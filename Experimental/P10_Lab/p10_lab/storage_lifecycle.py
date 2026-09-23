@@ -110,7 +110,7 @@ def build_storage_report(comfy_output_root: str | Path) -> dict:
         },
         "retention_policy":{
             "p9_run":"NEVER_DELETE_FROM_P10_CLEANUP",
-            "route_contract":"KEEP_UNTIL_REPLACED_OR_EXPLICIT_MANUAL_CLEANUP",
+            "route_contract":"KEEP_WHILE_P10_MAY_REUSE_IT; EXPLICIT_MANUAL_CLEANUP_NOW; FINAL_CLOSEOUT_AUTO_DELETE_ONLY_AFTER_PROVENANCE_IS_EMBEDDED_AND_VALIDATED",
             "failed_attempt":"KEEP_FOR_DIAGNOSIS_UNTIL_EXPLICIT_MANUAL_CLEANUP",
             "successful_heavy_intermediates":"KEEP_UNTIL_FINAL_P10_DOWNSTREAM_DELIVERABLES_VALIDATE",
             "future_final_success":"EMIT_CLEANUP_MANIFEST_THEN_DELETE_ONLY_DISPOSABLE_INTERMEDIATES",
