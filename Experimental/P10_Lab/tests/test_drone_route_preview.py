@@ -54,22 +54,21 @@ class DroneRoutePreviewTests(unittest.TestCase):
             ],dtype=np.float32)
             np.savez(path,vertices=vertices)
             camera=CameraAuthority(
+                scene_contract_id="test_scene",
+                schema="ConceptGhost.CameraBundle.test",
                 width=100,
                 height=100,
                 fx=80.0,
                 fy=80.0,
                 cx=50.0,
                 cy=50.0,
+                lens_model="pinhole",
                 world_matrix=(
                     (1.0,0.0,0.0,0.0),
                     (0.0,1.0,0.0,0.0),
                     (0.0,0.0,1.0,0.0),
                     (0.0,0.0,0.0,1.0),
                 ),
-                scene_contract_id=None,
-                lens_model="pinhole",
-                horizontal_fov_deg=64.0,
-                vertical_fov_deg=64.0,
             )
             plan=DroneRoutePlan(missions=(
                 DroneMission("drone_1","PATH",(
