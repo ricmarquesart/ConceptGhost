@@ -71,6 +71,28 @@ class RouteHandoffTests(unittest.TestCase):
                 load_production_entry(result["production_entry_path"])
 
 
+    def test_each_production_attempt_is_unique_and_preserves_prior_directory(self):
+        from p10_lab.route_handoff import create_p10_attempt
+        with tempfile.TemporaryDirectory() as tmp:
+            loaded={
+                "validated":True,
+                "source_run_id":"run1",
+                "scene_contract_id":"scene1",
+                "route_plan_sha256":"a"*64,
+                "source_p9_run_dir":str(Path(tmp)/"p9"),
+                "production_entry_path":str(Path(tmp)/"entry.json"),
+                "route_authority":"ARTIST_AUTHORED",
+            }
+            first=create_p10_attempt(loaded,Path(tmp)/"output")
+            second=create_p10_attempt(loaded,Path(tmp)/"output")
+            self.assertNotEqual(first["p10_attempt_id"],second["p10_attempt_id"])
+            self.assertTrue(Path(first["attempt_root"]).is_dir())
+            self.assertTrue(Path(second["attempt_root"]).is_dir())
+            pointer=json.loads(Path(second["latest_pointer_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(pointer["p10_attempt_id"],second["p10_attempt_id"])
+            self.assertTrue(Path(first["attempt_manifest_path"]).is_file())
+
+
 class TwoStageWorkflowTests(unittest.TestCase):
     def _base(self):
         return {
@@ -122,6 +144,11 @@ class TwoStageWorkflowTests(unittest.TestCase):
         incoming=[link for link in patched["links"] if link[3]==evidence["id"]]
         self.assertTrue(any(link[1]==loader["id"] and link[2]==0 for link in incoming))
         self.assertTrue(any(link[1]==loader["id"] and link[2]==1 for link in incoming))
+        self.assertTrue(any(link[1]==loader["id"] and link[2]==2 for link in incoming))
+        self.assertEqual(
+            [item["name"] for item in loader["outputs"]],
+            ["run_dir","route_plan_json","p10_attempt_root","p10_attempt_id","diagnostics_json"],
+        )
 
 
 if __name__=="__main__":
