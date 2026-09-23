@@ -148,10 +148,20 @@ class ConceptGhostP10ReconstructionRuntime:
         if not run_id:
             raise RuntimeError("WAN manifest is missing run_id")
 
-        output_root=(
-            Path(folder_paths.get_output_directory())
-            /"conceptghost"/"p10_gate6"/run_id
-        )
+        attempt_root_value=str(wan.get("p10_attempt_root") or "").strip()
+        if attempt_root_value:
+            comfy_output=Path(folder_paths.get_output_directory()).resolve()
+            attempt_root=Path(attempt_root_value).resolve()
+            try:
+                attempt_root.relative_to(comfy_output)
+            except ValueError as error:
+                raise RuntimeError("WAN manifest p10_attempt_root is outside ComfyUI output") from error
+            output_root=attempt_root/"gate6"
+        else:
+            output_root=(
+                Path(folder_paths.get_output_directory())
+                /"conceptghost"/"p10_gate6"/run_id
+            )
         diagnostics=run_reconstruction_pipeline(
             wan_manifest_path,
             camera_manifest_path,
