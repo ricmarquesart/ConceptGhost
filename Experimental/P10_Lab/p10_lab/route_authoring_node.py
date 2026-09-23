@@ -6,6 +6,8 @@ from pathlib import Path
 from .contracts import ContractError
 from .drone_route_plan import DroneRoutePlan,seed_plan_from_footprint
 from .drone_route_preview import render_route_authoring_preview
+from .mesh_clearance import build_clearance_cloud
+from .route_collision import preflight_drone_route_plan
 from .p9_boundary import validate_official_run
 from .panorama import CameraAuthority
 from .scene_coverage import derive_scene_footprint_from_primary_mesh
@@ -113,6 +115,16 @@ class ConceptGhostP10DroneRouteAuthoring:
             )
             source="EDITABLE_SEED"
 
+        clearance_cloud=build_clearance_cloud(
+            boundary.primary_mesh,
+            camera,
+            max_points=40000,
+        )
+        collision_report=preflight_drone_route_plan(
+            plan,
+            clearance_cloud,
+        )
+
         preview,projection,render_diagnostics=render_route_authoring_preview(
             boundary.primary_mesh,
             camera,
@@ -156,6 +168,9 @@ class ConceptGhostP10DroneRouteAuthoring:
             "frames_per_drone":plan.frames_per_drone,
             "collision_mode":plan.collision_mode,
             "min_clearance_m":plan.min_clearance_m,
+            "collision_preflight":collision_report.to_dict(),
+            "clearance_surface":clearance_cloud.manifest(),
+            "route_ready_for_generation":collision_report.blocked_mission_count==0,
             "scene_footprint":footprint_evidence,
             "preview":render_diagnostics,
             "base_preview":base_diagnostics,
@@ -182,6 +197,7 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "subfolder":f"conceptghost/p10_route_editor/{boundary.run_id}",
                 "type":"output",
             },
+            "collision_preflight":collision_report.to_dict(),
             "diagnostics":diagnostics,
         }
         return {
