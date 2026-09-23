@@ -61,6 +61,35 @@ Gate 3 is functionally closed. The partial ERP/source-lock outputs are intention
 4.5 Disocclusion/unsupported-region mask generator — COMPLETED. Strict binary unsupported masks are emitted without dilation/feather in the first-pass pipeline.
 4.6 Per-flight control/mask Preview and runtime validation — COMPLETED FUNCTIONALLY via the integrated Refined r5 visual execution plus CI consolidation run 35702377645 SUCCESS.
 
+
+### Gate 4R — Artist Drone Route Authoring refinement — ACTIVE
+
+The automatic Gate 4 planner is no longer intended to remain the final route authority for production P10. Long, curved and vertically changing environments make a generic automatic path insufficiently controllable. A bounded 10-subgate refinement is now authoritative in `docs/14_ARTIST_DRONE_ROUTE_AUTHORING_PLAN.md`.
+
+Current state:
+- DR0 planning/authority contract — COMPLETED;
+- DR1 route data model/sampling — COMPLETED;
+- DR2 synchronized TOP/SIDE/FRONT backend — COMPLETED;
+- DR3 interactive ComfyUI editor — IMPLEMENTED, CI/runtime validation active;
+- DR4 multi-drone PATH/SPIN_360 UX — backend implemented, frontend controls implemented, runtime validation pending;
+- DR5 hold-last-safe-and-resume collision policy — backend prototype implemented;
+- DR6 Gate 4→5→6 authored-route integration — partially implemented;
+- DR7 persistence/hash-safe resume — pending;
+- DR8 diagnostics/tests — partially implemented;
+- DR9 packaged user acceptance — pending.
+
+Production direction:
+- 1–7 artist-controlled drones;
+- shared global capture settings;
+- each drone can be a waypoint PATH or fixed-position SPIN_360;
+- TOP edits Right/Forward, SIDE edits Forward/Up, FRONT edits Right/Up;
+- all views edit the same 3D waypoint;
+- automatic planning becomes editable seed/fallback only;
+- collision policy prevents emitted frames from simply crossing known P9 geometry.
+
+Gate 6 first-pass runtime acceptance remains valid. Gate 4R improves the evidence-camera authoring feeding Gate 5/Gate 6 and does not reopen the Gate 6 calibration fix.
+
+
 ## Gate 5 — 5 subgates
 
 5.1 11 GB WAN runtime/resource policy — COMPLETED. Conservative first-pass profile: 832×480, max 33-frame WAN window, 4 steps, CFG 1.0, FP8 UNet, one window at a time, model/cache offload between windows. GitHub Actions run 35702692128 SUCCESS.
