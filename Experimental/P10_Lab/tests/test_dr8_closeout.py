@@ -374,7 +374,7 @@ class DR8FinalCloseoutTests(unittest.TestCase):
             '"+ Drone"',
             '"− Drone"',
             '"SPIN_360"',
-            '"Resetar cena"',
+            '"Resetar rota"',
             'state.plan.route_authority = "ARTIST_AUTHORED"',
             'delete state.plan.route_plan_sha256',
             'state.collisionStale = true',
