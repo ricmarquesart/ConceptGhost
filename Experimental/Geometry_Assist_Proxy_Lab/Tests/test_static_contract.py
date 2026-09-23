@@ -36,9 +36,11 @@ def main() -> int:
     assert cfg["host_policy"]["official_pipeline_mutation"] == "FORBIDDEN"
     assert cfg["defaults"]["strength"] <= 0.30
     assert cfg["defaults"]["control_hint_alignment"] == "EXACT_WORKING_SIZE"
-    assert cfg["schema"] == "ConceptGhost.GeometryAssistDiagnostic.Config.v4"
+    assert cfg["schema"] == "ConceptGhost.GeometryAssistDiagnostic.Config.v5"
     assert cfg["defaults"]["prompt_max_tokens"] == 77
     assert cfg["defaults"]["prompt_contract"] == "BOTH_SDXL_CLIP_TOKENIZERS"
+    assert cfg["defaults"]["profile"] == "GEOMETRY_ASSIST_MOGE_MASTER"
+    assert cfg["defaults"]["prompt_intent"] == "MONOCULAR_GEOMETRY_READABILITY"
     # Keep a large lexical safety margin. Runtime/self-test enforce the actual
     # tokenizer contract against both SDXL CLIP tokenizers.
     assert len(cfg["prompt"].split()) < 35
