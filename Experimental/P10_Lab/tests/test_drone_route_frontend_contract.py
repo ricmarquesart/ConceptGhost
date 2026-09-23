@@ -32,7 +32,7 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'collision_preflight',
             'blockedSegment',
             '#ff3b58',
-            'colisão precisa ser revalidada',
+            'execute Queue Prompt para aplicar/revalidar',
             'state.plan.route_authority = "ARTIST_AUTHORED"',
             'route_plan_dirty',
             '"Resetar cena"',
