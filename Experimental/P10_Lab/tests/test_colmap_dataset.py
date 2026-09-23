@@ -13,10 +13,15 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
 
         wan = {
             "run_id": "run1",
+            "route_authority":"ARTIST_AUTHORED",
+            "route_plan_sha256":"routehash",
+            "mission_order":["a"],
+            "mission_modes":{"a":"PATH"},
             "effective_dimensions": {"width": 832, "height": 480, "mode": "UNCHANGED"},
             "windows": [{
                 "window_index": 0,
                 "name": "a",
+                "mission_name":"a",
                 "source_start": 0,
                 "source_end": frame_count,
                 "decoded_frame_count": frame_count,
@@ -47,6 +52,9 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
             })
         cameras = {
             "scene_contract_id": "scene1",
+            "route_authority":"ARTIST_AUTHORED",
+            "route_plan_sha256":"routehash",
+            "mission_order":["a"],
             "frames": frames,
         }
         wp = root / "wan.json"
@@ -97,6 +105,9 @@ class KnownCameraColmapDatasetTests(unittest.TestCase):
             self.assertEqual(result["frame_count"], 2)
             self.assertEqual(result["camera_count"], 1)
             self.assertEqual(result["scene_contract_id"], "scene1")
+            self.assertEqual(result["route_authority"],"ARTIST_AUTHORED")
+            self.assertEqual(result["route_plan_sha256"],"routehash")
+            self.assertEqual(result["mission_order"],["a"])
             self.assertEqual(result["reconstruction_strategy"], "KNOWN_CAMERA_COLMAP_PRIMARY")
             self.assertEqual(
                 result["spheresfm_role"],
