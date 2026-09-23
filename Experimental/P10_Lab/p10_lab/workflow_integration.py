@@ -772,7 +772,9 @@ def integrate_p10_production_from_entry(workflow: dict) -> dict:
         "outputs":[
             {"name":"run_dir","type":"STRING","links":None,"slot_index":0},
             {"name":"route_plan_json","type":"STRING","links":None,"slot_index":1},
-            {"name":"diagnostics_json","type":"STRING","links":None,"slot_index":2},
+            {"name":"p10_attempt_root","type":"STRING","links":None,"slot_index":2},
+            {"name":"p10_attempt_id","type":"STRING","links":None,"slot_index":3},
+            {"name":"diagnostics_json","type":"STRING","links":None,"slot_index":4},
         ],
         "properties":{"Node name for S&R":"ConceptGhostP10ProductionEntryLoader"},
         "widgets_values":[""],
@@ -785,19 +787,33 @@ def integrate_p10_production_from_entry(workflow: dict) -> dict:
     evidence=by_id[_EVIDENCE_NODE_ID]
     run_input=next(index for index,item in enumerate(evidence["inputs"]) if item.get("name")=="run_dir")
     route_input=next(index for index,item in enumerate(evidence["inputs"]) if item.get("name")=="route_plan_json")
+    attempt_input=next(
+        (index for index,item in enumerate(evidence["inputs"]) if item.get("name")=="p10_attempt_root"),
+        None,
+    )
+    if attempt_input is None:
+        attempt_input=len(evidence["inputs"])
+        evidence["inputs"].append({
+            "name":"p10_attempt_root",
+            "type":"STRING",
+            "link":None,
+        })
     evidence["inputs"][run_input]["link"]=next_link
     evidence["inputs"][route_input]["link"]=next_link+1
+    evidence["inputs"][attempt_input]["link"]=next_link+2
     kept_links.extend([
         [next_link,2098,0,_EVIDENCE_NODE_ID,run_input,"STRING"],
         [next_link+1,2098,1,_EVIDENCE_NODE_ID,route_input,"STRING"],
+        [next_link+2,2098,2,_EVIDENCE_NODE_ID,attempt_input,"STRING"],
     ])
     loader["outputs"][0]["links"]=[next_link]
     loader["outputs"][1]["links"]=[next_link+1]
+    loader["outputs"][2]["links"]=[next_link+2]
 
     full["nodes"]=kept_nodes
     full["links"]=kept_links
     full["last_node_id"]=2301
-    full["last_link_id"]=next_link+1
+    full["last_link_id"]=next_link+2
     full["groups"]=[]
     full["extra"]={
         "conceptghost":{
