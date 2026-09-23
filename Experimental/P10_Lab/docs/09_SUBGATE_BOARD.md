@@ -131,6 +131,38 @@ CI evidence: `35813649004` SUCCESS on `02c72585a312e26fda011e128e27dd9eae4f1cc2`
 Next: DR8 diagnostics / quality controls / regression closeout.
 
 
+### Gate 4R DR8A checkpoint — pre-WAN route diagnostics
+
+DR8A is COMPLETE / CI PASS.
+
+Before WAN generation the P10 Gate 4 output now persists:
+`diagnostics/drone_route_diagnostics.json`
+
+Schema:
+`ConceptGhost.P10DroneRouteDiagnostics.v0.1`
+
+Per mission it records:
+- PATH / SPIN_360 / AUTO mode;
+- authored route length and emitted translation length;
+- expected/emitted frame count;
+- held/resumed frame counts and held fraction;
+- minimum candidate/output clearance;
+- min/mean/max P9 coverage;
+- min/mean/max hole fraction;
+- PASS / WARN / FAIL plus machine-readable alerts.
+
+Global diagnostics record:
+- exact mission order;
+- active drone count;
+- total emitted/held frames;
+- route authority/hash and source scene/run;
+- deterministic status policy.
+
+CI evidence: `35816433877` SUCCESS on `efb7a39b0a53c2035ab8ae58ca34a26c339ea92a`.
+
+Next: DR8B — one final-composite GIF per drone.
+
+
 ## Gate 5 — 5 subgates
 
 5.1 11 GB WAN runtime/resource policy — COMPLETED. Conservative first-pass profile: 832×480, max 33-frame WAN window, 4 steps, CFG 1.0, FP8 UNet, one window at a time, model/cache offload between windows. GitHub Actions run 35702692128 SUCCESS.
