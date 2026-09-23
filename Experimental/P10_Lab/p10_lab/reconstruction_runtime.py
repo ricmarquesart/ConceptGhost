@@ -13,6 +13,7 @@ from .dense_reconstruction import run_dense_reconstruction
 from .prefusion_mesh import run_prefusion_meshing
 from .p9_roundtrip_audit import run_p9_roundtrip_audit
 from .reconstruction_overlay import build_metric_reconstruction_overlay
+from .geometry_quality import write_gate6_geometry_quality
 
 
 def standard_colmap_candidates(*, localappdata: str | None = None) -> tuple[Path, ...]:
@@ -355,9 +356,25 @@ def run_reconstruction_pipeline(
             "status":"WARN",
         }
 
+    geometry_quality=write_gate6_geometry_quality(
+        dataset_root,
+        output_root/"diagnostics"/"gate6_geometry_quality.json",
+        expected_missions=tuple(str(name) for name in (wan.get("mission_order") or [])),
+        p9_roundtrip=p9_roundtrip if isinstance(p9_roundtrip,dict) else None,
+        metric_overlay=metric_overlay if isinstance(metric_overlay,dict) else None,
+    )
+    stages["geometry_quality"]={
+        "state":"EVALUATED",
+        "status":geometry_quality.get("status"),
+        "manifest_path":geometry_quality.get("manifest_path"),
+        "alerts":geometry_quality.get("alerts",[]),
+    }
+
     diagnostics={
-        "schema":"ConceptGhost.P10ReconstructionRuntime.v0.1",
-        "status":"PASS",
+        "schema":"ConceptGhost.P10ReconstructionRuntime.v0.2",
+        "status":geometry_quality.get("status","FAIL"),
+        "runtime_status":"PASS",
+        "geometry_quality_status":geometry_quality.get("status","FAIL"),
         "gate":6,
         "subgate":"6.6",
         "run_id":run_id,
@@ -382,6 +399,9 @@ def run_reconstruction_pipeline(
             metric_overlay.get("preview_png_path")
             if isinstance(metric_overlay,dict) else None
         ),
+        "geometry_quality":geometry_quality,
+        "geometry_quality_manifest_path":geometry_quality.get("manifest_path"),
+        "gate7_promotion_allowed":geometry_quality.get("status")!="FAIL",
         "checkpoint_resume_enabled":bool(resume),
     }
     out=output_root/"reconstruction_runtime_manifest.json"
