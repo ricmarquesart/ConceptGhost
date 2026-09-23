@@ -30,7 +30,7 @@
     "save_raw_outputs": false,
     "enable_3d_preview": false,
     "enable_extended_diagnostics": true,
-    "assumed_fov_degrees_for_relative_pointcloud": 60.0
+    "assumed_fov_degrees_for_relative_pointcloud": 60
   },
   "host_policy": {
     "shared_comfy_mutation": "FORBIDDEN",
@@ -46,7 +46,7 @@
       "ComfyUI/user/default/workflows/Lotus_Depth_Diagnostic.json"
     ]
   },
-  "installer_revision": "r4-windows-inference-adapter-cpu-offload-log-tail",
+  "installer_revision": "r5-uninstall-powershell-alias-idempotency-hotfix",
   "runtime_inference": {
     "adapter": "Worker/lotus_infer_adapter.py",
     "memory_mode": "AUTO_CPU_OFFLOAD_AT_OR_BELOW_13GB",
