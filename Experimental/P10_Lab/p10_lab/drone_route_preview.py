@@ -352,18 +352,80 @@ def render_route_authoring_preview(
     )
 
     axis_index={"right":0,"up":1,"forward":2}
-    extent_map={"right":bounds.right,"up":bounds.up,"forward":bounds.forward}
 
     def project(panel,point):
         plot=panel["plot_rect_px"]
         x_axis=axis_index[panel["x_axis"]]
         y_axis=axis_index[panel["y_axis"]]
-        xe=extent_map[panel["x_axis"]]
-        ye=extent_map[panel["y_axis"]]
-        x=plot["x"]+(float(point[x_axis])-xe.minimum)/xe.span*plot["width"]
-        amount=(float(point[y_axis])-ye.minimum)/ye.span
+        xe=panel["x_extent"]
+        ye=panel["y_extent"]
+        xspan=max(float(xe["max"])-float(xe["min"]),1.0e-12)
+        yspan=max(float(ye["max"])-float(ye["min"]),1.0e-12)
+        x=plot["x"]+(float(point[x_axis])-float(xe["min"]))/xspan*plot["width"]
+        amount=(float(point[y_axis])-float(ye["min"]))/yspan
         y=plot["y"]+(1.0-amount)*plot["height"]
         return int(round(x)),int(round(y))
+
+    perspective_center=np.mean(local,axis=0)
+    perspective_radius=max(
+        float(np.linalg.norm(local-perspective_center[None,:],axis=1).max()),
+        1.0e-3,
+    )
+
+    def project_perspective(point):
+        yaw=float(perspective["default_yaw_deg"])*np.pi/180.0
+        pitch=float(perspective["default_pitch_deg"])*np.pi/180.0
+        vector=np.asarray(point,dtype=np.float64)-perspective_center
+        cy,sy=np.cos(yaw),np.sin(yaw)
+        cp,sp=np.cos(pitch),np.sin(pitch)
+        x1=cy*vector[0]-sy*vector[2]
+        z1=sy*vector[0]+cy*vector[2]
+        y2=cp*vector[1]-sp*z1
+        z2=sp*vector[1]+cp*z1
+        distance=perspective_radius*2.8
+        depth=distance-z2
+        if depth<=perspective_radius*0.02:
+            return None
+        focal=min(pplot["width"],pplot["height"])*1.05
+        x=pplot["x"]+pplot["width"]*0.5+(x1/depth)*focal
+        y=pplot["y"]+pplot["height"]*0.5-(y2/depth)*focal
+        return int(round(x)),int(round(y))
+
+    def mission_look(mission,point_index):
+        point=mission.waypoints[point_index]
+        if mission.mode=="SPIN_360":
+            return np.asarray((0.0,0.0,1.0),dtype=np.float64)
+        if mission.orientation_mode=="LOOK_AT_TARGET" and mission.look_target is not None:
+            raw=np.asarray((
+                mission.look_target.right-point.right,
+                mission.look_target.up-point.up,
+                mission.look_target.forward-point.forward,
+            ),dtype=np.float64)
+        elif mission.orientation_mode=="MANUAL_DIRECTION" and mission.manual_direction is not None:
+            raw=np.asarray((
+                mission.manual_direction.right,
+                mission.manual_direction.up,
+                mission.manual_direction.forward,
+            ),dtype=np.float64)
+        else:
+            if point_index<len(mission.waypoints)-1:
+                other=mission.waypoints[point_index+1]
+                raw=np.asarray((
+                    other.right-point.right,
+                    other.up-point.up,
+                    other.forward-point.forward,
+                ),dtype=np.float64)
+            else:
+                other=mission.waypoints[max(0,point_index-1)]
+                raw=np.asarray((
+                    point.right-other.right,
+                    point.up-other.up,
+                    point.forward-other.forward,
+                ),dtype=np.float64)
+        length=float(np.linalg.norm(raw))
+        if length<=1.0e-12:
+            return np.asarray((0.0,0.0,1.0),dtype=np.float64)
+        return raw/length
 
     for panel in projection["panels"]:
         rect=panel["panel_rect_px"]
@@ -395,6 +457,24 @@ def render_route_authoring_preview(
                     fill=tuple(int(min(255,max(0,float(value)*0.78+42.0))) for value in raw[:3])
                 draw.point((x,y),fill=fill)
 
+
+    for point_index,point in enumerate(points):
+        projected=project_perspective(point)
+        if projected is None:
+            continue
+        x,y=projected
+        if not (
+            pplot["x"]<=x<=pplot["x"]+pplot["width"]
+            and pplot["y"]<=y<=pplot["y"]+pplot["height"]
+        ):
+            continue
+        if point_colors is None:
+            fill=(105,105,105)
+        else:
+            raw=point_colors[point_index]
+            fill=tuple(int(min(255,max(0,float(value)*0.78+42.0))) for value in raw[:3])
+        draw.point((x,y),fill=fill)
+
     if plan is not None:
         for mission_index,mission in enumerate(plan.active_missions):
             color=_ROUTE_COLORS[mission_index%len(_ROUTE_COLORS)]
@@ -410,13 +490,63 @@ def render_route_authoring_preview(
                     x,y=projected[0]
                     radius=13
                     draw.ellipse((x-radius,y-radius,x+radius,y+radius),outline=color,width=3)
+                metric_span=max(
+                    float(panel["x_extent"]["max"])-float(panel["x_extent"]["min"]),
+                    float(panel["y_extent"]["max"])-float(panel["y_extent"]["min"]),
+                )
                 for point_index,(x,y) in enumerate(projected):
                     r=5
                     draw.ellipse((x-r,y-r,x+r,y+r),fill=color,outline=(245,245,245))
                     draw.text((x+7,y-8),str(point_index+1),fill=color)
+                    if mission.mode=="PATH":
+                        look=mission_look(mission,point_index)
+                        tip=pts[point_index]+look*max(metric_span*0.045,0.20)
+                        tx,ty=project(panel,tip)
+                        draw.line((x,y,tx,ty),fill=(240,240,240),width=2)
+                if mission.orientation_mode=="LOOK_AT_TARGET" and mission.look_target is not None:
+                    target=np.asarray(
+                        [mission.look_target.right,mission.look_target.up,mission.look_target.forward],
+                        dtype=np.float64,
+                    )
+                    tx,ty=project(panel,target)
+                    draw.line((tx-7,ty,tx+7,ty),fill=color,width=2)
+                    draw.line((tx,ty-7,tx,ty+7),fill=color,width=2)
+                    draw.rectangle((tx-4,ty-4,tx+4,ty+4),outline=color,width=2)
                 if projected:
                     x,y=projected[-1]
                     draw.text((x+7,y+7),mission.name,fill=color)
+
+            perspective_points=[project_perspective(point) for point in pts]
+            valid_perspective=[p for p in perspective_points if p is not None]
+            if mission.mode=="PATH" and len(valid_perspective)>1:
+                draw.line(valid_perspective,fill=color,width=3)
+            elif mission.mode=="SPIN_360" and valid_perspective:
+                x,y=valid_perspective[0]
+                draw.ellipse((x-13,y-13,x+13,y+13),outline=color,width=3)
+
+            orientation_scale=max(perspective_radius*0.08,0.25)
+            for point_index,projected_point in enumerate(perspective_points):
+                if projected_point is None:
+                    continue
+                x,y=projected_point
+                draw.ellipse((x-5,y-5,x+5,y+5),fill=color,outline=(245,245,245))
+                if mission.mode=="PATH":
+                    look=mission_look(mission,point_index)
+                    tip=pts[point_index]+look*orientation_scale
+                    projected_tip=project_perspective(tip)
+                    if projected_tip is not None:
+                        draw.line((x,y,projected_tip[0],projected_tip[1]),fill=(240,240,240),width=2)
+            if mission.orientation_mode=="LOOK_AT_TARGET" and mission.look_target is not None:
+                target=np.asarray(
+                    [mission.look_target.right,mission.look_target.up,mission.look_target.forward],
+                    dtype=np.float64,
+                )
+                projected_target=project_perspective(target)
+                if projected_target is not None:
+                    tx,ty=projected_target
+                    draw.line((tx-7,ty,tx+7,ty),fill=color,width=2)
+                    draw.line((tx,ty-7,tx,ty+7),fill=color,width=2)
+                    draw.rectangle((tx-4,ty-4,tx+4,ty+4),outline=color,width=2)
 
     arr=np.asarray(image,dtype=np.float32)/255.0
     tensor=torch.from_numpy(arr).unsqueeze(0)
