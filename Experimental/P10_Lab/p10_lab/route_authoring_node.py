@@ -4,7 +4,12 @@ import json
 from pathlib import Path
 
 from .contracts import ContractError
-from .drone_route_plan import DroneRoutePlan,seed_plan_from_footprint
+from .drone_route_plan import (
+    DroneRoutePlan,
+    bind_route_plan,
+    parse_bound_route_plan,
+    seed_plan_from_footprint,
+)
 from .drone_route_preview import render_route_authoring_preview
 from .mesh_clearance import build_clearance_cloud
 from .route_collision import preflight_drone_route_plan
@@ -93,7 +98,27 @@ class ConceptGhostP10DroneRouteAuthoring:
                 payload=json.loads(authored)
             except json.JSONDecodeError as error:
                 raise ContractError(f"route_plan_json is invalid JSON: {error}") from error
-            plan=DroneRoutePlan.from_dict(payload)
+
+            declared_authority=str(payload.get("route_authority") or "").strip().upper()
+            try:
+                plan,source,_stored_or_computed_hash=parse_bound_route_plan(
+                    payload,
+                    expected_scene_contract_id=boundary.scene_contract_id,
+                    expected_source_run_id=boundary.run_id,
+                    require_hash=False,
+                )
+            except ContractError:
+                # An untouched seed from a previous source run is disposable
+                # UI state. Never silently carry an artist-authored route into
+                # another run/scene, but allow an old seed to regenerate.
+                if declared_authority!="EDITABLE_SEED":
+                    raise
+                plan=seed_plan_from_footprint(
+                    footprint,
+                    frames_per_drone=int(frames_per_drone),
+                )
+                source="EDITABLE_SEED"
+
             # Global node settings are authoritative for all enabled drones.
             plan=DroneRoutePlan(
                 missions=plan.missions,
@@ -101,7 +126,6 @@ class ConceptGhostP10DroneRouteAuthoring:
                 collision_mode=plan.collision_mode,
                 min_clearance_m=float(min_clearance_m),
             )
-            source="ARTIST_AUTHORED"
         else:
             plan=seed_plan_from_footprint(
                 footprint,
@@ -151,16 +175,21 @@ class ConceptGhostP10DroneRouteAuthoring:
         base_array=(base_preview[0].detach().cpu().numpy()*255.0).clip(0,255).astype("uint8")
         Image.fromarray(base_array).save(base_png_path)
 
-        serialized=plan.to_dict()
-        serialized["scene_contract_id"]=boundary.scene_contract_id
-        serialized["source_run_id"]=boundary.run_id
-        serialized["route_authority"]=source
+        serialized=bind_route_plan(
+            plan,
+            scene_contract_id=boundary.scene_contract_id,
+            source_run_id=boundary.run_id,
+            route_authority=source,
+        )
         rendered_plan=_pretty(serialized)
         rendered_projection=_pretty(projection)
         diagnostics={
             "status":"PASS",
             "gate":"4.1R",
             "route_authority":source,
+            "route_plan_sha256":serialized["route_plan_sha256"],
+            "route_binding_schema":serialized["binding_schema"],
+            "route_plan_persistence":"WORKFLOW_WIDGET_PLUS_SCENE_BOUND_HASH",
             "automatic_route_role":"SEED_FALLBACK_ONLY",
             "source_run_id":boundary.run_id,
             "scene_contract_id":boundary.scene_contract_id,
