@@ -25,6 +25,33 @@ def _pretty(payload: dict) -> str:
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
+class ConceptGhostP10WorkflowInstructions:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required":{
+                "instructions":(
+                    "STRING",
+                    {
+                        "default":"ConceptGhost P10 workflow instructions",
+                        "multiline":True,
+                        "dynamicPrompts":False,
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES=("STRING",)
+    RETURN_NAMES=("instructions",)
+    FUNCTION="show"
+    CATEGORY="ConceptGhost/P10 Refined"
+    OUTPUT_NODE=True
+
+    def show(self,instructions: str):
+        text=str(instructions or "").strip()
+        return {"ui":{"text":[text]},"result":(text,)}
+
+
 class ConceptGhostP10CompletionBundleBuilder:
     @classmethod
     def INPUT_TYPES(cls):
@@ -299,6 +326,7 @@ class ConceptGhostP10RefinedEvidencePreview:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ConceptGhostP10WorkflowInstructions": ConceptGhostP10WorkflowInstructions,
     "ConceptGhostP10CompletionBundleBuilder": ConceptGhostP10CompletionBundleBuilder,
     "ConceptGhostP10BundleLoader": ConceptGhostP10BundleLoader,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
@@ -312,6 +340,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "ConceptGhostP10WorkflowInstructions": "P10 · START HERE · Workflow Instructions",
     "ConceptGhostP10CompletionBundleBuilder": "P10 P9 Completion Bundle Builder",
     "ConceptGhostP10BundleLoader": "P10 P9 Bundle Loader / Validator",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
