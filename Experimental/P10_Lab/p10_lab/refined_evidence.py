@@ -13,6 +13,11 @@ from .raw_holes import RawHoleFrame
 from .disocclusion import build_disocclusion_mask
 from .control_sequence import ControlFrameRecord, ControlSequenceManifest
 from .camera_sequence import CameraFrameRecord, CameraSequenceManifest
+from .drone_route_plan import (
+    DroneRoutePlan,
+    apply_hold_and_resume_clearance,
+    sample_route_plan,
+)
 from .p9_boundary import validate_official_run
 from .panorama import CameraAuthority, PanoramaSpec
 from .path_planner import RelativeWaypoint, plan_flights
@@ -521,6 +526,7 @@ def build_refined_evidence(
     panorama_width: int = 1024,
     view_width: int = 640,
     steps_per_segment: int = 4,
+    route_plan_json: str = "",
 ) -> RefinedEvidenceResult:
     if type(panorama_width) is not int or panorama_width < 512 or panorama_width % 2:
         raise ContractError("panorama_width must be an even integer >= 512")
@@ -545,22 +551,53 @@ def build_refined_evidence(
         boundary.primary_mesh,
         camera,
     )
-    flight_plan = plan_geometry_aware_flights(scene_footprint)
     clearance_cloud = build_clearance_cloud(
         boundary.primary_mesh,
         camera,
-        max_points=5000,
+        max_points=12000,
     )
-    clearance_batch = adapt_paths_for_clearance(
-        flight_plan.paths,
-        clearance_cloud,
-        min_clearance=max(0.05, scene_footprint.median_depth * 0.01),
-        samples_per_segment=2,
-        shrink_factor=0.85,
-        max_shrink_attempts=4,
-    )
-    clearance_fallback_to_unadapted = not clearance_batch.paths
-    active_paths = clearance_batch.paths or flight_plan.paths
+
+    authored_route_plan = None
+    authored_clearance_reports = []
+    authored_payload = str(route_plan_json or "").strip()
+    if authored_payload:
+        try:
+            authored_route_plan = DroneRoutePlan.from_dict(json.loads(authored_payload))
+        except (json.JSONDecodeError, ContractError) as error:
+            raise ContractError(f"Artist drone route plan is invalid: {error}") from error
+
+        sampled_paths = sample_route_plan(authored_route_plan)
+        if authored_route_plan.collision_mode == "HOLD_AND_RESUME":
+            active = []
+            for path in sampled_paths:
+                safe_path, report = apply_hold_and_resume_clearance(
+                    path,
+                    clearance_cloud.query,
+                    min_clearance=authored_route_plan.min_clearance_m,
+                )
+                active.append(safe_path)
+                authored_clearance_reports.append(report.to_dict())
+            active_paths = tuple(active)
+        else:
+            active_paths = sampled_paths
+
+        flight_plan = None
+        clearance_batch = None
+        clearance_fallback_to_unadapted = False
+        route_authority = "ARTIST_AUTHORED"
+    else:
+        flight_plan = plan_geometry_aware_flights(scene_footprint)
+        clearance_batch = adapt_paths_for_clearance(
+            flight_plan.paths,
+            clearance_cloud,
+            min_clearance=max(0.05, scene_footprint.median_depth * 0.01),
+            samples_per_segment=2,
+            shrink_factor=0.85,
+            max_shrink_attempts=4,
+        )
+        clearance_fallback_to_unadapted = not clearance_batch.paths
+        active_paths = clearance_batch.paths or flight_plan.paths
+        route_authority = "AUTOMATIC_SEED_FALLBACK"
 
     resolved_paths = []
     flight_frames = []
@@ -575,7 +612,11 @@ def build_refined_evidence(
     view_height = int(round(view_width * camera.height / camera.width))
 
     for path in active_paths:
-        waypoints = _interpolated_waypoints(path, steps_per_segment)
+        waypoints = (
+            tuple(path.waypoints)
+            if authored_route_plan is not None
+            else _interpolated_waypoints(path, steps_per_segment)
+        )
         poses = tuple(resolve_world_camera(camera, waypoint, frame_index=index) for index, waypoint in enumerate(waypoints))
         resolved_paths.append((path.name, poses))
         coverage_by_path[path.name] = []
@@ -680,13 +721,26 @@ def build_refined_evidence(
             "unknown_region_policy": "BLACK / UNGENERATED",
         },
         "scene_footprint": footprint_evidence,
-        "flight_plan": flight_plan.manifest(),
+        "route_authority": route_authority,
+        "artist_route_plan": (
+            authored_route_plan.to_dict() if authored_route_plan is not None else None
+        ),
+        "flight_plan": flight_plan.manifest() if flight_plan is not None else None,
         "clearance": {
             "cloud": clearance_cloud.manifest(),
-            "batch": clearance_batch.manifest(),
-            "minimum_required": max(0.05, scene_footprint.median_depth * 0.01),
+            "batch": clearance_batch.manifest() if clearance_batch is not None else None,
+            "artist_hold_and_resume": authored_clearance_reports,
+            "minimum_required": (
+                authored_route_plan.min_clearance_m
+                if authored_route_plan is not None
+                else max(0.05, scene_footprint.median_depth * 0.01)
+            ),
             "all_blocked_advisory_fallback": clearance_fallback_to_unadapted,
-            "policy": "ADVISORY_APPROXIMATE_VERTEX_CLEARANCE_FOR_END_TO_END_FIRST_PASS",
+            "policy": (
+                "ARTIST_ROUTE_HOLD_LAST_SAFE_AND_RESUME"
+                if authored_route_plan is not None
+                else "ADVISORY_APPROXIMATE_VERTEX_CLEARANCE_FOR_END_TO_END_FIRST_PASS"
+            ),
         },
         "paths": {
             name: {
