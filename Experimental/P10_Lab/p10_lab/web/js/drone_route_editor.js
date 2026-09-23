@@ -115,6 +115,17 @@ function setupEditor(node) {
 
     const droneSelect = document.createElement("select");
     const modeSelect = document.createElement("select");
+    const orientationSelect = document.createElement("select");
+    for (const [value, label] of [
+        ["LOOK_AT_TARGET", "Look at target"],
+        ["LOOK_ALONG_PATH", "Look along path"],
+        ["MANUAL_DIRECTION", "Manual direction"],
+    ]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        orientationSelect.appendChild(option);
+    }
     for (const [value, label] of [["PATH", "Path"], ["SPIN_360", "360°"]]) {
         const option = document.createElement("option");
         option.value = value;
@@ -138,14 +149,29 @@ function setupEditor(node) {
     const undo = button("Desfazer", "Desfazer a última edição");
     const clearRoute = button("Limpar rota", "Limpar os pontos do drone atual");
     const resetScene = button("Resetar cena", "Descartar a rota salva e gerar uma nova semente para a cena atual");
+    const editTarget = button("Editar alvo", "Definir/arrastar o LOOK_AT_TARGET nas vistas ortográficas");
+    const yawInput = document.createElement("input");
+    const pitchInput = document.createElement("input");
+    for (const input of [yawInput, pitchInput]) {
+        input.type = "number";
+        input.step = "1";
+        input.style.cssText = "width:58px;background:#222;color:#eee;border:1px solid #555;border-radius:3px;padding:3px;";
+    }
+    yawInput.title = "Yaw manual em graus";
+    pitchInput.title = "Pitch manual em graus";
 
-    toolbar.append("Drone:", droneSelect, modeSelect, addDrone, removeDrone, deletePoint, undo, clearRoute, resetScene);
+    toolbar.append(
+        "Drone:", droneSelect, modeSelect,
+        "Aim:", orientationSelect, editTarget,
+        "Yaw:", yawInput, "Pitch:", pitchInput,
+        addDrone, removeDrone, deletePoint, undo, clearRoute, resetScene
+    );
 
     const help = document.createElement("div");
     help.textContent =
         "PERSPECTIVE: arraste para orbitar e use a roda para zoom. TOP, SIDE e FRONT editam o mesmo ponto 3D " +
-        "com escala métrica preservada. A perspectiva é inspeção, sem criação ambígua de profundidade. " +
-        "Após editar, execute Queue Prompt para aplicar a rota ao P10.";
+        "com escala métrica preservada. Em LOOK_AT_TARGET, use Editar alvo para posicionar o alvo nas vistas ortográficas. " +
+        "A perspectiva é inspeção, sem criação ambígua de profundidade. Após editar, execute Queue Prompt para aplicar a rota ao P10.";
     help.style.cssText = "color:#aaa;line-height:1.3;";
 
     const canvasWrap = document.createElement("div");
@@ -190,6 +216,7 @@ function setupEditor(node) {
         orbitZoom: 1.0,
         orbitDragging: false,
         orbitLast: null,
+        editingTarget: false,
     };
 
     function pushHistory() {
@@ -228,6 +255,73 @@ function setupEditor(node) {
         return state.plan?.missions?.[state.activeMission] ?? null;
     }
 
+
+    function normalizeVector(vector) {
+        const length = Math.hypot(Number(vector.right) || 0, Number(vector.up) || 0, Number(vector.forward) || 0);
+        if (length < 1e-9) return { right: 0, up: 0, forward: 1 };
+        return {
+            right: (Number(vector.right) || 0) / length,
+            up: (Number(vector.up) || 0) / length,
+            forward: (Number(vector.forward) || 0) / length,
+        };
+    }
+
+    function lookVectorForMission(mission, pointIndex) {
+        const points = mission?.waypoints || [];
+        const point = points[pointIndex];
+        if (!point) return { right: 0, up: 0, forward: 1 };
+        if (mission.mode === "SPIN_360") return { right: 0, up: 0, forward: 1 };
+
+        const orientation = mission.orientation_mode || "LOOK_ALONG_PATH";
+        if (orientation === "LOOK_AT_TARGET" && mission.look_target) {
+            return normalizeVector({
+                right: Number(mission.look_target.right) - Number(point.right),
+                up: Number(mission.look_target.up) - Number(point.up),
+                forward: Number(mission.look_target.forward) - Number(point.forward),
+            });
+        }
+        if (orientation === "MANUAL_DIRECTION" && mission.manual_direction) {
+            return normalizeVector(mission.manual_direction);
+        }
+
+        const neighbor = points[Math.min(pointIndex + 1, points.length - 1)] ||
+            points[Math.max(0, pointIndex - 1)] || point;
+        let vector = {
+            right: Number(neighbor.right) - Number(point.right),
+            up: Number(neighbor.up) - Number(point.up),
+            forward: Number(neighbor.forward) - Number(point.forward),
+        };
+        if (Math.hypot(vector.right, vector.up, vector.forward) < 1e-9 && pointIndex > 0) {
+            const prior = points[pointIndex - 1];
+            vector = {
+                right: Number(point.right) - Number(prior.right),
+                up: Number(point.up) - Number(prior.up),
+                forward: Number(point.forward) - Number(prior.forward),
+            };
+        }
+        return normalizeVector(vector);
+    }
+
+    function manualDirectionFromInputs() {
+        const yaw = (Number(yawInput.value) || 0) * Math.PI / 180;
+        const pitch = (Number(pitchInput.value) || 0) * Math.PI / 180;
+        const cp = Math.cos(pitch);
+        return normalizeVector({
+            right: Math.sin(yaw) * cp,
+            up: Math.sin(pitch),
+            forward: Math.cos(yaw) * cp,
+        });
+    }
+
+    function updateManualInputs(mission) {
+        const direction = normalizeVector(mission?.manual_direction || { right: 0, up: 0, forward: 1 });
+        const yaw = Math.atan2(direction.right, direction.forward) * 180 / Math.PI;
+        const horizontal = Math.hypot(direction.right, direction.forward);
+        const pitch = Math.atan2(direction.up, horizontal) * 180 / Math.PI;
+        yawInput.value = yaw.toFixed(1);
+        pitchInput.value = pitch.toFixed(1);
+    }
+
     function updateToolbar() {
         droneSelect.innerHTML = "";
         const missions = state.plan?.missions || [];
@@ -240,6 +334,13 @@ function setupEditor(node) {
         });
         const mission = activeMission();
         modeSelect.value = mission?.mode || "PATH";
+        orientationSelect.value = mission?.orientation_mode || "LOOK_ALONG_PATH";
+        orientationSelect.disabled = mission?.mode === "SPIN_360";
+        editTarget.disabled = mission?.mode === "SPIN_360" || orientationSelect.value !== "LOOK_AT_TARGET";
+        editTarget.style.background = state.editingTarget ? "#594d13" : "#2d2d2d";
+        yawInput.disabled = mission?.mode === "SPIN_360" || orientationSelect.value !== "MANUAL_DIRECTION";
+        pitchInput.disabled = yawInput.disabled;
+        updateManualInputs(mission);
         addDrone.disabled = missions.length >= 7;
         removeDrone.disabled = missions.length <= 1;
         deletePoint.disabled = state.selectedPoint == null;
@@ -266,7 +367,7 @@ function setupEditor(node) {
         }
         selected.textContent =
             state.selectedPoint == null
-                ? "Nenhum ponto selecionado"
+                ? (state.editingTarget ? "Editando alvo da câmera" : "Nenhum ponto selecionado")
                 : `Ponto ${state.selectedPoint + 1}`;
     }
 
@@ -357,6 +458,31 @@ function setupEditor(node) {
         ctx.fill();
     }
 
+
+    function orientationTip(point, mission, pointIndex, scale) {
+        const look = lookVectorForMission(mission, pointIndex);
+        return {
+            right: Number(point.right) + look.right * scale,
+            up: Number(point.up) + look.up * scale,
+            forward: Number(point.forward) + look.forward * scale,
+        };
+    }
+
+    function drawTargetMarker(projectFn, target, color) {
+        if (!target) return;
+        const p = projectFn(target);
+        if (!p) return;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p.x - 7, p.y);
+        ctx.lineTo(p.x + 7, p.y);
+        ctx.moveTo(p.x, p.y - 7);
+        ctx.lineTo(p.x, p.y + 7);
+        ctx.stroke();
+        ctx.strokeRect(p.x - 4, p.y - 4, 8, 8);
+    }
+
     function drawPerspectiveScene() {
         const panel = perspectivePanel();
         const geometry = state.metadata?.preview_geometry;
@@ -400,7 +526,10 @@ function setupEditor(node) {
                 ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
                 ctx.stroke();
             }
-            projected.forEach((p, pointIndex) => {
+            const metricScale = Math.max(Number(geometry.radius) * 0.08, 0.25);
+            (mission.waypoints || []).forEach((point, pointIndex) => {
+                const p = projectPerspective(point);
+                if (!p) return;
                 ctx.fillStyle = color;
                 ctx.strokeStyle = missionIndex === state.activeMission && pointIndex === state.selectedPoint ? "#fff" : "#202020";
                 ctx.lineWidth = 2;
@@ -408,7 +537,23 @@ function setupEditor(node) {
                 ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
+
+                if (mission.mode === "PATH") {
+                    const tip = projectPerspective(orientationTip(point, mission, pointIndex, metricScale));
+                    if (tip) {
+                        ctx.strokeStyle = "#f5f5f5";
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(tip.x, tip.y);
+                        ctx.stroke();
+                        drawArrowHead(p, tip, "#f5f5f5", 0.8);
+                    }
+                }
             });
+            if (mission.orientation_mode === "LOOK_AT_TARGET") {
+                drawTargetMarker(projectPerspective, mission.look_target, color);
+            }
         }
 
         ctx.restore();
@@ -521,7 +666,12 @@ function setupEditor(node) {
                     ctx.stroke();
                 }
 
-                projected.forEach((p, pointIndex) => {
+                const metricSpan = Math.max(
+                    Number(panel.x_extent.max) - Number(panel.x_extent.min),
+                    Number(panel.y_extent.max) - Number(panel.y_extent.min),
+                );
+                points.forEach((point, pointIndex) => {
+                    const p = projected[pointIndex];
                     const selectedPoint =
                         missionIndex === state.activeMission && pointIndex === state.selectedPoint;
                     ctx.fillStyle = color;
@@ -534,7 +684,22 @@ function setupEditor(node) {
                     ctx.fillStyle = color;
                     ctx.font = "11px sans-serif";
                     ctx.fillText(String(pointIndex + 1), p.x + 8, p.y - 7);
+
+                    if (mission.mode === "PATH") {
+                        const tipPoint = orientationTip(point, mission, pointIndex, Math.max(metricSpan * 0.045, 0.20));
+                        const tip = project(panel, tipPoint);
+                        ctx.strokeStyle = "#f5f5f5";
+                        ctx.lineWidth = 1.25;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(tip.x, tip.y);
+                        ctx.stroke();
+                        drawArrowHead(p, tip, "#f5f5f5", 0.75);
+                    }
                 });
+                if (mission.orientation_mode === "LOOK_AT_TARGET") {
+                    drawTargetMarker((point) => project(panel, point), mission.look_target, color);
+                }
             }
         }
     }
@@ -590,6 +755,16 @@ function setupEditor(node) {
         const mission = activeMission();
         if (!mission) return;
 
+        if (state.editingTarget && mission.mode === "PATH") {
+            pushHistory();
+            const base = mission.look_target || defaultPoint(state.projection);
+            mission.look_target = pointFromPanel(panel, xy.x, xy.y, base);
+            mission.orientation_mode = "LOOK_AT_TARGET";
+            state.selectedPoint = null;
+            persist();
+            return;
+        }
+
         const hit = nearestPoint(panel, xy.x, xy.y);
         if (hit != null) {
             state.selectedPoint = hit;
@@ -630,10 +805,20 @@ function setupEditor(node) {
             draw();
             return;
         }
-        if (!state.dragging || state.selectedPoint == null) return;
+        if (!state.dragging && !state.editingTarget) return;
+        if (!state.editingTarget && state.selectedPoint == null) return;
         const panel = panelAt(xy.x, xy.y);
         if (!panel) return;
         const mission = activeMission();
+        if (state.editingTarget && mission?.look_target) {
+            if (!state.dragHistoryPushed) {
+                pushHistory();
+                state.dragHistoryPushed = true;
+            }
+            mission.look_target = pointFromPanel(panel, xy.x, xy.y, mission.look_target);
+            persist();
+            return;
+        }
         const point = mission?.waypoints?.[state.selectedPoint];
         if (!point) return;
 
@@ -671,9 +856,49 @@ function setupEditor(node) {
     droneSelect.addEventListener("change", () => {
         state.activeMission = Number(droneSelect.value) || 0;
         state.selectedPoint = null;
+        state.editingTarget = false;
         updateToolbar();
         draw();
     });
+
+
+    orientationSelect.addEventListener("change", () => {
+        const mission = activeMission();
+        if (!mission || mission.mode === "SPIN_360") return;
+        pushHistory();
+        mission.orientation_mode = orientationSelect.value;
+        if (mission.orientation_mode === "LOOK_AT_TARGET" && !mission.look_target) {
+            mission.look_target = defaultPoint(state.projection);
+        }
+        if (mission.orientation_mode === "MANUAL_DIRECTION" && !mission.manual_direction) {
+            mission.manual_direction = { right: 0, up: 0, forward: 1 };
+        }
+        state.editingTarget = false;
+        persist();
+    });
+
+    editTarget.addEventListener("click", () => {
+        const mission = activeMission();
+        if (!mission || mission.mode === "SPIN_360") return;
+        pushHistory();
+        mission.orientation_mode = "LOOK_AT_TARGET";
+        if (!mission.look_target) mission.look_target = defaultPoint(state.projection);
+        state.editingTarget = !state.editingTarget;
+        state.selectedPoint = null;
+        persist();
+    });
+
+    const manualChanged = () => {
+        const mission = activeMission();
+        if (!mission || mission.mode === "SPIN_360") return;
+        pushHistory();
+        mission.orientation_mode = "MANUAL_DIRECTION";
+        mission.manual_direction = manualDirectionFromInputs();
+        state.editingTarget = false;
+        persist();
+    };
+    yawInput.addEventListener("change", manualChanged);
+    pitchInput.addEventListener("change", manualChanged);
 
     modeSelect.addEventListener("change", () => {
         const mission = activeMission();
@@ -686,6 +911,12 @@ function setupEditor(node) {
             state.selectedPoint = 0;
         } else {
             mission.mode = "PATH";
+            if (!mission.orientation_mode || mission.orientation_mode === "SPIN_360") {
+                mission.orientation_mode = "LOOK_AT_TARGET";
+            }
+            if (mission.orientation_mode === "LOOK_AT_TARGET" && !mission.look_target) {
+                mission.look_target = defaultPoint(state.projection);
+            }
             if (!mission.waypoints?.length) {
                 mission.waypoints = seedPath(state.projection);
             } else if (mission.waypoints.length === 1) {
@@ -706,6 +937,9 @@ function setupEditor(node) {
             name: `drone_${index + 1}`,
             mode: "PATH",
             enabled: true,
+            orientation_mode: "LOOK_AT_TARGET",
+            look_target: defaultPoint(state.projection),
+            manual_direction: { right: 0, up: 0, forward: 1 },
             waypoints: seedPath(state.projection),
         });
         state.activeMission = index;
@@ -722,6 +956,7 @@ function setupEditor(node) {
         });
         state.activeMission = Math.max(0, state.activeMission - 1);
         state.selectedPoint = null;
+        state.editingTarget = false;
         persist();
     });
 
@@ -757,6 +992,7 @@ function setupEditor(node) {
         state.projection = null;
         state.metadata = null;
         state.selectedPoint = null;
+        state.editingTarget = false;
         state.collisionStale = true;
         routeWidget.value = "";
         routeWidget.callback?.("");
