@@ -157,3 +157,28 @@ Before r9 can be called runtime-accepted:
 9. P9 Maya must remain untouched.
 
 Gate 7 remains blocked until runtime acceptance of this corrected package.
+
+
+## r9 publication checkpoint — 2026-09-23
+
+Status: **PACKAGE PUBLISHED / STATIC + CI VALIDATION PASS / USER RUNTIME ACCEPTANCE PENDING**
+
+Final package:
+`ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r9.zip`
+
+Integrity:
+- bytes: `12,234,987`
+- SHA-256: `1143e94e0fcbfcf25809efa0a21fae162fa79079c3223b8ea2eec677069609bf`
+- Google Drive Evaluation_Builds file id: `1YUTpjOJzAIwYJwhgk87f8Dr-WONzwo7T`
+- GitHub Release tag: `p10-dr9r-r9`
+- GitHub release asset digest: `sha256:1143e94e0fcbfcf25809efa0a21fae162fa79079c3223b8ea2eec677069609bf`
+- release target source checkpoint: `f9ca7c6070a10c9c39a241ef9ebe8c4822988f66`
+- final branch head after removing one-time publisher: `9fa358c7ad7078b4f7bfa4e2e181848daf37cf2b`
+- final ConceptGhost Tests run `35906865640`: SUCCESS
+- final P10 DR9 Source Snapshot run `35906865630`: SUCCESS
+- final source snapshot artifact SHA-256: `c3c5f642c2852ec73b7fb35c645fca16db036330ee6feac3f4226d9f854f479d`
+- recovery snapshot mirrored to Google Drive as `DR9R_r9_final_source_snapshot_9fa358c.zip`
+
+This r9 supersedes r8 for further runtime acceptance.
+
+Gate 7 remains blocked until the target-machine runtime pass confirms installer success, only workflows 01/02 visible, Route Setup Run #1 / edit / Run #2 commit, Production Run #3, attempt-local evidence paths, route-editor viewport/reset behavior and P9 Maya preservation.
