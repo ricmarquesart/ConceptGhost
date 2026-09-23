@@ -1,5 +1,5 @@
 {
-  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v2",
+  "schema": "ConceptGhost.GeometryAssistDiagnostic.Config.v3",
   "runtime_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic",
   "outputs_root": "%LOCALAPPDATA%\\ConceptGhost-GeometryAssistDiagnostic\\Outputs",
   "hardware_target": "RTX 2080 Ti 11GB",
@@ -37,10 +37,11 @@
     "canny_high": 200,
     "jpeg_quality": 95,
     "prompt_max_tokens": 77,
-    "control_hint_alignment": "EXACT_WORKING_SIZE"
+    "control_hint_alignment": "EXACT_WORKING_SIZE",
+    "prompt_contract": "BOTH_SDXL_CLIP_TOKENIZERS"
   },
-  "prompt": "Geometry-assist proxy of the exact same scene. Preserve camera, perspective, framing, silhouettes, object positions, scale relationships, architecture, openings, doors, windows, stairs, roofs, and major edges. Do not add, remove, move, duplicate, redesign, crop, or warp anything. Reduce painterly ambiguity. Use neutral realistic materials and lighting to clarify planes, occlusion boundaries, and foreground-to-background depth. Preserve structure.",
-  "negative_prompt": "changed camera, changed perspective, changed framing, crop, fisheye, altered architecture, extra windows, extra doors, added objects, removed objects, moved objects, duplicates, changed proportions, warped geometry, dramatic lighting, fantasy lighting, painterly effect, blurred edges, melted structure, simplified scene, invented structures, hallucinated background, text, watermark",
+  "prompt": "Same scene and camera. Preserve framing, perspective, silhouettes, positions, proportions, architecture, openings, and major edges. Use neutral realistic materials and lighting to clarify planes, occlusion, and depth.",
+  "negative_prompt": "changed camera, crop, fisheye, altered architecture, added or removed objects, duplicates, changed proportions, warped geometry, dramatic lighting, blur, painterly distortion, invented structures, text, watermark",
   "host_policy": {
     "shared_comfy_mutation": "FORBIDDEN",
     "shared_python_pip_install": "FORBIDDEN",
