@@ -110,19 +110,24 @@ The OFF path remains the release baseline. `ready_for_destructive_fusion` remain
 GitHub Actions run `35946720027` completed SUCCESS across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
 
 ### G7.3 — Free-space evidence / no-fill authority
-Status: **PLANNED**
+Status: **IMPLEMENTED / CI PASS**
 
-Use `12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md`.
+Implemented from the existing Gate 6 dense workspace without reopening Gate 6 as a blocker.
 
-Build:
-- FREE votes;
-- OCCUPIED votes;
-- UNKNOWN;
-- CONFLICT.
+Substages:
+- **G7.3A** COLMAP dense depth/consistency evidence reader + sparse ray visibility field;
+- **G7.3B** conservative `OCCUPIED / CONFIRMED_FREE / UNKNOWN / CONFLICT` classifier;
+- **G7.3C** separate Delaunay visibility-aware mesh evidence beside the existing Poisson candidate;
+- **G7.3D** confidence/free-space diagnostic overlay.
 
-CONFIRMED_FREE becomes a no-fill/no-bridge constraint. UNKNOWN is never treated as FREE.
+Key authority rules:
+- `CONFIRMED_FREE` = future `NO_FILL / NO_BRIDGE`;
+- `UNKNOWN` is never interpreted as FREE;
+- `CONFLICT` remains unresolved/diagnostic;
+- protected P9 source evidence is forced OCCUPIED and cannot be carved by generated views;
+- geometry remains unchanged and destructive fusion remains disabled.
 
-This stage may also add the planned Delaunay visibility-aware mesh candidate beside Poisson using the existing Gate 6 dense workspace. Gate 6 itself is not reopened as a blocker.
+Focused CI run `35953822402` passed on Ubuntu/Python 3.12 and Windows/Python 3.12. General regression run `35953822364` also passed. Formal source closeout: `29_GATE7_3_FREE_SPACE_SOURCE_CLOSEOUT.md`.
 
 ### G7.4 — Protected fusion candidate
 Status: **PLANNED**
@@ -181,6 +186,7 @@ If r15 exposes another Route Setup UX/runtime defect, fix DR9R independently and
 - G7.1 implementation: **COMPLETE / CI PASS**.
 - G7.2 provenance classifier: **COMPLETE / CI PASS**.
 - G7.2C geometry confidence field: **COMPLETE / CI PASS**.
-- G7.2/G7.2C remain diagnostic-only; confidence refinement is OFF and destructive fusion is still blocked.
-- Next safe work: **G7.3 free-space evidence / no-fill authority**.
+- G7.3 free-space / visibility no-fill authority: **COMPLETE / CI PASS**.
+- G7.2/G7.2C/G7.3 remain non-destructive; confidence refinement is OFF and destructive fusion is still blocked.
+- Next safe work: **G7.4 protected fusion candidate**.
 - User-facing Gate 7 Preview remains blocked until the current DR9R runtime UX acceptance is finished.
