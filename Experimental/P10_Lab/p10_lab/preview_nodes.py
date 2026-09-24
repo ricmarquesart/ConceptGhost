@@ -764,6 +764,53 @@ class ConceptGhostP10Gate7VisualEvidencePack:
         }
 
 
+class ConceptGhostP10RunAuditBundle:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "gate7_runtime_manifest_path": ("STRING", {"forceInput": True}),
+                "visual_pack_manifest_path": ("STRING", {"forceInput": True}),
+            },
+            "optional": {
+                "output_root": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = (
+        "run_audit_bundle_zip",
+        "run_audit_bundle_manifest_path",
+        "diagnostics_json",
+    )
+    FUNCTION = "build"
+    CATEGORY = "ConceptGhost/P10 Diagnostics"
+    OUTPUT_NODE = True
+
+    def build(
+        self,
+        gate7_runtime_manifest_path: str,
+        visual_pack_manifest_path: str,
+        output_root: str = "",
+    ):
+        from .run_audit_bundle import build_run_audit_bundle
+
+        result = build_run_audit_bundle(
+            gate7_runtime_manifest_path,
+            visual_pack_manifest_path,
+            output_root=output_root or None,
+        )
+        rendered = _pretty(result)
+        return {
+            "ui": {"text": [rendered]},
+            "result": (
+                str(result["bundle_path"]),
+                str(result["manifest_path"]),
+                rendered,
+            ),
+        }
+
+
 NODE_CLASS_MAPPINGS = {
     "ConceptGhostMoGeDiagnosticsControl": ConceptGhostMoGeDiagnosticsControl,
     "ConceptGhostMoGeDiagnosticProfileTap": ConceptGhostMoGeDiagnosticProfileTap,
@@ -784,6 +831,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10DroneMeshComparisonReplay": ConceptGhostP10DroneMeshComparisonReplay,
     "ConceptGhostP10Gate7Runtime": ConceptGhostP10Gate7Runtime,
     "ConceptGhostP10Gate7VisualEvidencePack": ConceptGhostP10Gate7VisualEvidencePack,
+    "ConceptGhostP10RunAuditBundle": ConceptGhostP10RunAuditBundle,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -806,4 +854,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10DroneMeshComparisonReplay": "P10 · Visual Evidence · Same-Camera BEFORE / AFTER GIF",
     "ConceptGhostP10Gate7Runtime": "P10 · STEP 5 · Gate 7 Protected Fusion Runtime",
     "ConceptGhostP10Gate7VisualEvidencePack": "P10 · Gate 7 · Visual Evidence + BEFORE / AFTER Pack",
+    "ConceptGhostP10RunAuditBundle": "P10 · RUN AUDIT BUNDLE · Logs + Manifests + Previews",
 }
