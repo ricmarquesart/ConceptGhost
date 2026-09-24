@@ -1,0 +1,60 @@
+{
+  "schema": "ConceptGhost.P10Gate7PreviewR2AuditPackageRecord.v0.1",
+  "date_utc": "2026-09-24",
+  "package": "ConceptGhost_v1.54_P10_GATE7_PREVIEW_r2_AUDIT.zip",
+  "package_status": "CANDIDATE_READY_FOR_USER_RUNTIME_TEST",
+  "package_sha256": "aed7bc6e4a76fef50c34cd1a18ab34a59664ec5a643071fe9f897ee281e75303",
+  "package_size_bytes": 12341115,
+  "base_r15": {
+    "package": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15",
+    "sha256": "cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd"
+  },
+  "source_commit": "b479479c8c0f5047e52082ea226db2d9041f5946",
+  "documentation_commit": "0505bf68aa496356037436c19f0533f3a9ee0ba7",
+  "github_actions": {
+    "build_run_id": 35967511980,
+    "build_status": "SUCCESS",
+    "artifact_id": 10794737515,
+    "artifact_digest": "sha256:78d5ccd7d6403fc23ebaee6f069b92642c465c611d421ae485c9b0a2b43a09ec",
+    "source_tests_run_id": 35967511998,
+    "source_tests_status": "SUCCESS",
+    "latest_documented_tests_run_id": 35967555830,
+    "latest_documented_tests_status": "SUCCESS",
+    "source_snapshot_run_id": 35967511924,
+    "source_snapshot_status": "SUCCESS"
+  },
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "folder_id": "1QJLvO8GaA92pvSkU5A7FoyFgoPwf2nIP",
+    "file_id": "1F_rBcn5DGTEc90B3zcvMZbxxD2__O4w_"
+  },
+  "run_audit_bundle": {
+    "enabled": true,
+    "terminal_node": "ConceptGhostP10RunAuditBundle",
+    "node_id": 2420,
+    "required_core": [
+      "reconstruction_runtime_manifest.json"
+    ],
+    "outputs": [
+      "RUN_AUDIT_BUNDLE.zip",
+      "RUN_AUDIT_BUNDLE_manifest.json"
+    ],
+    "auto_growth_policy": "AUTO_INCLUDE_SAFE_JSON_LOG_TEXT_AND_PREVIEW_EVIDENCE_UNDER_IMMUTABLE_P10_ATTEMPT",
+    "p9_small_authority_evidence": true,
+    "excluded_heavy_payloads": [
+      "PLY",
+      "NPZ",
+      "FBX",
+      "MA",
+      "USDA"
+    ],
+    "per_file_limit_bytes": 52428800,
+    "total_limit_bytes": 262144000
+  },
+  "authority": {
+    "p9_changed": false,
+    "gate7_source_complete": true,
+    "gate7_runtime_accepted": false,
+    "gate8_ready": false
+  }
+}
