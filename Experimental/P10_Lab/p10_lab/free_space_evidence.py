@@ -252,60 +252,103 @@ def build_free_space_evidence(
             })
 
     total_dataset_frames = len(frame_by_name)
+    registered_frame_names = dataset_names & dense_names
     usable_frame_names = {str(row["name"]) for row in usable_dense_images}
-    frame_coverage_ratio = (
-        len(usable_frame_names) / float(total_dataset_frames)
+    registered_frame_count = len(registered_frame_names)
+    usable_frame_count = len(usable_frame_names)
+
+    # Coverage authority is deliberately two-layered:
+    # 1) authored -> COLMAP registration is a reconstruction-quality diagnostic;
+    # 2) registered -> geometric evidence is the Gate 7 safety gate.
+    #
+    # Missing authored views remain UNKNOWN and never vote FREE.  Requiring 70%
+    # of *all authored* frames here duplicated Gate 6 quality policy and made a
+    # partial but valid known-camera reconstruction impossible to inspect.
+    authored_registration_ratio = (
+        registered_frame_count / float(total_dataset_frames)
         if total_dataset_frames else 0.0
+    )
+    frame_coverage_ratio = (
+        usable_frame_count / float(registered_frame_count)
+        if registered_frame_count else 0.0
     )
 
     route_totals: dict[str, int] = defaultdict(int)
+    route_registered: dict[str, int] = defaultdict(int)
     route_usable: dict[str, int] = defaultdict(int)
     for frame in frame_by_name.values():
         route_totals[str(frame["path_name"])] += 1
+    for name in registered_frame_names:
+        route_registered[str(frame_by_name[name]["path_name"])] += 1
     for name in usable_frame_names:
         route_usable[str(frame_by_name[name]["path_name"])] += 1
 
     mission_rows = []
     qualifying_missions = 0
+    registered_missions = 0
     for route in sorted(route_totals):
         total_frames = int(route_totals[route])
+        registered_frames = int(route_registered.get(route, 0))
         usable_frames = int(route_usable.get(route, 0))
-        ratio = usable_frames / float(total_frames) if total_frames else 0.0
-        qualifies = ratio >= float(min_per_mission_frame_ratio)
+        if registered_frames:
+            registered_missions += 1
+        ratio = usable_frames / float(registered_frames) if registered_frames else 0.0
+        authored_ratio = registered_frames / float(total_frames) if total_frames else 0.0
+        qualifies = (
+            registered_frames > 0
+            and ratio >= float(min_per_mission_frame_ratio)
+        )
         if qualifies:
             qualifying_missions += 1
         mission_rows.append({
             "mission": route,
             "dataset_frames": total_frames,
+            "registered_colmap_frames": registered_frames,
             "usable_colmap_frames": usable_frames,
+            "authored_registration_ratio": authored_ratio,
+            "geometric_evidence_ratio": ratio,
+            # Backward-compatible field name now explicitly means
+            # usable / registered for Gate 7 evidence authority.
             "frame_coverage_ratio": ratio,
             "qualifies": qualifies,
         })
 
     mission_count = len(route_totals)
     mission_coverage_ratio = (
-        qualifying_missions / float(mission_count)
+        qualifying_missions / float(registered_missions)
+        if registered_missions else 0.0
+    )
+    authored_mission_registration_ratio = (
+        registered_missions / float(mission_count)
         if mission_count else 0.0
     )
 
+    if registered_frame_count <= 0:
+        raise ContractError(
+            "Gate 7 COLMAP dense sparse model contains no registered authoritative dataset views"
+        )
     if frame_coverage_ratio < float(min_frame_coverage_ratio):
         raise ContractError(
-            "Gate 7 COLMAP usable-frame coverage below threshold: "
-            f"{len(usable_frame_names)}/{total_dataset_frames}="
+            "Gate 7 COLMAP geometric-evidence coverage below threshold: "
+            f"{usable_frame_count}/{registered_frame_count}="
             f"{frame_coverage_ratio:.3f} < {float(min_frame_coverage_ratio):.3f}; "
+            f"authored_registration={registered_frame_count}/{total_dataset_frames}="
+            f"{authored_registration_ratio:.3f}; "
             f"missing_dense={missing_dense[:10]}, "
             f"missing_geometric={[row['image_name'] for row in missing_geometric_evidence[:10]]}"
         )
     if mission_coverage_ratio < float(min_mission_coverage_ratio):
         raise ContractError(
-            "Gate 7 COLMAP mission coverage below threshold: "
-            f"{qualifying_missions}/{mission_count}={mission_coverage_ratio:.3f} "
+            "Gate 7 COLMAP registered-mission geometric coverage below threshold: "
+            f"{qualifying_missions}/{registered_missions}={mission_coverage_ratio:.3f} "
             f"< {float(min_mission_coverage_ratio):.3f}; "
-            f"missions={mission_rows}"
+            f"authored_mission_registration={registered_missions}/{mission_count}="
+            f"{authored_mission_registration_ratio:.3f}; missions={mission_rows}"
         )
-    if mission_count < 2 or qualifying_missions < 2:
+    if registered_missions < 2 or qualifying_missions < 2:
         raise ContractError(
-            "Gate 7 free-space evidence requires at least two qualifying independent missions"
+            "Gate 7 free-space evidence requires at least two qualifying independent "
+            "registered missions"
         )
 
     # All downstream evidence uses only registered + geometrically usable views.
@@ -540,17 +583,21 @@ def build_free_space_evidence(
             "cap_frames_per_route": cap_frames_per_route,
         },
         "colmap_coverage": {
-            "policy": "USE_REGISTERED_GEOMETRIC_INTERSECTION_REQUIRE_70_PERCENT",
+            "policy": "REGISTERED_VIEW_GEOMETRIC_EVIDENCE_REQUIRE_70_PERCENT_MISSING_AUTHORED_UNKNOWN",
             "dataset_frame_count": total_dataset_frames,
-            "dense_sparse_registered_frame_count": len(dense_names),
-            "usable_geometric_frame_count": len(usable_frame_names),
+            "dense_sparse_registered_frame_count": registered_frame_count,
+            "usable_geometric_frame_count": usable_frame_count,
             "missing_dense_frame_count": len(missing_dense),
             "missing_dense_frames": missing_dense,
             "missing_geometric_evidence_count": len(missing_geometric_evidence),
             "missing_geometric_evidence": missing_geometric_evidence,
+            "authored_registration_ratio": authored_registration_ratio,
             "frame_coverage_ratio": frame_coverage_ratio,
+            "geometric_evidence_coverage_ratio": frame_coverage_ratio,
             "min_frame_coverage_ratio": float(min_frame_coverage_ratio),
             "mission_count": mission_count,
+            "registered_mission_count": registered_missions,
+            "authored_mission_registration_ratio": authored_mission_registration_ratio,
             "qualifying_mission_count": qualifying_missions,
             "mission_coverage_ratio": mission_coverage_ratio,
             "min_mission_coverage_ratio": float(min_mission_coverage_ratio),
@@ -564,6 +611,7 @@ def build_free_space_evidence(
             "min_consistent_sources": min_consistent_sources,
             "frame_count": len(frame_diagnostics),
             "dataset_frame_count": total_dataset_frames,
+            "authored_registration_ratio": authored_registration_ratio,
             "usable_frame_coverage_ratio": frame_coverage_ratio,
             "qualifying_mission_coverage_ratio": mission_coverage_ratio,
             "sampled_valid_depth_pixels": total_valid_depth_samples,

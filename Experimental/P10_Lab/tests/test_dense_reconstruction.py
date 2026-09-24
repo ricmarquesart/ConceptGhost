@@ -43,7 +43,9 @@ class DenseReconstructionTests(unittest.TestCase):
         self.assertIn("--PatchMatchStereo.max_image_size 832", joined)
         self.assertIn("--PatchMatchStereo.cache_size 4", joined)
         self.assertIn("--PatchMatchStereo.num_iterations 3", joined)
-        self.assertIn("--PatchMatchStereo.geom_consistency true", joined)
+        self.assertIn("--PatchMatchStereo.geom_consistency 1", joined)
+        self.assertIn("--PatchMatchStereo.write_consistency_graph 1", joined)
+        self.assertNotIn("--PatchMatchStereo.geom_consistency true", joined)
 
     def test_fusion_plan_requires_two_supporting_pixels_first_pass(self):
         from p10_lab.dense_reconstruction import build_dense_plan

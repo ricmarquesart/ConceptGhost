@@ -57,8 +57,15 @@ class ReconstructionRuntimeTests(unittest.TestCase):
                 },
             }
             (dataset/"dataset_manifest.json").write_text(json.dumps(dataset_manifest),encoding="utf-8")
-            for name in ("sparse_triangulation_manifest.json","dense_reconstruction_manifest.json","prefusion_mesh_manifest.json"):
-                (dataset/name).write_text(json.dumps({"status":"PASS"}),encoding="utf-8")
+            (dataset/"sparse_triangulation_manifest.json").write_text(json.dumps({"status":"PASS"}),encoding="utf-8")
+            (dataset/"dense_reconstruction_manifest.json").write_text(json.dumps({
+                "schema":"ConceptGhost.P10DenseReconstructionResult.v0.3",
+                "status":"PASS",
+                "gate7_geometric_evidence_ready":True,
+                "geometric_depth_map_file_count":1,
+                "geometric_consistency_graph_file_count":1,
+            }),encoding="utf-8")
+            (dataset/"prefusion_mesh_manifest.json").write_text(json.dumps({"status":"PASS"}),encoding="utf-8")
             sparse=dataset/"sparse"/"triangulated"
             sparse.mkdir(parents=True)
             for name in ("cameras.bin","images.bin","points3D.bin"):

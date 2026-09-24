@@ -447,7 +447,9 @@ class Gate7FreeSpaceTests(unittest.TestCase):
             self.assertEqual(coverage["dataset_frame_count"],20)
             self.assertEqual(coverage["usable_geometric_frame_count"],15)
             self.assertEqual(coverage["missing_dense_frame_count"],5)
-            self.assertAlmostEqual(coverage["frame_coverage_ratio"],0.75)
+            self.assertAlmostEqual(coverage["authored_registration_ratio"],0.75)
+            self.assertAlmostEqual(coverage["frame_coverage_ratio"],1.0)
+            self.assertAlmostEqual(coverage["geometric_evidence_coverage_ratio"],1.0)
             self.assertGreaterEqual(coverage["mission_coverage_ratio"],0.70)
             self.assertEqual(result["sampling"]["frame_count"],15)
 
@@ -459,9 +461,10 @@ class Gate7FreeSpaceTests(unittest.TestCase):
         self.assertIn("min_frame_coverage_ratio: float = 0.70",source)
         self.assertIn("min_mission_coverage_ratio: float = 0.70",source)
         self.assertIn("min_per_mission_frame_ratio: float = 0.70",source)
-        self.assertIn("Gate 7 COLMAP usable-frame coverage below threshold",source)
-        self.assertIn("Gate 7 COLMAP mission coverage below threshold",source)
-        self.assertIn("USE_REGISTERED_GEOMETRIC_INTERSECTION_REQUIRE_70_PERCENT",source)
+        self.assertIn("Gate 7 COLMAP geometric-evidence coverage below threshold",source)
+        self.assertIn("registered-mission geometric coverage below threshold",source)
+        self.assertIn("REGISTERED_VIEW_GEOMETRIC_EVIDENCE_REQUIRE_70_PERCENT_MISSING_AUTHORED_UNKNOWN",source)
+        self.assertIn("authored_registration_ratio",source)
 
     @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
     def test_free_space_overlay_caps_confidence_without_mutating_p9(self):

@@ -285,16 +285,29 @@ def run_reconstruction_pipeline(
 
     dense_manifest_path=dataset_root/"dense_reconstruction_manifest.json"
     dense_manifest=_stage_manifest(dense_manifest_path,require_status=True)
-    if dense_manifest and (dataset_root/"dense"/"fused.ply").is_file():
+    dense_root=dataset_root/"dense"
+    dense_reusable=bool(
+        dense_manifest
+        and dense_manifest.get("schema")=="ConceptGhost.P10DenseReconstructionResult.v0.3"
+        and dense_manifest.get("gate7_geometric_evidence_ready") is True
+        and int(dense_manifest.get("geometric_depth_map_file_count") or 0)>0
+        and int(dense_manifest.get("geometric_consistency_graph_file_count") or 0)>0
+        and (dense_root/"fused.ply").is_file()
+    )
+    if dense_reusable:
         stages["dense"]={"state":"REUSED","manifest_path":str(dense_manifest_path)}
     else:
         executable=resolve_colmap_executable(colmap_executable)
+        stale_dense_exists=dense_root.exists() and any(dense_root.iterdir())
         run_dense_reconstruction(
             dataset_root,
             colmap_executable=executable,
-            overwrite_output=False,
+            overwrite_output=stale_dense_exists,
         )
-        stages["dense"]={"state":"BUILT","manifest_path":str(dense_manifest_path)}
+        stages["dense"]={
+            "state":"REBUILT_GATE7_EVIDENCE_CONTRACT" if stale_dense_exists else "BUILT",
+            "manifest_path":str(dense_manifest_path),
+        }
 
     mesh_manifest_path=dataset_root/"prefusion_mesh_manifest.json"
     mesh_manifest=_stage_manifest(mesh_manifest_path,require_status=True)

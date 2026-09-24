@@ -119,7 +119,12 @@ def build_dense_plan(
             (
                 "--workspace_path", str(dense_root),
                 "--workspace_format", "COLMAP",
-                "--PatchMatchStereo.geom_consistency", "true" if geom_consistency else "false",
+                # COLMAP CLI boolean parsing has varied across releases; use 1/0
+                # instead of true/false so geometric mode cannot silently become OFF.
+                "--PatchMatchStereo.geom_consistency", "1" if geom_consistency else "0",
+                # Gate 7 free-space authority consumes the geometric consistency graph.
+                # COLMAP does not write it by default, even when geom_consistency is ON.
+                "--PatchMatchStereo.write_consistency_graph", "1" if geom_consistency else "0",
                 "--PatchMatchStereo.max_image_size", str(max_image_size),
                 "--PatchMatchStereo.cache_size", f"{float(patch_match_cache_gb):g}",
                 "--PatchMatchStereo.gpu_index", "0",
@@ -479,8 +484,27 @@ def run_dense_reconstruction(
         plan.preview_path,
         max_preview_points=50000,
     )
-    depth_map_count = _count_matching_files(plan.dense_root / "stereo" / "depth_maps", ".bin")
-    normal_map_count = _count_matching_files(plan.dense_root / "stereo" / "normal_maps", ".bin")
+    depth_map_root = plan.dense_root / "stereo" / "depth_maps"
+    normal_map_root = plan.dense_root / "stereo" / "normal_maps"
+    consistency_root = plan.dense_root / "stereo" / "consistency_graphs"
+    depth_map_count = _count_matching_files(depth_map_root, ".bin")
+    normal_map_count = _count_matching_files(normal_map_root, ".bin")
+    geometric_depth_map_count = _count_matching_files(depth_map_root, ".geometric.bin")
+    geometric_normal_map_count = _count_matching_files(normal_map_root, ".geometric.bin")
+    consistency_graph_count = _count_matching_files(consistency_root, ".geometric.bin")
+
+    # A successful COLMAP return code is not sufficient for Gate 7.  Gate 7.3
+    # explicitly requires geometric depth plus consistency-graph evidence.
+    if plan.geom_consistency and geometric_depth_map_count <= 0:
+        raise ContractError(
+            "COLMAP dense reconstruction produced no geometric depth maps; "
+            "Gate 7 free-space evidence cannot run"
+        )
+    if plan.geom_consistency and consistency_graph_count <= 0:
+        raise ContractError(
+            "COLMAP dense reconstruction produced no geometric consistency graphs; "
+            "PatchMatchStereo.write_consistency_graph must be enabled for Gate 7"
+        )
 
     sparse_manifest_path=plan.dataset_root/"sparse_triangulation_manifest.json"
     sparse_manifest=None
@@ -493,13 +517,19 @@ def run_dense_reconstruction(
             sparse_manifest=None
 
     result_manifest = {
-        "schema": "ConceptGhost.P10DenseReconstructionResult.v0.2",
+        "schema": "ConceptGhost.P10DenseReconstructionResult.v0.3",
         **plan.manifest(),
         "status": "PASS",
         "colmap_executable": executable,
         "executed": executed,
         "depth_map_file_count": depth_map_count,
         "normal_map_file_count": normal_map_count,
+        "geometric_depth_map_file_count": geometric_depth_map_count,
+        "geometric_normal_map_file_count": geometric_normal_map_count,
+        "geometric_consistency_graph_file_count": consistency_graph_count,
+        "gate7_geometric_evidence_ready": bool(
+            geometric_depth_map_count > 0 and consistency_graph_count > 0
+        ),
         "fused_cloud": cloud_health,
         "source_sparse_manifest_path":(
             str(sparse_manifest_path.resolve()) if sparse_manifest_path.is_file() else None
