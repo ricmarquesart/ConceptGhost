@@ -231,17 +231,98 @@ class Gate7FreeSpaceTests(unittest.TestCase):
                 self.assertGreater(len(payload["voxel_keys"]),0)
                 self.assertGreater(int(payload["p9_source_protected"].sum()),0)
 
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
+    def test_free_space_overlay_caps_confidence_without_mutating_p9(self):
+        from p10_lab.free_space_confidence import build_confidence_free_space_overlay
+        from p10_lab.free_space_constraints import FreeSpaceState
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            confidence_npz=root/"confidence.npz"
+            np.savez_compressed(
+                confidence_npz,
+                p9_points=np.asarray([[0,0,0]],dtype=np.float32),
+                p9_provenance_labels=np.asarray([1],dtype=np.uint8),
+                p9_confidence=np.asarray([0.95],dtype=np.float32),
+                p9_confidence_class=np.asarray([3],dtype=np.uint8),
+                p10_points=np.asarray([[0.1,0,0],[1.1,0,0],[2.1,0,0],[3.1,0,0]],dtype=np.float32),
+                p10_provenance_labels=np.asarray([3,3,3,3],dtype=np.uint8),
+                p10_confidence=np.asarray([0.8,0.8,0.8,0.8],dtype=np.float32),
+                p10_confidence_class=np.asarray([3,3,3,3],dtype=np.uint8),
+            )
+            confidence_manifest=root/"confidence.json"
+            confidence_manifest.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7GeometryConfidence.v0.1",
+                "status":"PASS",
+                "scene_contract_id":"scene",
+                "p9_run_id":"p9",
+                "p10_attempt_id":"attempt",
+                "geometry_confidence_refine":False,
+                "confidence_thresholds":{"HIGH":0.75,"NEUTRAL":0.40,"LOW":0.20,"VERY_LOW":0.0},
+                "evidence_npz_path":str(confidence_npz.resolve()),
+            }),encoding="utf-8")
+
+            constraints_npz=root/"constraints.npz"
+            np.savez_compressed(
+                constraints_npz,
+                voxel_keys=np.asarray([[0,0,0],[1,0,0],[2,0,0]],dtype=np.int32),
+                voxel_centers=np.asarray([[0.5,0.5,0.5],[1.5,0.5,0.5],[2.5,0.5,0.5]],dtype=np.float32),
+                state=np.asarray([
+                    int(FreeSpaceState.CONFIRMED_FREE),
+                    int(FreeSpaceState.CONFLICT),
+                    int(FreeSpaceState.OCCUPIED),
+                ],dtype=np.uint8),
+                free_effective_votes=np.asarray([3,2,0],dtype=np.int16),
+                occupied_effective_votes=np.asarray([0,1,3],dtype=np.int16),
+                free_ratio=np.asarray([1,0.66,0],dtype=np.float32),
+                free_route_count=np.asarray([2,2,0],dtype=np.int16),
+                free_max_cross_route_angle_deg=np.asarray([10,10,0],dtype=np.float32),
+                p9_source_protected=np.asarray([0,0,1],dtype=np.uint8),
+            )
+            constraints_manifest=root/"constraints.json"
+            constraints_manifest.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7FreeSpaceConstraints.v0.1",
+                "status":"PASS",
+                "scene_contract_id":"scene",
+                "p9_run_id":"p9",
+                "p10_attempt_id":"attempt",
+                "voxel":{"voxel_size_m":1.0},
+                "constraints_npz_path":str(constraints_npz.resolve()),
+                "ready_for_destructive_fusion":False,
+            }),encoding="utf-8")
+
+            result=build_confidence_free_space_overlay(
+                confidence_manifest,
+                constraints_manifest,
+                root/"overlay",
+            )
+            with np.load(result["evidence_npz_path"],allow_pickle=False) as payload:
+                before=payload["p10_confidence_before_free_space"]
+                after=payload["p10_confidence_after_free_space"]
+                p9=payload["p9_confidence"]
+            self.assertAlmostEqual(float(after[0]),0.05,places=5)
+            self.assertAlmostEqual(float(after[1]),0.18,places=5)
+            self.assertAlmostEqual(float(after[2]),float(before[2]),places=5)
+            self.assertAlmostEqual(float(after[3]),float(before[3]),places=5)
+            self.assertAlmostEqual(float(p9[0]),0.95,places=5)
+            self.assertFalse(result["geometry_confidence_refine"])
+            self.assertFalse(result["ready_for_destructive_fusion"])
+
     def test_source_contract_never_equates_unknown_with_free(self):
         import p10_lab.free_space_constraints as constraints
         import p10_lab.free_space_evidence as evidence
+        import p10_lab.free_space_confidence as confidence_overlay
 
         a=Path(evidence.__file__).read_text(encoding="utf-8")
         b=Path(constraints.__file__).read_text(encoding="utf-8")
+        c=Path(confidence_overlay.__file__).read_text(encoding="utf-8")
         self.assertIn('"behind_surface": "UNKNOWN_NEVER_FREE"', a)
         self.assertIn("NO_FILL_NO_BRIDGE_CONSTRAINT", b)
         self.assertIn("UNKNOWN_NEVER_FREE", a)
         self.assertIn("P9_SOURCE_PROTECTED", b)
         self.assertIn('"ready_for_destructive_fusion": False', b)
+        self.assertIn('"UNKNOWN": "NO_PENALTY"', c)
+        self.assertIn('"P9_CONFIDENCE": "UNCHANGED"', c)
 
 
 class DelaunayEvidenceTests(unittest.TestCase):
