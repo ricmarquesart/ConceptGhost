@@ -170,6 +170,37 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             self.assertTrue(sparse.called)
             self.assertFalse((dataset/"database.db").exists())
 
+
+    def test_dense_reuse_rejects_41_of_103_geometric_views(self):
+        from p10_lab.reconstruction_runtime import _dense_manifest_gate7_coverage_ok
+
+        manifest={
+            "schema":"ConceptGhost.P10DenseReconstructionResult.v0.3",
+            "status":"PASS",
+            "gate7_geometric_evidence_ready":True,
+            "geometric_depth_map_file_count":41,
+            "geometric_consistency_graph_file_count":41,
+            "mission_contribution":[
+                {"selected_frame_count":19},
+                {"selected_frame_count":25},
+                {"selected_frame_count":28},
+                {"selected_frame_count":20},
+                {"selected_frame_count":11},
+            ],
+        }
+        ok,ratio,registered=_dense_manifest_gate7_coverage_ok(manifest)
+        self.assertFalse(ok)
+        self.assertEqual(registered,103)
+        self.assertAlmostEqual(ratio,41/103)
+
+        manifest["geometric_depth_map_file_count"]=80
+        manifest["geometric_consistency_graph_file_count"]=80
+        ok,ratio,registered=_dense_manifest_gate7_coverage_ok(manifest)
+        self.assertTrue(ok)
+        self.assertEqual(registered,103)
+        self.assertAlmostEqual(ratio,80/103)
+
+
     def test_nonresume_refuses_existing_output(self):
         from p10_lab.reconstruction_runtime import run_reconstruction_pipeline
         with tempfile.TemporaryDirectory() as tmp:
