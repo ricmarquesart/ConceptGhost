@@ -14,10 +14,18 @@ _ALLOWED_COLLISION_MODES = {"HOLD_AND_RESUME", "DISABLED"}
 _ALLOWED_ROUTE_AUTHORITIES = {"EDITABLE_SEED", "ARTIST_AUTHORED"}
 _ALLOWED_ORIENTATION_MODES = {"LOOK_AT_TARGET", "LOOK_ALONG_PATH", "MANUAL_DIRECTION"}
 _MAX_DRONES = 7
-_ROUTE_SCHEMA = "ConceptGhost.P10DroneRoutePlan.v0.2"
-_LEGACY_ROUTE_SCHEMAS = {"ConceptGhost.P10DroneRoutePlan.v0.1", _ROUTE_SCHEMA}
-_BOUND_ROUTE_SCHEMA = "ConceptGhost.P10BoundDroneRoutePlan.v0.2"
-_LEGACY_BOUND_ROUTE_SCHEMAS = {"ConceptGhost.P10BoundDroneRoutePlan.v0.1", _BOUND_ROUTE_SCHEMA}
+_ROUTE_SCHEMA = "ConceptGhost.P10DroneRoutePlan.v0.3"
+_LEGACY_ROUTE_SCHEMAS = {
+    "ConceptGhost.P10DroneRoutePlan.v0.1",
+    "ConceptGhost.P10DroneRoutePlan.v0.2",
+    _ROUTE_SCHEMA,
+}
+_BOUND_ROUTE_SCHEMA = "ConceptGhost.P10BoundDroneRoutePlan.v0.3"
+_LEGACY_BOUND_ROUTE_SCHEMAS = {
+    "ConceptGhost.P10BoundDroneRoutePlan.v0.1",
+    "ConceptGhost.P10BoundDroneRoutePlan.v0.2",
+    _BOUND_ROUTE_SCHEMA,
+}
 
 
 def _finite(value, label: str) -> float:
@@ -34,10 +42,28 @@ class DroneWaypoint:
     right: float
     up: float
     forward: float
+    look_right: float | None = None
+    look_up: float | None = None
+    look_forward: float | None = None
 
     def __post_init__(self) -> None:
         for name in ("right", "up", "forward"):
             object.__setattr__(self, name, _finite(getattr(self, name), name))
+        look_values=(self.look_right,self.look_up,self.look_forward)
+        if any(value is not None for value in look_values):
+            if any(value is None for value in look_values):
+                raise ContractError("Waypoint per-point look direction must provide right/up/forward together")
+            normalized=_normalize_strict(
+                tuple(float(value) for value in look_values),
+                label="waypoint per-point look direction",
+            )
+            object.__setattr__(self,"look_right",normalized[0])
+            object.__setattr__(self,"look_up",normalized[1])
+            object.__setattr__(self,"look_forward",normalized[2])
+
+    @property
+    def has_look_direction(self) -> bool:
+        return self.look_right is not None
 
     def to_relative(self, *, look_right=0.0, look_up=0.0, look_forward=1.0) -> RelativeWaypoint:
         return RelativeWaypoint(
@@ -49,8 +75,15 @@ class DroneWaypoint:
             look_forward=float(look_forward),
         )
 
-    def to_dict(self) -> dict[str, float]:
-        return {"right": self.right, "up": self.up, "forward": self.forward}
+    def to_dict(self) -> dict[str, object]:
+        payload={"right": self.right, "up": self.up, "forward": self.forward}
+        if self.has_look_direction:
+            payload["look_direction"]={
+                "right":float(self.look_right),
+                "up":float(self.look_up),
+                "forward":float(self.look_forward),
+            }
+        return payload
 
 
 @dataclass(frozen=True)
@@ -62,6 +95,8 @@ class DroneMission:
     orientation_mode: str = "LOOK_ALONG_PATH"
     look_target: DroneWaypoint | None = None
     manual_direction: DroneWaypoint | None = None
+    spin_pitch_deg: float = 0.0
+    spin_yaw_start_deg: float = 0.0
 
     def __post_init__(self) -> None:
         name = str(self.name).strip()
@@ -88,6 +123,12 @@ class DroneMission:
             raise ContractError("LOOK_AT_TARGET PATH mission requires look_target")
         if mode == "PATH" and orientation == "MANUAL_DIRECTION" and self.manual_direction is None:
             raise ContractError("MANUAL_DIRECTION PATH mission requires manual_direction")
+        pitch=_finite(self.spin_pitch_deg,"spin_pitch_deg")
+        yaw=_finite(self.spin_yaw_start_deg,"spin_yaw_start_deg")
+        if pitch < -89.0 or pitch > 89.0:
+            raise ContractError("spin_pitch_deg must be in [-89, 89]")
+        object.__setattr__(self,"spin_pitch_deg",pitch)
+        object.__setattr__(self,"spin_yaw_start_deg",yaw)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -99,6 +140,8 @@ class DroneMission:
             "manual_direction": (
                 self.manual_direction.to_dict() if self.manual_direction is not None else None
             ),
+            "spin_pitch_deg":self.spin_pitch_deg,
+            "spin_yaw_start_deg":self.spin_yaw_start_deg,
             "waypoints": [p.to_dict() for p in self.waypoints],
         }
 
@@ -165,11 +208,19 @@ class DroneRoutePlan:
                     raise ContractError(
                         f"Mission {index} waypoint {point_index} must be an object"
                     )
+                look_direction=p.get("look_direction")
+                if look_direction is not None and not isinstance(look_direction,dict):
+                    raise ContractError(
+                        f"Mission {index} waypoint {point_index} look_direction must be an object"
+                    )
                 parsed_points.append(
                     DroneWaypoint(
                         right=p.get("right"),
                         up=p.get("up"),
                         forward=p.get("forward"),
+                        look_right=(look_direction or {}).get("right"),
+                        look_up=(look_direction or {}).get("up"),
+                        look_forward=(look_direction or {}).get("forward"),
                     )
                 )
             def parse_optional_waypoint(value, label):
@@ -199,6 +250,8 @@ class DroneRoutePlan:
                     manual_direction=parse_optional_waypoint(
                         item.get("manual_direction"), "manual_direction"
                     ),
+                    spin_pitch_deg=float(item.get("spin_pitch_deg",0.0)),
+                    spin_yaw_start_deg=float(item.get("spin_yaw_start_deg",0.0)),
                 )
             )
         return cls(
@@ -328,6 +381,70 @@ def _legacy_v01_route_hash(
     return hashlib.sha256(canonical).hexdigest()
 
 
+
+def _legacy_v02_route_payload(plan: DroneRoutePlan) -> dict[str, object]:
+    return {
+        "schema":"ConceptGhost.P10DroneRoutePlan.v0.2",
+        "coordinate_space":"P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+        "maximum_drone_count":_MAX_DRONES,
+        "frames_per_drone":plan.frames_per_drone,
+        "collision_mode":plan.collision_mode,
+        "min_clearance_m":plan.min_clearance_m,
+        "missions":[
+            {
+                "name":mission.name,
+                "mode":mission.mode,
+                "enabled":mission.enabled,
+                "orientation_mode":mission.orientation_mode,
+                "look_target":(
+                    {
+                        "right":mission.look_target.right,
+                        "up":mission.look_target.up,
+                        "forward":mission.look_target.forward,
+                    }
+                    if mission.look_target is not None else None
+                ),
+                "manual_direction":(
+                    {
+                        "right":mission.manual_direction.right,
+                        "up":mission.manual_direction.up,
+                        "forward":mission.manual_direction.forward,
+                    }
+                    if mission.manual_direction is not None else None
+                ),
+                "waypoints":[
+                    {"right":point.right,"up":point.up,"forward":point.forward}
+                    for point in mission.waypoints
+                ],
+            }
+            for mission in plan.missions
+        ],
+    }
+
+
+def _legacy_v02_route_hash(
+    plan: DroneRoutePlan,
+    *,
+    scene_contract_id: str,
+    source_run_id: str,
+    route_authority: str,
+) -> str:
+    payload=_legacy_v02_route_payload(plan)
+    payload.update({
+        "binding_schema":"ConceptGhost.P10BoundDroneRoutePlan.v0.2",
+        "scene_contract_id":_clean_binding_text(scene_contract_id,"scene_contract_id"),
+        "source_run_id":_clean_binding_text(source_run_id,"source_run_id"),
+        "route_authority":_normalize_route_authority(route_authority),
+    })
+    canonical=json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",",":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def parse_bound_route_plan(
     payload: dict[str, object],
     *,
@@ -381,6 +498,16 @@ def parse_bound_route_plan(
         and route_schema=="ConceptGhost.P10DroneRoutePlan.v0.1"
     ):
         legacy_hash=_legacy_v01_route_hash(
+            plan,
+            scene_contract_id=scene_contract_id,
+            source_run_id=source_run_id,
+            route_authority=authority,
+        )
+    elif (
+        binding_schema=="ConceptGhost.P10BoundDroneRoutePlan.v0.2"
+        and route_schema=="ConceptGhost.P10DroneRoutePlan.v0.2"
+    ):
+        legacy_hash=_legacy_v02_route_hash(
             plan,
             scene_contract_id=scene_contract_id,
             source_run_id=source_run_id,
@@ -443,6 +570,42 @@ def _normalize_strict(
     return tuple(value / length for value in v)
 
 
+
+def _interpolate_authored_look(
+    left: DroneWaypoint,
+    right: DroneWaypoint,
+    amount: float,
+) -> tuple[float,float,float] | None:
+    if not left.has_look_direction and not right.has_look_direction:
+        return None
+    if left.has_look_direction:
+        a=(float(left.look_right),float(left.look_up),float(left.look_forward))
+    else:
+        a=(float(right.look_right),float(right.look_up),float(right.look_forward))
+    if right.has_look_direction:
+        b=(float(right.look_right),float(right.look_up),float(right.look_forward))
+    else:
+        b=a
+    amount=max(0.0,min(1.0,float(amount)))
+    dot=sum(x*y for x,y in zip(a,b))
+    raw=tuple(a[i]*(1.0-amount)+b[i]*amount for i in range(3))
+    length=sqrt(sum(value*value for value in raw))
+    if length>1.0e-8:
+        return tuple(value/length for value in raw)
+    # Deterministic antipodal fallback: rotate through an orthogonal axis.
+    candidate=(a[2],0.0,-a[0])
+    candidate_length=sqrt(sum(value*value for value in candidate))
+    if candidate_length<=1.0e-8:
+        candidate=(0.0,a[2],-a[1])
+        candidate_length=sqrt(sum(value*value for value in candidate))
+    orthogonal=tuple(value/candidate_length for value in candidate)
+    angle=pi*amount
+    return _normalize_strict(
+        tuple(a[i]*cos(angle)+orthogonal[i]*sin(angle) for i in range(3)),
+        label="interpolated per-waypoint look direction",
+    )
+
+
 def _sample_path(mission: DroneMission, frame_count: int) -> CameraPath:
     points = mission.waypoints
     lengths = [_distance(points[i], points[i + 1]) for i in range(len(points) - 1)]
@@ -482,7 +645,10 @@ def _sample_path(mission: DroneMission, frame_count: int) -> CameraPath:
                 right.forward - left.forward,
             )
         )
-        if mission.orientation_mode == "LOOK_AT_TARGET":
+        authored_look=_interpolate_authored_look(left,right,amount)
+        if authored_look is not None:
+            look=authored_look
+        elif mission.orientation_mode == "LOOK_AT_TARGET":
             target = mission.look_target
             if target is None:
                 raise ContractError(
@@ -516,15 +682,17 @@ def _sample_path(mission: DroneMission, frame_count: int) -> CameraPath:
 def _sample_spin(mission: DroneMission, frame_count: int) -> CameraPath:
     anchor = mission.waypoints[0]
     result = []
+    pitch=mission.spin_pitch_deg*pi/180.0
+    yaw_start=mission.spin_yaw_start_deg*pi/180.0
+    cp=cos(pitch)
     for frame in range(frame_count):
-        angle = 2.0 * pi * frame / float(frame_count)
+        angle = yaw_start + 2.0 * pi * frame / float(frame_count)
         result.append(anchor.to_relative(
-            look_right=sin(angle),
-            look_up=0.0,
-            look_forward=cos(angle),
+            look_right=sin(angle)*cp,
+            look_up=sin(pitch),
+            look_forward=cos(angle)*cp,
         ))
     return CameraPath(mission.name, tuple(result))
-
 
 def sample_mission(mission: DroneMission, frame_count: int) -> CameraPath:
     if type(frame_count) is not int or frame_count < 2:
@@ -557,8 +725,14 @@ def reorient_path_for_mission(
         raise ContractError(f"Mission {mission.name} emitted path is empty")
 
     result=[]
+    has_per_waypoint_aim=any(control.has_look_direction for control in mission.waypoints)
     for index,point in enumerate(waypoints):
-        if mission.orientation_mode=="LOOK_AT_TARGET":
+        if has_per_waypoint_aim:
+            look=_normalize_strict(
+                (point.look_right,point.look_up,point.look_forward),
+                label=f"Mission {mission.name} interpolated per-waypoint direction",
+            )
+        elif mission.orientation_mode=="LOOK_AT_TARGET":
             target=mission.look_target
             if target is None:
                 raise ContractError(f"Mission {mission.name} LOOK_AT_TARGET has no target")
