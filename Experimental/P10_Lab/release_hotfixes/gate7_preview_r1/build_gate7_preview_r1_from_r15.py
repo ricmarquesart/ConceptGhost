@@ -481,7 +481,7 @@ def main(root):
   try:py_compile.compile(str(p),doraise=True)
   except Exception as exc:e.append(f'compile {{p.name}}: {{exc}}')
  if e:
-  print('\n'.join('[FAIL] '+x for x in e));return 1
+  print(*('[FAIL] '+x for x in e),sep=chr(10));return 1
  print('CONCEPTGHOST_GATE7_PREVIEW_R1_BUNDLE_PASS');return 0
 if __name__=='__main__':raise SystemExit(main(sys.argv[1] if len(sys.argv)>1 else '.'))
 '''
