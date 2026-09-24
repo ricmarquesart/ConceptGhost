@@ -81,16 +81,33 @@ Implementation:
 GitHub Actions run `35946502650` completed SUCCESS across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
 
 ### G7.2C — Geometry confidence field
-Status: **PLANNED**
+Status: **IMPLEMENTED / CI PASS**
 
-Use the already-approved policy in `11_GEOMETRY_CONFIDENCE_REFINEMENT_POLICY.md`.
+Uses the approved policy in `11_GEOMETRY_CONFIDENCE_REFINEMENT_POLICY.md`.
 
-Defaults:
+Implemented defaults:
 - confidence analysis ON;
-- confidence visualization ON;
+- confidence visualization evidence ON;
 - confidence-guided refinement OFF.
 
-The OFF path is the release baseline. Confidence cannot silently modify official geometry.
+The first-pass field consumes G7.2 provenance and writes:
+- `geometry_confidence_manifest.json`;
+- `gate7_geometry_confidence_evidence.npz`;
+- `gate7_geometry_confidence_points.ply` as a temporary diagnostic-only colored point proxy.
+
+Confidence classes follow the frozen thresholds:
+- HIGH >= 0.75;
+- NEUTRAL >= 0.40;
+- LOW >= 0.20;
+- VERY_LOW < 0.20.
+
+Source-protected P9 receives the strongest positive prior. Independently supported P10 geometry receives a multiview score from authored-mission support, track support and sparse-point distance. `CONFLICT` receives low confidence but is not deleted. `UNKNOWN` receives no free-space penalty because G7.3 has not yet supplied free-space authority.
+
+A confidence virtual-hole candidate is diagnostic-only and cannot modify topology. The dedicated proxy is explicitly `COMFYUI_DIAGNOSTIC_ONLY_NEVER_MAYA_EXPORT`.
+
+The OFF path remains the release baseline. `ready_for_destructive_fusion` remains false.
+
+GitHub Actions run `35946720027` completed SUCCESS across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
 
 ### G7.3 — Free-space evidence / no-fill authority
 Status: **PLANNED**
@@ -163,6 +180,7 @@ If r15 exposes another Route Setup UX/runtime defect, fix DR9R independently and
 - DR9R r15: user runtime test in progress.
 - G7.1 implementation: **COMPLETE / CI PASS**.
 - G7.2 provenance classifier: **COMPLETE / CI PASS**.
-- G7.2 remains diagnostic-only and cannot promote destructive fusion.
-- Next safe work: **G7.2C geometry confidence field**.
+- G7.2C geometry confidence field: **COMPLETE / CI PASS**.
+- G7.2/G7.2C remain diagnostic-only; confidence refinement is OFF and destructive fusion is still blocked.
+- Next safe work: **G7.3 free-space evidence / no-fill authority**.
 - User-facing Gate 7 Preview remains blocked until the current DR9R runtime UX acceptance is finished.
