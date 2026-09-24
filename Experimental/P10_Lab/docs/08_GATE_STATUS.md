@@ -1,5 +1,16 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 R6 editor refinement started
+
+- User validation is explicitly deferred until **R6F**; R6A-R6E use source/CI checkpoints only.
+- **R6A — Points/Mesh LOD + Point Size: IMPLEMENTED / CI PENDING.**
+- Route Setup preview now exposes deterministic POINTS_LOW / POINTS_MEDIUM / POINTS_HIGH plus bounded MESH_SURFACE / MESH_WIREFRAME.
+- Point budgets are 15k / 50k / up to 100k; display mesh is capped at 24k sampled P9 faces.
+- Preview payloads are cacheable and explicitly DISPLAY_ONLY; they cannot become collision, WAN, reconstruction or geometry authority.
+- Next bounded work after CI: **R6B — Selected Camera View + selected-camera frustum**.
+- R6F remains the only target-PC validation/package checkpoint.
+
+
 ## Authoritative reconciliation — 2026-09-24 Gate 7.6 source closeout + visual evidence contract
 
 - **Ordering completed as requested: Visual Evidence/Comparison policy first, Gate 7.6 closeout second.**
