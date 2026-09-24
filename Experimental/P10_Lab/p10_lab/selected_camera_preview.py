@@ -79,8 +79,21 @@ def mission_waypoint_look(
         raise ContractError("Selected waypoint index is outside the mission")
     point=points[waypoint_index]
 
+    if point.has_look_direction:
+        return (
+            float(point.look_right),
+            float(point.look_up),
+            float(point.look_forward),
+        )
+
     if mission.mode=="SPIN_360":
-        return (0.0,0.0,1.0)
+        pitch=math.radians(mission.spin_pitch_deg)
+        yaw=math.radians(mission.spin_yaw_start_deg)
+        cp=math.cos(pitch)
+        return _normalize(
+            (math.sin(yaw)*cp,math.sin(pitch),math.cos(yaw)*cp),
+            "selected SPIN_360 direction",
+        )
 
     if mission.orientation_mode=="LOOK_AT_TARGET":
         target=mission.look_target
