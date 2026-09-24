@@ -53,10 +53,13 @@ class DroneWaypoint:
         if any(value is not None for value in look_values):
             if any(value is None for value in look_values):
                 raise ContractError("Waypoint per-point look direction must provide right/up/forward together")
-            normalized=_normalize_strict(
-                tuple(float(value) for value in look_values),
-                label="waypoint per-point look direction",
-            )
+            raw=tuple(float(value) for value in look_values)
+            length=sqrt(sum(value*value for value in raw))
+            if length<=1.0e-12:
+                raise ContractError("waypoint per-point look direction cannot have zero length")
+            # Preserve already-normalized serialized values exactly so a
+            # v0.3 JSON round-trip is hash/idempotence stable.
+            normalized=raw if abs(length-1.0)<=1.0e-12 else tuple(value/length for value in raw)
             object.__setattr__(self,"look_right",normalized[0])
             object.__setattr__(self,"look_up",normalized[1])
             object.__setattr__(self,"look_forward",normalized[2])
