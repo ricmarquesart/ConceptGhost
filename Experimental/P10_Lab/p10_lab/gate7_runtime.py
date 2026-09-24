@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import ContractError
+from .dense_reconstruction import inspect_dense_geometric_evidence, repair_dense_geometric_evidence
 from .free_space_confidence import build_confidence_free_space_overlay
 from .free_space_constraints import classify_free_space
 from .free_space_evidence import build_free_space_evidence
@@ -14,7 +15,8 @@ from .gate7_provenance import build_gate7_provenance
 from .gate7_registration import write_gate7_registration
 from .gate7_visual_review import build_gate7_visual_review
 from .geometry_confidence import build_geometry_confidence
-from .prefusion_mesh import run_delaunay_visibility_meshing
+from .geometry_quality import write_gate6_geometry_quality
+from .prefusion_mesh import run_delaunay_visibility_meshing, run_prefusion_meshing
 from .protected_fusion import build_protected_fusion_candidate
 from .run_audit_bundle import build_partial_run_audit_bundle, build_run_audit_bundle
 
@@ -68,6 +70,152 @@ def _reuse_runtime(path: Path, p9_run_dir: Path, gate6_runtime_path: Path) -> di
     payload["manifest_path"] = str(path)
     payload["resumed"] = True
     return payload
+
+
+def _resolve_gate7_repair_colmap(
+    dataset_root: Path,
+    requested: str,
+) -> str:
+    """Prefer the exact COLMAP executable that built the current dense workspace."""
+
+    dense_manifest_path=dataset_root/"dense_reconstruction_manifest.json"
+    if dense_manifest_path.is_file():
+        try:
+            dense_manifest=_read_json(dense_manifest_path,"Gate 6 dense reconstruction manifest")
+        except ContractError:
+            dense_manifest={}
+        stored=str(dense_manifest.get("colmap_executable") or "").strip()
+        if stored and Path(stored).is_file():
+            return stored
+    requested=str(requested or "").strip()
+    return requested or "colmap"
+
+
+def _repair_gate6_dense_evidence_for_gate7(
+    gate6: dict[str, Any],
+    gate6_runtime_path: Path,
+    *,
+    colmap_executable: str,
+) -> dict[str, Any]:
+    """Repair incomplete geometric PatchMatch evidence in place before Gate 7.1.
+
+    This preserves WAN, sparse known-camera registration, route authority and P9.
+    Only the dense PatchMatch/fusion and derived pre-fusion mesh are refreshed.
+    """
+
+    dataset_value=str(gate6.get("dataset_root") or "").strip()
+    if not dataset_value:
+        raise ContractError("Gate 7 dense preflight cannot resolve Gate 6 dataset_root")
+    dataset_root=Path(dataset_value).resolve()
+    before=inspect_dense_geometric_evidence(
+        dataset_root,
+        min_coverage_ratio=0.70,
+    )
+    if before.get("gate7_geometric_evidence_ready") is True:
+        return {
+            "status":"REUSED",
+            "before":before,
+            "after":before,
+            "p9_authority_changed":False,
+            "sparse_rebuilt":False,
+            "wan_rebuilt":False,
+        }
+
+    executable=_resolve_gate7_repair_colmap(dataset_root,colmap_executable)
+    repair=repair_dense_geometric_evidence(
+        dataset_root,
+        colmap_executable=executable,
+        min_coverage_ratio=0.70,
+    )
+
+    # fused.ply changed, therefore refresh the derived Poisson candidate used by
+    # Gate 7 registration/fusion.  This is still P10 candidate geometry only.
+    mesh=run_prefusion_meshing(
+        dataset_root,
+        colmap_executable=executable,
+        overwrite_output=True,
+    )
+
+    # Any previous Delaunay comparison refers to the stale dense cloud.
+    dense_root=dataset_root/"dense"
+    for stale in (
+        dense_root/"free_space_meshing_comparison.json",
+        dense_root/"pre_fusion_mesh_delaunay.ply",
+        dense_root/"pre_fusion_mesh_delaunay_preview.svg",
+    ):
+        if stale.is_file():
+            stale.unlink()
+
+    output_root_value=str(gate6.get("output_root") or "").strip()
+    output_root=(
+        Path(output_root_value).resolve()
+        if output_root_value else gate6_runtime_path.parent.resolve()
+    )
+    quality=write_gate6_geometry_quality(
+        dataset_root,
+        output_root/"diagnostics"/"gate6_geometry_quality.json",
+        expected_missions=tuple(str(name) for name in (gate6.get("mission_order") or [])),
+        p9_roundtrip=(
+            gate6.get("p9_roundtrip_audit")
+            if isinstance(gate6.get("p9_roundtrip_audit"),dict) else None
+        ),
+        metric_overlay=(
+            gate6.get("metric_overlay")
+            if isinstance(gate6.get("metric_overlay"),dict) else None
+        ),
+    )
+
+    stages=gate6.get("stages")
+    if not isinstance(stages,dict):
+        stages={}
+        gate6["stages"]=stages
+    stages["dense"]={
+        "state":"REPAIRED_FOR_GATE7_GEOMETRIC_COVERAGE",
+        "manifest_path":repair.get("dense_manifest_path"),
+        "before":repair.get("before"),
+        "after":repair.get("after"),
+    }
+    stages["mesh"]={
+        "state":"REBUILT_AFTER_GATE7_DENSE_REPAIR",
+        "manifest_path":str((dataset_root/"prefusion_mesh_manifest.json").resolve()),
+    }
+    stages["geometry_quality"]={
+        "state":"REEVALUATED_AFTER_GATE7_DENSE_REPAIR",
+        "status":quality.get("status"),
+        "manifest_path":quality.get("manifest_path"),
+        "alerts":quality.get("alerts",[]),
+    }
+    gate6["geometry_quality"]=quality
+    gate6["geometry_quality_status"]=quality.get("status","FAIL")
+    gate6["geometry_quality_manifest_path"]=quality.get("manifest_path")
+    gate6["gate7_promotion_allowed"]=quality.get("status")!="FAIL"
+    gate6["pre_fusion_mesh_path"]=str((dataset_root/"dense"/"pre_fusion_mesh.ply").resolve())
+    gate6["mesh_preview_svg_path"]=str((dataset_root/"dense"/"pre_fusion_mesh_preview.svg").resolve())
+    gate6["gate7_dense_evidence_repair"]={
+        "status":repair.get("status"),
+        "before":repair.get("before"),
+        "after":repair.get("after"),
+        "colmap_executable":executable,
+        "p9_authority_changed":False,
+        "official_geometry_changed":False,
+        "sparse_rebuilt":False,
+        "wan_rebuilt":False,
+    }
+    gate6_runtime_path.write_text(
+        json.dumps(gate6,indent=2,sort_keys=True),
+        encoding="utf-8",
+    )
+    return {
+        "status":"REPAIRED",
+        "before":repair.get("before"),
+        "after":repair.get("after"),
+        "mesh_status":mesh.get("status"),
+        "geometry_quality_status":quality.get("status"),
+        "colmap_executable":executable,
+        "p9_authority_changed":False,
+        "sparse_rebuilt":False,
+        "wan_rebuilt":False,
+    }
 
 
 def _write_failure_manifest(
@@ -161,8 +309,15 @@ def run_gate7_pipeline(
                 }
             return reused
 
-    current_stage = "G7_1_REGISTRATION"
+    current_stage = "G7_0_DENSE_GEOMETRIC_PREFLIGHT"
     try:
+        dense_repair=_repair_gate6_dense_evidence_for_gate7(
+            gate6,
+            gate6_runtime_path,
+            colmap_executable=colmap_executable,
+        )
+
+        current_stage = "G7_1_REGISTRATION"
         registration_path = root / "g7_1" / "gate7_registration.json"
         registration = write_gate7_registration(
             p9_run_dir,
@@ -260,12 +415,14 @@ def run_gate7_pipeline(
             "p10_attempt_root": str(attempt_root),
             "gate6_runtime_manifest_path": str(gate6_runtime_path),
             "gate7_root": str(root),
+            "dense_geometric_preflight":dense_repair,
             "colmap_coverage_policy": {
                 "view_selection": "REGISTERED_GEOMETRIC_INTERSECTION",
                 "min_frame_coverage_ratio": 0.70,
                 "min_mission_coverage_ratio": 0.70,
                 "min_per_mission_frame_ratio": 0.70,
                 "coverage_manifest_path": free_evidence["manifest_path"],
+                "dense_repair_policy":"AUTO_REPAIR_EXPLICIT_REGISTERED_REFERENCES_IF_BELOW_70_PERCENT",
             },
             "artifacts": {
                 "registration_manifest_path": registration["manifest_path"],
