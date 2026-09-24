@@ -415,6 +415,159 @@ class ConceptGhostP10Gate7VisualReview:
         }
 
 
+class ConceptGhostP10ConfidenceComparison:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "confidence_manifest_path": ("STRING", {"forceInput": True}),
+                "confidence_free_space_overlay_manifest_path": ("STRING", {"forceInput": True}),
+                "panel_size": ("INT", {"default": 620, "min": 320, "max": 1000, "step": 20}),
+            },
+            "optional": {
+                "output_root": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING")
+    RETURN_NAMES = (
+        "comparison_image",
+        "comparison_png_path",
+        "comparison_manifest_path",
+        "diagnostics_json",
+    )
+    FUNCTION = "compare"
+    CATEGORY = "ConceptGhost/P10 Visual Evidence"
+    OUTPUT_NODE = True
+
+    def compare(
+        self,
+        confidence_manifest_path: str,
+        confidence_free_space_overlay_manifest_path: str,
+        panel_size: int,
+        output_root: str = "",
+    ):
+        try:
+            import numpy as np
+            import torch
+            from PIL import Image
+        except ImportError as error:
+            raise RuntimeError("Confidence comparison requires NumPy, Pillow and torch") from error
+
+        from .visual_comparisons import render_confidence_before_after
+
+        source = Path(confidence_manifest_path).expanduser().resolve()
+        root = (
+            Path(output_root).expanduser().resolve()
+            if str(output_root or "").strip()
+            else source.parent / "visual_evidence" / "confidence"
+        )
+        result = render_confidence_before_after(
+            confidence_manifest_path,
+            confidence_free_space_overlay_manifest_path,
+            root,
+            panel_size=int(panel_size),
+        )
+        preview_path = Path(result["comparison_png_path"])
+        with Image.open(preview_path) as opened:
+            array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
+        tensor = torch.from_numpy(array).unsqueeze(0)
+        rendered = _pretty(result)
+        return {
+            "ui": {"text": [rendered]},
+            "result": (
+                tensor,
+                str(preview_path),
+                str(result["manifest_path"]),
+                rendered,
+            ),
+        }
+
+
+class ConceptGhostP10DroneMeshComparisonReplay:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "dataset_manifest_path": ("STRING", {"forceInput": True}),
+                "before_mesh_path": ("STRING", {"forceInput": True}),
+                "after_mesh_path": ("STRING", {"forceInput": True}),
+                "before_label": ("STRING", {"default": "BEFORE"}),
+                "after_label": ("STRING", {"default": "AFTER"}),
+            },
+            "optional": {
+                "output_root": ("STRING", {"default": ""}),
+                "max_frames": ("INT", {"default": 48, "min": 2, "max": 160, "step": 1}),
+                "max_faces": ("INT", {"default": 10000, "min": 500, "max": 100000, "step": 500}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = (
+        "comparison_first_frame",
+        "before_gif_path",
+        "after_gif_path",
+        "comparison_gif_path",
+        "diagnostics_json",
+    )
+    FUNCTION = "replay"
+    CATEGORY = "ConceptGhost/P10 Visual Evidence"
+    OUTPUT_NODE = True
+
+    def replay(
+        self,
+        dataset_manifest_path: str,
+        before_mesh_path: str,
+        after_mesh_path: str,
+        before_label: str,
+        after_label: str,
+        output_root: str = "",
+        max_frames: int = 48,
+        max_faces: int = 10000,
+    ):
+        try:
+            import numpy as np
+            import torch
+            from PIL import Image
+        except ImportError as error:
+            raise RuntimeError("Drone comparison replay requires NumPy, Pillow and torch") from error
+
+        from .visual_comparisons import render_drone_mesh_before_after_replay
+
+        source = Path(dataset_manifest_path).expanduser().resolve()
+        root = (
+            Path(output_root).expanduser().resolve()
+            if str(output_root or "").strip()
+            else source.parent / "visual_evidence" / "drone_comparison"
+        )
+        result = render_drone_mesh_before_after_replay(
+            dataset_manifest_path,
+            before_mesh_path,
+            after_mesh_path,
+            root,
+            before_label=before_label,
+            after_label=after_label,
+            max_frames=int(max_frames),
+            max_faces=int(max_faces),
+        )
+        comparison_gif = Path(result["comparison_gif_path"])
+        with Image.open(comparison_gif) as opened:
+            opened.seek(0)
+            array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
+        tensor = torch.from_numpy(array).unsqueeze(0)
+        rendered = _pretty(result)
+        return {
+            "ui": {"text": [rendered]},
+            "result": (
+                tensor,
+                str(result["before_gif_path"]),
+                str(result["after_gif_path"]),
+                str(comparison_gif),
+                rendered,
+            ),
+        }
+
+
 NODE_CLASS_MAPPINGS = {
     "ConceptGhostMoGeDiagnosticsControl": ConceptGhostMoGeDiagnosticsControl,
     "ConceptGhostMoGeDiagnosticProfileTap": ConceptGhostMoGeDiagnosticProfileTap,
@@ -431,6 +584,8 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10WanSequentialSampler": ConceptGhostP10WanSequentialSampler,
     "ConceptGhostP10ReconstructionRuntime": ConceptGhostP10ReconstructionRuntime,
     "ConceptGhostP10Gate7VisualReview": ConceptGhostP10Gate7VisualReview,
+    "ConceptGhostP10ConfidenceComparison": ConceptGhostP10ConfidenceComparison,
+    "ConceptGhostP10DroneMeshComparisonReplay": ConceptGhostP10DroneMeshComparisonReplay,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -449,4 +604,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10WanSequentialSampler": "P10 Refined · Sequential WAN + Source Composite",
     "ConceptGhostP10ReconstructionRuntime": "P10 Refined · Reconstruction Runtime + Mesh Preview",
     "ConceptGhostP10Gate7VisualReview": "P10 · Gate 7 · Registration + Provenance Review",
+    "ConceptGhostP10ConfidenceComparison": "P10 · Visual Evidence · Confidence BEFORE / AFTER",
+    "ConceptGhostP10DroneMeshComparisonReplay": "P10 · Visual Evidence · Same-Camera BEFORE / AFTER GIF",
 }
