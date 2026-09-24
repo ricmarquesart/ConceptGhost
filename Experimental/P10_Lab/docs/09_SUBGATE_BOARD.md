@@ -26,7 +26,7 @@ to bypass missing runtime evidence.
 | 11. Panorama, Adaptive Drone & HiRes Source-Authority Refinement | 8 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
 | 12. Diagnostic Observability & Visual Branches | 6 | DEFERRED UNTIL END-TO-END RESULT EXISTS |
 
-Total: **66 required bounded subgates**, plus the optional non-blocking Gate 7.2C confidence overlay.
+Total: **67 required bounded subgates**, plus the optional non-blocking Gate 7.2C confidence overlay.
 
 ## Gate 1 — 4/4 completed
 
@@ -335,15 +335,19 @@ Preview-only issue: some downstream core `PreviewImage` panels may remain blank 
 
 Release-facing P10 default is now `High Fidelity Split Clean`.
 
-## Gate 7 — 5 subgates
+## Gate 7 — 6 required subgates + optional 7.2C overlay
 
-7.1 P10 reconstruction → P9 coordinate registration.
-7.2 Authority-aware known/generated fusion.
-   - **Confidence diagnostics + optional refinement overlay (7.2C):** after 7.1 registration, always compute a per-face P9/P10 geometry-confidence field and expose an always-available dedicated ComfyUI 3D confidence preview (HIGH=blue, LOW/VERY_LOW=red, NEUTRAL uncolored). Geometry refinement remains **DEFAULT OFF** and, only when explicitly enabled, may allow low/very-low-confidence side/back geometry to become eligible for bounded replacement/remesh while preserving high-confidence source-facing geometry. Confidence visualization is diagnostic-only and is not exported to Maya. Full policy: `docs/11_GEOMETRY_CONFIDENCE_REFINEMENT_POLICY.md`.
-7.3 Narrow transition geometry handling.
-   - **Free-space / visibility carving extension:** consume Gate 6 geometric depth + known-camera visibility to classify OCCUPIED / FREE / UNKNOWN / CONFLICT. Add a COLMAP Delaunay visibility-aware mesh branch alongside Poisson, then enforce CONFIRMED_FREE as a no-fill constraint during Gate 7 fusion/transition handling. Detailed policy: `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md`.
-7.4 Per-face/per-region provenance, including confidence classification metadata for diagnostics and optional refinement provenance only when 7.2C refinement is enabled.
-7.5 Registration/fusion Preview and runtime validation. Confidence analysis/3D preview is expected as a normal diagnostic surface, while the required refinement-OFF path remains the geometry acceptance baseline; confidence refinement ON must pass a separate A/B regression before it can be considered beneficial.
+7.1 P10 reconstruction → P9 coordinate registration — **SOURCE COMPLETE / CI PASS**.
+7.2 Authority-aware provenance/fusion evidence — **SOURCE COMPLETE / CI PASS**.
+   - **7.2C confidence diagnostics:** **SOURCE COMPLETE / CI PASS**. HIGH=blue and LOW/VERY_LOW=red visual evidence is mandatory; confidence refinement remains DEFAULT OFF.
+7.3 Free-space / visibility no-fill authority — **SOURCE COMPLETE / CI PASS**. CONFIRMED_FREE is no-fill/no-bridge; UNKNOWN is never FREE; Delaunay remains structural evidence beside Poisson.
+7.4 Protected additive fusion candidate — **SOURCE COMPLETE / CI PASS**. P9 remains unchanged; only supported P10 candidate faces are admitted.
+7.5 Registration/provenance visual review — **SOURCE COMPLETE / CI PASS**. Perspective + Top + Front + Side with P9/P10/provenance/free-space/camera context.
+7.6 Gate 7 closeout / visual-evidence completeness — **SOURCE COMPLETE / CI PASS**. Requires one terminal preview and one comparison branch per subgate and fails closed before Gate 8 without runtime/artist approval.
+
+**Mandatory visual evidence rule:** every meaningful gate must expose a terminal state preview plus a BEFORE/AFTER or REFERENCE/RESULT comparison. Same-camera drone replay is preferred when a camera sequence exists. Full contract: `docs/32_VISUAL_EVIDENCE_COMPARISON_CONTRACT.md`.
+
+**Runtime status:** Gate 7 source is complete, but Gate 8 remains blocked pending DR9R r15 UX acceptance, Gate 7 Preview packaging/runtime execution and artist visual approval.
 
 ### Gate 7.3 internal implementation plan — Free-Space / Visibility Carving
 
