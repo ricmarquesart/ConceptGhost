@@ -194,8 +194,8 @@ function setupEditor(node) {
     const help = document.createElement("div");
     help.textContent =
         "PASSO 1/2 neste workflow: após o primeiro Run, edite os drones; depois clique Run novamente para COMMITAR a rota. " +
-        "PERSPECTIVE: arraste para orbitar, Shift+arraste para pan e use a roda para zoom. " +
-        "TOP/SIDE/FRONT: roda = zoom; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
+        "PERSPECTIVE: arraste para orbitar, Shift+arraste para pan; roda ou botões −/+ = zoom. " +
+        "TOP/SIDE/FRONT: roda ou botões −/+ = zoom; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
         "LOOK_AT_TARGET usa Editar alvo. Resetar rota não apaga a cena; Enquadrar tudo só restaura a câmera das vistas.";
     help.style.cssText = "color:#aaa;line-height:1.3;";
 
@@ -537,6 +537,97 @@ function setupEditor(node) {
             y >= rect.y && y <= rect.y + rect.height;
     }
 
+    function zoomControlRects(panel) {
+        const plot = panel?.plot_rect_px;
+        if (!plot) return [];
+        const size = 24;
+        const gap = 4;
+        const y = plot.y + 8;
+        const plus = {
+            action: "in",
+            x: plot.x + plot.width - size - 8,
+            y,
+            width: size,
+            height: size,
+        };
+        const minus = {
+            action: "out",
+            x: plus.x - gap - size,
+            y,
+            width: size,
+            height: size,
+        };
+        return [minus, plus];
+    }
+
+    function hitZoomControl(x, y) {
+        const candidates = [
+            ...(perspectivePanel() ? [perspectivePanel()] : []),
+            ...(state.projection?.panels || []),
+        ];
+        for (const panel of candidates) {
+            for (const rect of zoomControlRects(panel)) {
+                if (insideRect(rect, x, y)) return { panel, action: rect.action };
+            }
+        }
+        return null;
+    }
+
+    function applyPanelZoom(panel, factor, anchorPoint = null) {
+        if (!panel || !Number.isFinite(factor) || factor <= 0) return false;
+        const perspective = perspectivePanel();
+        if (perspective && panel === perspective) {
+            state.orbitZoom = Math.max(0.20, Math.min(12.0, state.orbitZoom * factor));
+            draw();
+            return true;
+        }
+
+        const ortho = (state.projection?.panels || []).find((item) => item === panel || item.name === panel.name);
+        if (!ortho) return false;
+
+        const extent = orthoExtent(ortho);
+        let before = null;
+        if (anchorPoint) before = worldFromPanel(ortho, anchorPoint.x, anchorPoint.y, {});
+        extent.view.zoom = Math.max(0.20, Math.min(30.0, extent.view.zoom * factor));
+        if (before && anchorPoint) {
+            const after = worldFromPanel(ortho, anchorPoint.x, anchorPoint.y, {});
+            extent.view.panX += Number(before[ortho.x_axis]) - Number(after[ortho.x_axis]);
+            extent.view.panY += Number(before[ortho.y_axis]) - Number(after[ortho.y_axis]);
+        }
+        draw();
+        return true;
+    }
+
+    function zoomAtCanvasPoint(xy, factor) {
+        if (!xy || !state.projection) return false;
+        const perspective = perspectivePanel();
+        if (perspective && insideRect(perspective.plot_rect_px, xy.x, xy.y)) {
+            return applyPanelZoom(perspective, factor, xy);
+        }
+        const panel = panelAt(xy.x, xy.y);
+        if (!panel) return false;
+        return applyPanelZoom(panel, factor, xy);
+    }
+
+    function drawZoomControls(panel) {
+        const rects = zoomControlRects(panel);
+        if (!rects.length) return;
+        ctx.save();
+        for (const rect of rects) {
+            ctx.fillStyle = "rgba(35,35,35,0.92)";
+            ctx.strokeStyle = "#777";
+            ctx.lineWidth = 1;
+            ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+            ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            ctx.fillStyle = "#f0f0f0";
+            ctx.font = "bold 16px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(rect.action === "in" ? "+" : "−", rect.x + rect.width * 0.5, rect.y + rect.height * 0.5 + 0.5);
+        }
+        ctx.restore();
+    }
+
     function projectPerspective(point) {
         const panel = perspectivePanel();
         const geometry = state.metadata?.preview_geometry;
@@ -693,7 +784,7 @@ function setupEditor(node) {
         ctx.restore();
         ctx.fillStyle = "#aaa";
         ctx.font = "11px sans-serif";
-        ctx.fillText("drag: orbit · Shift+drag: pan · wheel: zoom · inspection only", plot.x + 8, plot.y + plot.height - 10);
+        ctx.fillText("drag: orbit · Shift+drag: pan · wheel / −/+ : zoom · inspection only", plot.x + 8, plot.y + plot.height - 10);
     }
 
     function pointFromPanel(panel, x, y, base) {
@@ -796,7 +887,7 @@ function setupEditor(node) {
         ctx.fillStyle = "#999";
         ctx.font = "10px sans-serif";
         ctx.fillText(
-            `zoom ${extent.view.zoom.toFixed(2)}x · Shift+drag/middle = pan · wheel = zoom`,
+            `zoom ${extent.view.zoom.toFixed(2)}x · Shift+drag/middle = pan · wheel / −/+ = zoom`,
             plot.x + 7, plot.y + plot.height - 8
         );
     }
@@ -817,6 +908,9 @@ function setupEditor(node) {
             drawPanelShell(panel, `${String(panel.x_axis).toUpperCase()} / ${String(panel.y_axis).toUpperCase()} · axis locked`);
             drawOrthographicScene(panel);
         }
+
+        if (perspective) drawZoomControls(perspective);
+        for (const panel of state.projection.panels || []) drawZoomControls(panel);
 
         for (let missionIndex = 0; missionIndex < state.plan.missions.length; missionIndex++) {
             const mission = state.plan.missions[missionIndex];
@@ -949,6 +1043,16 @@ function setupEditor(node) {
         if (!state.projection || !validPlan(state.plan)) return;
         const xy = eventCoordinates(event);
         if (!xy) return;
+
+        const zoomControl = hitZoomControl(xy.x, xy.y);
+        if (zoomControl) {
+            event.preventDefault();
+            event.stopPropagation();
+            const factor = zoomControl.action === "in" ? 1.25 : 0.80;
+            applyPanelZoom(zoomControl.panel, factor);
+            return;
+        }
+
         const perspective = perspectivePanel();
         const panGesture = event.shiftKey || event.button === 1;
 
@@ -1092,31 +1196,20 @@ function setupEditor(node) {
     canvas.addEventListener("pointerup", stopDrag);
     canvas.addEventListener("pointercancel", stopDrag);
 
-    canvas.addEventListener("wheel", (event) => {
+    // Capture wheel events inside the DOM editor before the ComfyUI graph canvas
+    // can interpret them as workspace zoom. Explicit −/+ controls remain available
+    // in every view as a deterministic fallback.
+    root.addEventListener("wheel", (event) => {
         if (!state.projection) return;
+        if (event.target !== canvas && !canvas.contains?.(event.target)) return;
         const xy = eventCoordinates(event);
         if (!xy) return;
-        const perspective = perspectivePanel();
         const factor = Math.exp(-event.deltaY * 0.0015);
-
-        if (perspective && insideRect(perspective.plot_rect_px, xy.x, xy.y)) {
-            event.preventDefault();
-            state.orbitZoom = Math.max(0.20, Math.min(12.0, state.orbitZoom * factor));
-            draw();
-            return;
-        }
-
-        const panel = panelAt(xy.x, xy.y);
-        if (!panel) return;
+        if (!zoomAtCanvasPoint(xy, factor)) return;
         event.preventDefault();
-        const before = worldFromPanel(panel, xy.x, xy.y, {});
-        const extent = orthoExtent(panel);
-        extent.view.zoom = Math.max(0.20, Math.min(30.0, extent.view.zoom * factor));
-        const after = worldFromPanel(panel, xy.x, xy.y, {});
-        extent.view.panX += Number(before[panel.x_axis]) - Number(after[panel.x_axis]);
-        extent.view.panY += Number(before[panel.y_axis]) - Number(after[panel.y_axis]);
-        draw();
-    }, { passive: false });
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+    }, { passive: false, capture: true });
 
     canvas.addEventListener("contextmenu", (event) => {
         const xy = eventCoordinates(event);
