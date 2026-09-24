@@ -214,6 +214,7 @@ def classify_free_space(
         "p10_attempt_id": evidence.get("p10_attempt_id"),
         "coordinate_space": evidence.get("coordinate_space"),
         "state_ids": {name: value for value, name in _STATE_NAMES.items()},
+        "voxel": evidence.get("voxel"),
         "thresholds": {
             "confirmed_free_min_effective_views": min_free_views,
             "confirmed_free_min_routes": min_free_routes,
