@@ -682,3 +682,39 @@ Upgrade from r5:
 - models/runtime are reused;
 - installer replaces the owned config with the new MoGe-oriented prompt profile;
 - rerun the same source image for direct visual A/B against the r5 proxy.
+
+## r7 ComfyUI visual workflow status — 2026-09-24
+
+The earlier API-format draft was replaced by a real ComfyUI canvas workflow with visible connected nodes and in-workflow notes.
+
+Workflow:
+- `Experimental/Geometry_Assist_Proxy_Lab/ComfyUI_r7/ConceptGhost_Geometry_Assist_MoGe_VISUAL_r7.json`
+- installer: `Experimental/Geometry_Assist_Proxy_Lab/ComfyUI_r7/01_INSTALL_COMFYUI_GEOMETRY_ASSIST_r7.bat`
+
+Visible groups:
+- INPUT — choose image, then RUN;
+- COMPONENT 1 — SDXL / IMG2IMG + PROMPTS;
+- COMPONENT 2 — CONTROLNET / STRUCTURE;
+- COMPONENT 3 — IP-ADAPTER / REFERENCE LOCK;
+- SAMPLING + OUTPUT.
+
+Design decisions:
+- ComfyUI native DiffusersLoader reuses the already validated isolated SDXL diffusers directory by Windows junction;
+- ControlNetLoader reuses the isolated SDXL Canny ControlNet weights by junction;
+- IPAdapterModelLoader and CLIPVisionLoader reuse the validated ViT-H adapter/encoder pair by junction;
+- core Canny is used so no ControlNet-Aux custom-node dependency is required;
+- PrepImageForClipVision uses `pad` so environment reference framing is not center-cropped;
+- only required user action after install is selecting the image in node 01 and running the graph.
+
+Balanced defaults:
+- working image target ≈0.75 MP aligned to 64-pixel steps;
+- ControlNet strength 0.80, start 0.00, end 0.85;
+- IP-Adapter weight 0.80 linear, start 0.00, end 0.75, K+V;
+- sampler seed 1701, 24 steps, CFG 4.0, Euler/normal, denoise 0.28.
+
+Package:
+- `ConceptGhost_Geometry_Assist_ComfyUI_Workflow_r7.zip`
+- SHA-256: `683a28fab8b45606b3d0648d096cc231ab8dcce282f92f7ec36330790a94a396`
+- Google Drive Evaluation_Builds file ID: `1wpYOozH0SbhK5GIy6YV8If3yBDfA1e6s`
+
+Static local validation confirms JSON parse success, 24 visible nodes, 25 valid links, five visual groups, and all required node classes. Hardware execution inside the user's ComfyUI remains the next acceptance step.
