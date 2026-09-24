@@ -357,8 +357,12 @@ def run_reconstruction_pipeline(
         )
         stages["dense"]={
             "state":(
-                "REBUILT_GATE7_EVIDENCE_COVERAGE"
+                "REBUILT_GATE7_EVIDENCE_CONTRACT"
                 if stale_dense_exists else "BUILT"
+            ),
+            "repair_reason":(
+                "GEOMETRIC_COVERAGE_BELOW_70_PERCENT"
+                if stale_dense_exists else None
             ),
             "stale_coverage":stale_coverage,
             "manifest_path":str(dense_manifest_path),
