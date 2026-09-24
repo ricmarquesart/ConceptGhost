@@ -1,0 +1,60 @@
+{
+  "schema": "ConceptGhost.P10Gate7PreviewPackageRecord.v0.1",
+  "date_utc": "2026-09-24",
+  "package": "ConceptGhost_v1.54_P10_GATE7_PREVIEW_r1.zip",
+  "package_status": "CANDIDATE_READY_FOR_USER_RUNTIME_TEST",
+  "package_sha256": "b921c81eeb84defe4c095947c02aa96eb87fdb28035a9548348a90058c150042",
+  "package_size_bytes": 12333208,
+  "base_r15": {
+    "package": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15",
+    "sha256": "cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd"
+  },
+  "gate7_source_commit": "ebf41821177b384d18565f5c7bcb813901bbc7b6",
+  "package_builder_commit": "5ee9baad4fb10c53545674fa81c74576f62a9854",
+  "github_actions": {
+    "build_run_id": 35961256919,
+    "artifact_id": 10792292050,
+    "build_status": "SUCCESS",
+    "general_tests_run_id": 35961256853,
+    "general_tests_status": "SUCCESS",
+    "source_snapshot_run_id": 35961256859,
+    "source_snapshot_status": "SUCCESS"
+  },
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "file_id": "1xVNbmH1M669AqKxeW0t9K_KH2Kl8RP-i",
+    "sha_sidecar_id": "1OfXKsBtk-byRsutg2S5U8uPIbpKXkaPx",
+    "validation_id": "1AqjILZOZTNxVEM9LS6oFIwJ8Pn2pdrtq"
+  },
+  "contents": {
+    "numbered_user_workflows": [
+      "01_ConceptGhost_P10_ROUTE_SETUP.json",
+      "02_ConceptGhost_P10_PRODUCTION.json"
+    ],
+    "workflow01_from_r15_unchanged": true,
+    "workflow02_gate7_runtime": true,
+    "terminal_visual_evidence_pack": true,
+    "confidence_blue_high_red_low": true,
+    "same_camera_drone_before_after_gif": true,
+    "gate7_visual_closeout": true,
+    "gate8_node_present": false,
+    "approvals_default_false": true
+  },
+  "authority": {
+    "p9_changed": false,
+    "gate7_source_complete": true,
+    "gate7_runtime_accepted": false,
+    "artist_visual_review_approved": false,
+    "gate8_ready": false
+  },
+  "required_user_test": [
+    "03_INSTALL_ALL.bat PASS",
+    "04_VERIFY_INSTALL.bat PASS",
+    "Workflow 01 route editor UX remains accepted",
+    "Workflow 02 completes Gate 6 and Gate 7 runtime",
+    "Gate 7 review image is visually coherent",
+    "confidence BEFORE/AFTER is reviewed",
+    "same-camera drone BEFORE/AFTER GIF is reviewed",
+    "P9 Maya remains unchanged"
+  ]
+}
