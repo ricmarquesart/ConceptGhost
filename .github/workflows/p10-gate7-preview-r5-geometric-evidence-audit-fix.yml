@@ -10,7 +10,7 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r2_audit/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r5_geometric_evidence_audit_fix/**'
-      - '.github/workflows/p10-gate7-preview-r5-audit-coverage-build.yml'
+      - '.github/workflows/p10-gate7-preview-r5-geometric-evidence-audit-fix.yml'
   workflow_dispatch:
 
 permissions:
