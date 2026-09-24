@@ -97,5 +97,48 @@ class DroneRoutePreviewTests(unittest.TestCase):
             self.assertEqual(diagnostics["route_plan"]["missions"][0]["name"],"drone_1")
 
 
+    def test_interactive_preview_geometry_exposes_point_lods_and_bounded_mesh(self):
+        try:
+            import numpy as np
+        except ImportError as error:
+            self.skipTest(str(error))
+
+        from p10_lab.drone_route_preview import build_route_preview_geometry
+        from p10_lab.panorama import CameraAuthority
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"mesh.npz"
+            vertices=np.asarray([
+                [-1.0,-1.0,-2.0],[1.0,-1.0,-2.0],[1.0,1.0,-2.0],[-1.0,1.0,-2.0],
+                [-1.0,-1.0,-4.0],[1.0,-1.0,-4.0],[1.0,1.0,-4.0],[-1.0,1.0,-4.0],
+            ],dtype=np.float32)
+            faces=np.asarray([
+                [0,1,2],[0,2,3],[4,6,5],[4,7,6],
+                [0,4,5],[0,5,1],[1,5,6],[1,6,2],
+                [2,6,7],[2,7,3],[3,7,4],[3,4,0],
+            ],dtype=np.int32)
+            np.savez(path,vertices=vertices,faces=faces)
+            camera=CameraAuthority(
+                scene_contract_id="preview_lod",
+                schema="ConceptGhost.CameraBundle.test",
+                width=100,height=100,fx=80.0,fy=80.0,cx=50.0,cy=50.0,
+                lens_model="pinhole",
+                world_matrix=(
+                    (1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),
+                    (0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0),
+                ),
+            )
+            geometry=build_route_preview_geometry(path,camera,max_points=1000,max_mesh_faces=100)
+            self.assertEqual(geometry["schema"],"ConceptGhost.P10RoutePreviewGeometry.v0.2")
+            self.assertEqual(geometry["default_mode"],"POINTS_MEDIUM")
+            self.assertEqual(set(geometry["point_lods"]),{"POINTS_LOW","POINTS_MEDIUM","POINTS_HIGH"})
+            self.assertTrue(geometry["mesh_lod"]["available"])
+            self.assertEqual(geometry["mesh_lod"]["source_face_count"],12)
+            self.assertLessEqual(geometry["mesh_lod"]["face_count"],100)
+            self.assertEqual(geometry["mesh_lod"]["authority"],"DISPLAY_ONLY_P9_PRIMARYMESH_LOD")
+            self.assertEqual(geometry["authority"],"DISPLAY_ONLY_NEVER_GEOMETRY_AUTHORITY")
+            self.assertEqual(geometry["points"],geometry["point_lods"]["POINTS_MEDIUM"]["points"])
+
+
 if __name__=="__main__":
     unittest.main()
