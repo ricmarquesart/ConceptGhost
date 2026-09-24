@@ -351,10 +351,12 @@ def build_free_space_evidence(
             "registered missions"
         )
 
-    # All downstream evidence uses only registered + geometrically usable views.
+    # All downstream rays use only registered + geometrically usable reference
+    # views.  Keep the original dense workspace index order intact, however:
+    # consistency-graph source indices are serialized against that registered
+    # workspace order, not against this filtered usable-reference subset.
+    registered_dense_source_count = len(dense_name_order)
     dense_images = tuple(usable_dense_images)
-    dense_name_order = [str(row["name"]) for row in dense_images]
-    dense_by_name = {str(row["name"]): row for row in dense_images}
 
     cells: dict[tuple[int, int, int], dict[str, Any]] = {}
 
@@ -416,7 +418,7 @@ def build_free_space_evidence(
         graph_header, graph = read_colmap_consistency_graph(
             graph_path,
             selected_pixels=selected_pixels,
-            max_source_index=len(dense_name_order) - 1,
+            max_source_index=registered_dense_source_count - 1,
         )
         if graph_header[0] != width or graph_header[1] != height:
             raise ContractError(f"Depth/consistency dimensions mismatch for {image_name}")
