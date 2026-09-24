@@ -83,6 +83,14 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'function activeMeshLod()',
             'function drawPerspectiveMesh(mode)',
             'function drawOrthographicMesh(panel, mode)',
+            '"Selected Camera View"',
+            'cameraPreviewCanvas',
+            'function cameraBasisForLook(rawLook)',
+            'function projectSelectedCamera(raw)',
+            'function selectedFrustumCorners(mission, pointIndex)',
+            'function drawSelectedFrustum(projectFn, mission, pointIndex, color)',
+            'function drawSelectedCameraView()',
+            'function nearestPerspectivePoint(x, y)',
         ):
             self.assertIn(required, source)
 
@@ -177,6 +185,29 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertIn("panel_width: int=720", preview_source)
         self.assertIn("panel_height: int=660", preview_source)
 
+
+
+    def test_route_editor_selected_camera_preview_contract(self):
+        import p10_lab
+        import p10_lab.route_authoring_node as route_node
+        import p10_lab.selected_camera_preview as selected_preview
+
+        frontend=(Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js").read_text(encoding="utf-8")
+        backend=Path(route_node.__file__).read_text(encoding="utf-8")
+        preview_source=Path(selected_preview.__file__).read_text(encoding="utf-8")
+        for token in (
+            "Selected Camera View",
+            "cameraPreviewCanvas",
+            "camera_preview_contract",
+            "drawSelectedFrustum",
+            "projectSelectedCamera",
+            "nearestPerspectivePoint",
+        ):
+            self.assertIn(token,frontend+backend)
+        self.assertIn("ConceptGhostP10SelectedDroneCameraPreview",preview_source)
+        self.assertIn('"preview_authority":"DISPLAY_ONLY"',preview_source)
+        self.assertIn('"p9_authority_changed":False',preview_source)
+        self.assertIn('"selected_camera_authoritative_refresh_node":"ConceptGhostP10SelectedDroneCameraPreview"',backend)
 
     def test_route_editor_preview_lods_are_display_only(self):
         import p10_lab
