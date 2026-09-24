@@ -11,6 +11,11 @@ import subprocess
 from typing import Iterable
 
 from .contracts import ContractError
+from .colmap_dense_io import (
+    colmap_camera_center,
+    load_colmap_sparse_images,
+    qvec_to_rotation_matrix,
+)
 
 
 @dataclass(frozen=True)
@@ -408,6 +413,503 @@ def analyze_and_render_fused_cloud(
     }
 
 
+
+def _read_dataset_frames(dataset_root: Path) -> dict[str, dict[str, object]]:
+    manifest_path=dataset_root/"dataset_manifest.json"
+    try:
+        payload=json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError,json.JSONDecodeError) as error:
+        raise ContractError(f"Cannot read Gate 6 dataset manifest for dense source selection: {error}") from error
+    frames=payload.get("frames")
+    if not isinstance(frames,list) or not frames:
+        raise ContractError("Dense source selection requires dataset_manifest frames")
+    result={}
+    for frame in frames:
+        if not isinstance(frame,dict):
+            continue
+        name=str(frame.get("image_name") or "").strip()
+        if name:
+            result[name]=frame
+    return result
+
+
+def _camera_forward_world(image_row) -> tuple[float,float,float]:
+    rotation=qvec_to_rotation_matrix(image_row["qvec"])
+    # COLMAP camera +Z points forward. For world->camera R, world forward is R^T * Z.
+    return (
+        float(rotation[2][0]),
+        float(rotation[2][1]),
+        float(rotation[2][2]),
+    )
+
+
+def _dot3(a,b) -> float:
+    return sum(float(a[index])*float(b[index]) for index in range(3))
+
+
+def _distance3(a,b) -> float:
+    return math.sqrt(sum((float(a[index])-float(b[index]))**2 for index in range(3)))
+
+
+def _select_patch_match_sources(
+    image_rows,
+    frame_by_name: dict[str, dict[str, object]],
+    *,
+    max_sources: int=20,
+    same_route_budget: int=12,
+    cross_route_budget: int=8,
+) -> dict[str, tuple[str,...]]:
+    if type(max_sources) is not int or max_sources < 2:
+        raise ContractError("PatchMatch max_sources must be an integer >= 2")
+    rows=tuple(image_rows)
+    if len(rows)<3:
+        raise ContractError("Explicit PatchMatch source selection requires at least 3 registered images")
+
+    info={}
+    for row in rows:
+        name=str(row["name"])
+        frame=frame_by_name.get(name,{})
+        info[name]={
+            "row":row,
+            "center":colmap_camera_center(row["qvec"],row["tvec"]),
+            "forward":_camera_forward_world(row),
+            "route":str(frame.get("path_name") or ""),
+            "index":int(frame.get("global_frame_index") or 0),
+        }
+
+    selected={}
+    for name,current in info.items():
+        candidates=[]
+        for other_name,other in info.items():
+            if other_name==name:
+                continue
+            distance=_distance3(current["center"],other["center"])
+            dot=max(-1.0,min(1.0,_dot3(current["forward"],other["forward"])))
+            same_route=bool(current["route"]) and current["route"]==other["route"]
+            index_distance=abs(int(current["index"])-int(other["index"]))
+            # Same-route temporal neighbors are strongest continuity evidence.
+            # Cross-route candidates are ranked by metric proximity with a mild
+            # viewing-direction penalty, so every reference also gets independent
+            # baseline evidence instead of relying on one fragmented sparse component.
+            score=(
+                index_distance*0.25 + distance*0.05
+                if same_route
+                else distance*(1.5-0.5*dot)
+            )
+            candidates.append({
+                "name":other_name,
+                "same_route":same_route,
+                "index_distance":index_distance,
+                "distance":distance,
+                "view_dot":dot,
+                "score":score,
+            })
+
+        same=sorted(
+            (item for item in candidates if item["same_route"]),
+            key=lambda item:(item["index_distance"],item["distance"],item["name"]),
+        )
+        cross=sorted(
+            (item for item in candidates if not item["same_route"]),
+            key=lambda item:(item["score"],item["distance"],item["name"]),
+        )
+        chosen=[]
+        for item in same[:same_route_budget]:
+            if item["name"] not in chosen:
+                chosen.append(item["name"])
+        for item in cross[:cross_route_budget]:
+            if item["name"] not in chosen:
+                chosen.append(item["name"])
+        for item in sorted(candidates,key=lambda item:(item["score"],item["distance"],item["name"])):
+            if len(chosen)>=max_sources:
+                break
+            if item["name"] not in chosen:
+                chosen.append(item["name"])
+        chosen=chosen[:max_sources]
+        if len(chosen)<2:
+            raise ContractError(f"PatchMatch reference {name} has fewer than two explicit sources")
+        selected[name]=tuple(chosen)
+    return selected
+
+
+def _read_sparse_points_xyz(dataset_root: Path, *, max_points: int=5000):
+    path=dataset_root/"sparse"/"triangulated_txt"/"points3D.txt"
+    if not path.is_file():
+        return ()
+    points=[]
+    for raw in path.read_text(encoding="utf-8",errors="replace").splitlines():
+        line=raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts=line.split()
+        if len(parts)<4:
+            continue
+        try:
+            xyz=(float(parts[1]),float(parts[2]),float(parts[3]))
+        except ValueError:
+            continue
+        if all(math.isfinite(value) for value in xyz):
+            points.append(xyz)
+    if len(points)>max_points:
+        stride=max(1,math.ceil(len(points)/max_points))
+        points=points[::stride][:max_points]
+    return tuple(points)
+
+
+def _estimate_patch_match_depth_range(
+    dataset_root: Path,
+    image_rows,
+) -> tuple[float,float,str]:
+    points=_read_sparse_points_xyz(dataset_root)
+    positive=[]
+    if points:
+        for row in image_rows:
+            rotation=qvec_to_rotation_matrix(row["qvec"])
+            tvec=row["tvec"]
+            for point in points:
+                depth=(
+                    rotation[2][0]*point[0]
+                    + rotation[2][1]*point[1]
+                    + rotation[2][2]*point[2]
+                    + float(tvec[2])
+                )
+                if math.isfinite(depth) and depth>1.0e-4:
+                    positive.append(float(depth))
+    if positive:
+        depth_min=max(0.01,_quantile(positive,0.01)*0.5)
+        depth_max=max(depth_min*10.0,_quantile(positive,0.99)*1.5)
+        return float(depth_min),float(depth_max),"SPARSE_POSITIVE_DEPTH_P01_P99_EXPANDED"
+
+    centers=[colmap_camera_center(row["qvec"],row["tvec"]) for row in image_rows]
+    max_span=0.0
+    for axis in range(3):
+        values=[center[axis] for center in centers]
+        if values:
+            max_span=max(max_span,max(values)-min(values))
+    depth_min=0.01
+    depth_max=max(10.0,max_span*4.0)
+    return depth_min,depth_max,"CAMERA_SPAN_FALLBACK"
+
+
+def _patch_match_reference_count(path: Path) -> int:
+    if not path.is_file():
+        return 0
+    lines=[line.strip() for line in path.read_text(encoding="utf-8",errors="replace").splitlines() if line.strip()]
+    return len(lines)//2
+
+
+def write_explicit_patch_match_config(
+    dataset_root: str | Path,
+    dense_root: str | Path,
+    *,
+    max_sources: int=20,
+) -> dict[str, object]:
+    """Replace COLMAP auto-neighbor selection with bounded explicit known-camera sources.
+
+    ConceptGhost uses artist-authored/P9-derived known cameras. The sparse point
+    cloud can be fragmented enough that COLMAP's auto source selection omits
+    otherwise valid registered reference views. Gate 7 needs geometric evidence
+    per registered view, so the dense stage explicitly enumerates all registered
+    references with bounded same-route + cross-route sources.
+    """
+
+    dataset_root=Path(dataset_root).resolve()
+    dense_root=Path(dense_root).resolve()
+    sparse_root=dense_root/"sparse"
+    image_rows,storage=load_colmap_sparse_images(sparse_root)
+    frame_by_name=_read_dataset_frames(dataset_root)
+    registered_names={str(row["name"]) for row in image_rows}
+    missing_dataset=sorted(registered_names-set(frame_by_name))
+    if missing_dataset:
+        raise ContractError(
+            "Dense registered images are missing from authoritative dataset manifest: "
+            f"{missing_dataset[:10]}"
+        )
+
+    sources=_select_patch_match_sources(
+        image_rows,
+        frame_by_name,
+        max_sources=max_sources,
+    )
+    config_path=dense_root/"stereo"/"patch-match.cfg"
+    config_path.parent.mkdir(parents=True,exist_ok=True)
+    original_reference_count=_patch_match_reference_count(config_path)
+    backup_path=dense_root/"stereo"/"patch-match.auto.cfg"
+    if config_path.is_file() and not backup_path.is_file():
+        shutil.copy2(config_path,backup_path)
+
+    ordered=sorted(
+        image_rows,
+        key=lambda row:(
+            int(frame_by_name[str(row["name"])].get("global_frame_index") or 0),
+            str(row["name"]),
+        ),
+    )
+    rows=[]
+    cross_route_counts=[]
+    source_counts=[]
+    for row in ordered:
+        name=str(row["name"])
+        chosen=sources[name]
+        rows.append(name)
+        rows.append(", ".join(chosen))
+        source_counts.append(len(chosen))
+        route=str(frame_by_name[name].get("path_name") or "")
+        cross_route_counts.append(sum(
+            1 for source in chosen
+            if str(frame_by_name[source].get("path_name") or "")!=route
+        ))
+    config_path.write_text("\n".join(rows)+"\n",encoding="utf-8")
+
+    depth_min,depth_max,depth_policy=_estimate_patch_match_depth_range(
+        dataset_root,
+        image_rows,
+    )
+    diagnostics={
+        "schema":"ConceptGhost.P10PatchMatchSourceConfig.v0.1",
+        "policy":"EXPLICIT_KNOWN_CAMERA_SAME_ROUTE_PLUS_CROSS_ROUTE",
+        "camera_model_storage":storage,
+        "registered_image_count":len(image_rows),
+        "original_auto_reference_count":original_reference_count,
+        "explicit_reference_count":len(ordered),
+        "max_sources":int(max_sources),
+        "min_source_count":min(source_counts) if source_counts else 0,
+        "max_source_count":max(source_counts) if source_counts else 0,
+        "min_cross_route_source_count":min(cross_route_counts) if cross_route_counts else 0,
+        "max_cross_route_source_count":max(cross_route_counts) if cross_route_counts else 0,
+        "depth_min":float(depth_min),
+        "depth_max":float(depth_max),
+        "depth_policy":depth_policy,
+        "config_path":str(config_path),
+        "auto_config_backup_path":str(backup_path) if backup_path.is_file() else None,
+        "p9_authority_changed":False,
+    }
+    diag_path=dense_root/"patch_match_source_config.json"
+    diag_path.write_text(json.dumps(diagnostics,indent=2,sort_keys=True),encoding="utf-8")
+    diagnostics["manifest_path"]=str(diag_path)
+    return diagnostics
+
+
+def _matching_image_names(root: Path, suffix: str) -> set[str]:
+    if not root.is_dir():
+        return set()
+    result=set()
+    for path in root.rglob(f"*{suffix}"):
+        if path.is_file():
+            name=path.name
+            if name.endswith(suffix):
+                result.add(name[:-len(suffix)])
+    return result
+
+
+def inspect_dense_geometric_evidence(
+    dataset_root: str | Path,
+    *,
+    min_coverage_ratio: float=0.70,
+) -> dict[str, object]:
+    dataset_root=Path(dataset_root).resolve()
+    dense_root=dataset_root/"dense"
+    image_rows,_=load_colmap_sparse_images(dense_root/"sparse")
+    registered_names={str(row["name"]) for row in image_rows}
+    depth_names=_matching_image_names(dense_root/"stereo"/"depth_maps",".geometric.bin")
+    graph_names=_matching_image_names(dense_root/"stereo"/"consistency_graphs",".geometric.bin")
+    normal_names=_matching_image_names(dense_root/"stereo"/"normal_maps",".geometric.bin")
+    usable=registered_names & depth_names & graph_names
+    registered_count=len(registered_names)
+    ratio=len(usable)/float(registered_count) if registered_count else 0.0
+    return {
+        "schema":"ConceptGhost.P10DenseGeometricEvidenceStatus.v0.1",
+        "registered_image_count":registered_count,
+        "geometric_depth_map_file_count":len(depth_names),
+        "geometric_normal_map_file_count":len(normal_names),
+        "geometric_consistency_graph_file_count":len(graph_names),
+        "usable_registered_geometric_image_count":len(usable),
+        "geometric_evidence_coverage_ratio":ratio,
+        "min_coverage_ratio":float(min_coverage_ratio),
+        "missing_geometric_registered_images":sorted(registered_names-usable),
+        "gate7_geometric_evidence_ready":bool(
+            registered_count>0 and ratio>=float(min_coverage_ratio)
+        ),
+    }
+
+
+def _run_dense_command(
+    argv: list[str],
+    *,
+    cwd: Path,
+    log_path: Path,
+) -> dict[str, object]:
+    result=subprocess.run(
+        argv,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    log_path.parent.mkdir(parents=True,exist_ok=True)
+    log_path.write_text(
+        "COMMAND\n"+" ".join(argv)
+        +"\n\nSTDOUT\n"+(result.stdout or "")
+        +"\n\nSTDERR\n"+(result.stderr or ""),
+        encoding="utf-8",
+    )
+    record={
+        "command":argv[1] if len(argv)>1 else "",
+        "argv":argv,
+        "returncode":int(result.returncode),
+        "log_path":str(log_path),
+    }
+    if result.returncode!=0:
+        raise RuntimeError(
+            f"COLMAP {record['command']} failed with exit code {result.returncode}; "
+            f"see {log_path}"
+        )
+    return record
+
+
+def repair_dense_geometric_evidence(
+    dataset_root: str | Path,
+    *,
+    colmap_executable: str="colmap",
+    min_coverage_ratio: float=0.70,
+    max_sources: int=20,
+    max_image_size: int=832,
+    patch_match_cache_gb: float=4.0,
+    fusion_cache_gb: float=4.0,
+    min_num_pixels: int=2,
+) -> dict[str, object]:
+    """Repair an existing dense workspace without rebuilding WAN or sparse cameras."""
+
+    dataset_root=Path(dataset_root).resolve()
+    dense_root=dataset_root/"dense"
+    if not dense_root.is_dir():
+        raise ContractError(f"Dense workspace is missing for Gate 7 repair: {dense_root}")
+    executable=_resolve_executable(colmap_executable)
+    before=inspect_dense_geometric_evidence(
+        dataset_root,
+        min_coverage_ratio=min_coverage_ratio,
+    )
+    if before["gate7_geometric_evidence_ready"]:
+        return {
+            "status":"REUSED",
+            "before":before,
+            "after":before,
+            "commands":[],
+        }
+
+    setup=write_explicit_patch_match_config(
+        dataset_root,
+        dense_root,
+        max_sources=max_sources,
+    )
+    log_root=dataset_root/"logs"/"gate6_4_repair"
+    patch_argv=[
+        executable,
+        "patch_match_stereo",
+        "--workspace_path",str(dense_root),
+        "--workspace_format","COLMAP",
+        "--PatchMatchStereo.geom_consistency","1",
+        "--PatchMatchStereo.write_consistency_graph","1",
+        "--PatchMatchStereo.max_image_size",str(int(max_image_size)),
+        "--PatchMatchStereo.cache_size",f"{float(patch_match_cache_gb):g}",
+        "--PatchMatchStereo.gpu_index","0",
+        "--PatchMatchStereo.num_iterations","3",
+        "--PatchMatchStereo.depth_min",f"{float(setup['depth_min']):.17g}",
+        "--PatchMatchStereo.depth_max",f"{float(setup['depth_max']):.17g}",
+    ]
+    commands=[
+        _run_dense_command(
+            patch_argv,
+            cwd=dataset_root,
+            log_path=log_root/"00_patch_match_stereo_explicit_sources.log",
+        )
+    ]
+
+    fused=dense_root/"fused.ply"
+    if fused.is_file():
+        fused.unlink()
+    fusion_argv=[
+        executable,
+        "stereo_fusion",
+        "--workspace_path",str(dense_root),
+        "--workspace_format","COLMAP",
+        "--input_type","geometric",
+        "--output_type","PLY",
+        "--output_path",str(fused),
+        "--StereoFusion.max_image_size",str(int(max_image_size)),
+        "--StereoFusion.cache_size",f"{float(fusion_cache_gb):g}",
+        "--StereoFusion.min_num_pixels",str(int(min_num_pixels)),
+    ]
+    commands.append(
+        _run_dense_command(
+            fusion_argv,
+            cwd=dataset_root,
+            log_path=log_root/"01_stereo_fusion_after_evidence_repair.log",
+        )
+    )
+    if not fused.is_file():
+        raise ContractError("Gate 7 dense evidence repair completed without fused.ply")
+
+    after=inspect_dense_geometric_evidence(
+        dataset_root,
+        min_coverage_ratio=min_coverage_ratio,
+    )
+    cloud_health=analyze_and_render_fused_cloud(
+        fused,
+        dense_root/"dense_fused_preview.svg",
+        max_preview_points=50000,
+    )
+
+    manifest_path=dataset_root/"dense_reconstruction_manifest.json"
+    existing={}
+    if manifest_path.is_file():
+        try:
+            candidate=json.loads(manifest_path.read_text(encoding="utf-8"))
+            if isinstance(candidate,dict):
+                existing=candidate
+        except (OSError,json.JSONDecodeError):
+            existing={}
+    existing.update(after)
+    existing.update({
+        "schema":"ConceptGhost.P10DenseReconstructionResult.v0.4",
+        "status":"PASS" if after["gate7_geometric_evidence_ready"] else "FAIL",
+        "gate7_geometric_evidence_ready":bool(after["gate7_geometric_evidence_ready"]),
+        "patch_match_source_config":setup,
+        "gate7_geometric_evidence_repair":{
+            "status":"PASS" if after["gate7_geometric_evidence_ready"] else "FAIL",
+            "before":before,
+            "after":after,
+            "commands":commands,
+            "p9_authority_changed":False,
+        },
+        "fused_cloud":cloud_health,
+        "fused_ply_path":str(fused),
+        "visual_evidence_path":cloud_health["preview_path"],
+        "diagnostic_log_root":str(log_root),
+    })
+    manifest_path.write_text(
+        json.dumps(existing,indent=2,sort_keys=True),
+        encoding="utf-8",
+    )
+    if not after["gate7_geometric_evidence_ready"]:
+        raise ContractError(
+            "Gate 7 dense evidence repair remained below coverage threshold: "
+            f"{after['usable_registered_geometric_image_count']}/"
+            f"{after['registered_image_count']}="
+            f"{after['geometric_evidence_coverage_ratio']:.3f} "
+            f"< {float(min_coverage_ratio):.3f}; "
+            f"missing={after['missing_geometric_registered_images'][:10]}"
+        )
+    return {
+        "status":"REPAIRED",
+        "before":before,
+        "after":after,
+        "source_config":setup,
+        "commands":commands,
+        "dense_manifest_path":str(manifest_path),
+    }
+
+
 def _count_matching_files(root: Path, suffix: str) -> int:
     if not root.is_dir():
         return 0
@@ -447,8 +949,20 @@ def run_dense_reconstruction(
     log_root.mkdir(parents=True, exist_ok=True)
 
     executed = []
+    patch_match_setup=None
     for index, step in enumerate(plan.steps):
         argv = list(step.argv(executable))
+        if step.command=="patch_match_stereo":
+            if patch_match_setup is None:
+                patch_match_setup=write_explicit_patch_match_config(
+                    plan.dataset_root,
+                    plan.dense_root,
+                    max_sources=20,
+                )
+            argv.extend((
+                "--PatchMatchStereo.depth_min",f"{float(patch_match_setup['depth_min']):.17g}",
+                "--PatchMatchStereo.depth_max",f"{float(patch_match_setup['depth_max']):.17g}",
+            ))
         result = subprocess.run(
             argv,
             cwd=str(plan.dataset_root),
@@ -475,6 +989,12 @@ def run_dense_reconstruction(
                 f"COLMAP {step.command} failed with exit code {result.returncode}; "
                 f"see {log_path}"
             )
+        if step.command=="image_undistorter":
+            patch_match_setup=write_explicit_patch_match_config(
+                plan.dataset_root,
+                plan.dense_root,
+                max_sources=20,
+            )
 
     if not plan.fused_ply_path.is_file():
         raise ContractError("COLMAP dense fusion completed without fused.ply")
@@ -486,25 +1006,15 @@ def run_dense_reconstruction(
     )
     depth_map_root = plan.dense_root / "stereo" / "depth_maps"
     normal_map_root = plan.dense_root / "stereo" / "normal_maps"
-    consistency_root = plan.dense_root / "stereo" / "consistency_graphs"
     depth_map_count = _count_matching_files(depth_map_root, ".bin")
     normal_map_count = _count_matching_files(normal_map_root, ".bin")
-    geometric_depth_map_count = _count_matching_files(depth_map_root, ".geometric.bin")
-    geometric_normal_map_count = _count_matching_files(normal_map_root, ".geometric.bin")
-    consistency_graph_count = _count_matching_files(consistency_root, ".geometric.bin")
-
-    # A successful COLMAP return code is not sufficient for Gate 7.  Gate 7.3
-    # explicitly requires geometric depth plus consistency-graph evidence.
-    if plan.geom_consistency and geometric_depth_map_count <= 0:
-        raise ContractError(
-            "COLMAP dense reconstruction produced no geometric depth maps; "
-            "Gate 7 free-space evidence cannot run"
-        )
-    if plan.geom_consistency and consistency_graph_count <= 0:
-        raise ContractError(
-            "COLMAP dense reconstruction produced no geometric consistency graphs; "
-            "PatchMatchStereo.write_consistency_graph must be enabled for Gate 7"
-        )
+    evidence_status=inspect_dense_geometric_evidence(
+        plan.dataset_root,
+        min_coverage_ratio=0.70,
+    )
+    geometric_depth_map_count=int(evidence_status["geometric_depth_map_file_count"])
+    geometric_normal_map_count=int(evidence_status["geometric_normal_map_file_count"])
+    consistency_graph_count=int(evidence_status["geometric_consistency_graph_file_count"])
 
     sparse_manifest_path=plan.dataset_root/"sparse_triangulation_manifest.json"
     sparse_manifest=None
@@ -527,9 +1037,12 @@ def run_dense_reconstruction(
         "geometric_depth_map_file_count": geometric_depth_map_count,
         "geometric_normal_map_file_count": geometric_normal_map_count,
         "geometric_consistency_graph_file_count": consistency_graph_count,
-        "gate7_geometric_evidence_ready": bool(
-            geometric_depth_map_count > 0 and consistency_graph_count > 0
-        ),
+        "registered_image_count":evidence_status["registered_image_count"],
+        "usable_registered_geometric_image_count":evidence_status["usable_registered_geometric_image_count"],
+        "geometric_evidence_coverage_ratio":evidence_status["geometric_evidence_coverage_ratio"],
+        "missing_geometric_registered_images":evidence_status["missing_geometric_registered_images"],
+        "gate7_geometric_evidence_ready":bool(evidence_status["gate7_geometric_evidence_ready"]),
+        "patch_match_source_config":patch_match_setup,
         "fused_cloud": cloud_health,
         "source_sparse_manifest_path":(
             str(sparse_manifest_path.resolve()) if sparse_manifest_path.is_file() else None
@@ -550,8 +1063,21 @@ def run_dense_reconstruction(
         "diagnostic_log_root": str(log_root.resolve()),
     }
     result_path = plan.dataset_root / "dense_reconstruction_manifest.json"
+    result_manifest["schema"]="ConceptGhost.P10DenseReconstructionResult.v0.4"
+    result_manifest["status"]=(
+        "PASS" if evidence_status["gate7_geometric_evidence_ready"] else "FAIL"
+    )
     result_path.write_text(
         json.dumps(result_manifest, indent=2, sort_keys=True),
         encoding="utf-8",
     )
+    if not evidence_status["gate7_geometric_evidence_ready"]:
+        raise ContractError(
+            "COLMAP dense geometric-evidence coverage below Gate 7 threshold after "
+            "explicit known-camera source configuration: "
+            f"{evidence_status['usable_registered_geometric_image_count']}/"
+            f"{evidence_status['registered_image_count']}="
+            f"{evidence_status['geometric_evidence_coverage_ratio']:.3f} < 0.700; "
+            f"missing={evidence_status['missing_geometric_registered_images'][:10]}"
+        )
     return result_manifest
