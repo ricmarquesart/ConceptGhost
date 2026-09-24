@@ -118,6 +118,9 @@ def build_free_space_evidence(
     max_free_samples_per_ray: int = 96,
     min_consistent_sources: int = 2,
     cap_frames_per_route: int = 2,
+    min_frame_coverage_ratio: float = 0.70,
+    min_mission_coverage_ratio: float = 0.70,
+    min_per_mission_frame_ratio: float = 0.70,
 ) -> dict[str, Any]:
     """Build sparse FREE/OCCUPIED evidence from COLMAP geometric depth maps.
 
@@ -157,6 +160,14 @@ def build_free_space_evidence(
         raise ContractError("Gate 7.3 Scene Contract mismatch")
     if str(dataset.get("run_id") or "") != str(confidence.get("p9_run_id") or ""):
         raise ContractError("Gate 7.3 source P9 run mismatch")
+
+    for ratio_name, ratio_value in (
+        ("min_frame_coverage_ratio", min_frame_coverage_ratio),
+        ("min_mission_coverage_ratio", min_mission_coverage_ratio),
+        ("min_per_mission_frame_ratio", min_per_mission_frame_ratio),
+    ):
+        if not math.isfinite(float(ratio_value)) or not 0.0 <= float(ratio_value) <= 1.0:
+            raise ContractError(f"{ratio_name} must be finite within [0,1]")
 
     for name, value in (
         ("max_pixels_per_frame", max_pixels_per_frame),
@@ -211,13 +222,96 @@ def build_free_space_evidence(
     dense_images, image_model_storage = load_colmap_sparse_images(dense_sparse_root)
     dense_name_order = [str(row["name"]) for row in dense_images]
     dense_by_name = {str(row["name"]): row for row in dense_images}
-    if set(dense_name_order) != set(frame_by_name):
-        missing_dense = sorted(set(frame_by_name) - set(dense_name_order))
-        missing_dataset = sorted(set(dense_name_order) - set(frame_by_name))
+    dataset_names = set(frame_by_name)
+    dense_names = set(dense_name_order)
+    missing_dense = sorted(dataset_names - dense_names)
+    missing_dataset = sorted(dense_names - dataset_names)
+    if missing_dataset:
         raise ContractError(
-            "Dense images.txt / dataset frame identity mismatch: "
-            f"missing_dense={missing_dense[:5]}, missing_dataset={missing_dataset[:5]}"
+            "Dense sparse model contains images outside the authoritative Gate 6 dataset: "
+            f"missing_dataset={missing_dataset[:10]}"
         )
+
+    # Gate 7 uses the intersection of views that COLMAP actually registered and
+    # for which geometric depth + consistency evidence exists. Missing views are
+    # explicit diagnostics, not silently treated as FREE space.
+    usable_dense_images = []
+    missing_geometric_evidence = []
+    for image_row in dense_images:
+        image_name = str(image_row["name"])
+        if image_name not in frame_by_name:
+            continue
+        depth_path, graph_path = _depth_and_graph_paths(dense_root, image_name)
+        if depth_path.is_file() and graph_path.is_file():
+            usable_dense_images.append(image_row)
+        else:
+            missing_geometric_evidence.append({
+                "image_name": image_name,
+                "depth_exists": depth_path.is_file(),
+                "consistency_exists": graph_path.is_file(),
+            })
+
+    total_dataset_frames = len(frame_by_name)
+    usable_frame_names = {str(row["name"]) for row in usable_dense_images}
+    frame_coverage_ratio = (
+        len(usable_frame_names) / float(total_dataset_frames)
+        if total_dataset_frames else 0.0
+    )
+
+    route_totals: dict[str, int] = defaultdict(int)
+    route_usable: dict[str, int] = defaultdict(int)
+    for frame in frame_by_name.values():
+        route_totals[str(frame["path_name"])] += 1
+    for name in usable_frame_names:
+        route_usable[str(frame_by_name[name]["path_name"])] += 1
+
+    mission_rows = []
+    qualifying_missions = 0
+    for route in sorted(route_totals):
+        total_frames = int(route_totals[route])
+        usable_frames = int(route_usable.get(route, 0))
+        ratio = usable_frames / float(total_frames) if total_frames else 0.0
+        qualifies = ratio >= float(min_per_mission_frame_ratio)
+        if qualifies:
+            qualifying_missions += 1
+        mission_rows.append({
+            "mission": route,
+            "dataset_frames": total_frames,
+            "usable_colmap_frames": usable_frames,
+            "frame_coverage_ratio": ratio,
+            "qualifies": qualifies,
+        })
+
+    mission_count = len(route_totals)
+    mission_coverage_ratio = (
+        qualifying_missions / float(mission_count)
+        if mission_count else 0.0
+    )
+
+    if frame_coverage_ratio < float(min_frame_coverage_ratio):
+        raise ContractError(
+            "Gate 7 COLMAP usable-frame coverage below threshold: "
+            f"{len(usable_frame_names)}/{total_dataset_frames}="
+            f"{frame_coverage_ratio:.3f} < {float(min_frame_coverage_ratio):.3f}; "
+            f"missing_dense={missing_dense[:10]}, "
+            f"missing_geometric={[row['image_name'] for row in missing_geometric_evidence[:10]]}"
+        )
+    if mission_coverage_ratio < float(min_mission_coverage_ratio):
+        raise ContractError(
+            "Gate 7 COLMAP mission coverage below threshold: "
+            f"{qualifying_missions}/{mission_count}={mission_coverage_ratio:.3f} "
+            f"< {float(min_mission_coverage_ratio):.3f}; "
+            f"missions={mission_rows}"
+        )
+    if mission_count < 2 or qualifying_missions < 2:
+        raise ContractError(
+            "Gate 7 free-space evidence requires at least two qualifying independent missions"
+        )
+
+    # All downstream evidence uses only registered + geometrically usable views.
+    dense_images = tuple(usable_dense_images)
+    dense_name_order = [str(row["name"]) for row in dense_images]
+    dense_by_name = {str(row["name"]): row for row in dense_images}
 
     cells: dict[tuple[int, int, int], dict[str, Any]] = {}
 
@@ -445,11 +539,33 @@ def build_free_space_evidence(
             "free_step_m": free_step,
             "cap_frames_per_route": cap_frames_per_route,
         },
+        "colmap_coverage": {
+            "policy": "USE_REGISTERED_GEOMETRIC_INTERSECTION_REQUIRE_70_PERCENT",
+            "dataset_frame_count": total_dataset_frames,
+            "dense_sparse_registered_frame_count": len(dense_names),
+            "usable_geometric_frame_count": len(usable_frame_names),
+            "missing_dense_frame_count": len(missing_dense),
+            "missing_dense_frames": missing_dense,
+            "missing_geometric_evidence_count": len(missing_geometric_evidence),
+            "missing_geometric_evidence": missing_geometric_evidence,
+            "frame_coverage_ratio": frame_coverage_ratio,
+            "min_frame_coverage_ratio": float(min_frame_coverage_ratio),
+            "mission_count": mission_count,
+            "qualifying_mission_count": qualifying_missions,
+            "mission_coverage_ratio": mission_coverage_ratio,
+            "min_mission_coverage_ratio": float(min_mission_coverage_ratio),
+            "min_per_mission_frame_ratio": float(min_per_mission_frame_ratio),
+            "missions": mission_rows,
+            "pass": True,
+        },
         "sampling": {
             "max_pixels_per_frame": max_pixels_per_frame,
             "max_free_samples_per_ray": max_free_samples_per_ray,
             "min_consistent_sources": min_consistent_sources,
             "frame_count": len(frame_diagnostics),
+            "dataset_frame_count": total_dataset_frames,
+            "usable_frame_coverage_ratio": frame_coverage_ratio,
+            "qualifying_mission_coverage_ratio": mission_coverage_ratio,
             "sampled_valid_depth_pixels": total_valid_depth_samples,
             "accepted_consistent_rays": total_selected_rays,
             "free_cell_visits": total_free_cell_visits,
