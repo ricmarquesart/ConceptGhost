@@ -97,6 +97,16 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'function drawPivotGizmo()',
             'function hitPivotAxis(x,y)',
             'state.orbitYaw -= dx * 0.008',
+            '"Aim deste ponto"',
+            '"Usar padrão"',
+            'point.look_direction',
+            'spin_pitch_deg',
+            'spin_yaw_start_deg',
+            'P10DroneRoutePreset.v0.2',
+            'routeRowsForExport',
+            'readableRouteExports',
+            '"look_right"',
+            '"aim_authority"',
         ):
             self.assertIn(required, source)
 
@@ -193,6 +203,22 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
 
 
 
+
+
+    def test_route_editor_per_waypoint_and_portable_export_contract(self):
+        import p10_lab
+
+        frontend=(Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js").read_text(encoding="utf-8")
+        for token in (
+            "Aim deste ponto","Usar padrão","point.look_direction",
+            "spin_pitch_deg","spin_yaw_start_deg",
+            "ConceptGhost.P10DroneRoutePreset.v0.2",
+            "LEGACY_ROUTE_PRESET_SCHEMAS",
+            "routeRowsForExport","readableRouteExports",
+            "look_right","look_up","look_forward","yaw_deg","pitch_deg","aim_authority",
+            ".csv",".txt",
+        ):
+            self.assertIn(token,frontend)
 
     def test_perspective_pivot_contract_is_display_only(self):
         import p10_lab
