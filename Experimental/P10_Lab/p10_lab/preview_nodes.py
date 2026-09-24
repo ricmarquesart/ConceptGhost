@@ -584,11 +584,16 @@ class ConceptGhostP10Gate7Runtime:
             },
         }
 
-    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING")
     RETURN_NAMES = (
         "gate7_review_image",
         "protected_fusion_candidate_ply",
         "gate7_runtime_manifest_path",
+        "registration_manifest_path",
+        "confidence_manifest_path",
+        "confidence_free_space_overlay_manifest_path",
+        "dataset_manifest_path",
+        "pre_fusion_mesh_path",
         "protected_fusion_manifest_path",
         "visual_review_manifest_path",
         "diagnostics_json",
@@ -652,6 +657,20 @@ class ConceptGhostP10Gate7Runtime:
                 tensor,
                 str(artifacts["protected_fusion_candidate_ply_path"]),
                 str(result["manifest_path"]),
+                str(artifacts["registration_manifest_path"]),
+                str(artifacts["confidence_manifest_path"]),
+                str(artifacts["confidence_free_space_overlay_manifest_path"]),
+                str(Path(artifacts["registration_manifest_path"]).resolve().parent.parent.parent / "gate6" / "dataset_manifest.json")
+                    if False else str(
+                        __import__("json").loads(
+                            Path(artifacts["registration_manifest_path"]).read_text(encoding="utf-8")
+                        )["dataset_manifest_path"]
+                    ),
+                str(
+                    __import__("json").loads(
+                        Path(artifacts["registration_manifest_path"]).read_text(encoding="utf-8")
+                    )["pre_fusion_mesh_path"]
+                ),
                 str(artifacts["protected_fusion_manifest_path"]),
                 str(artifacts["visual_review_manifest_path"]),
                 rendered,
