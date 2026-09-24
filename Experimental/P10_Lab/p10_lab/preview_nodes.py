@@ -629,6 +629,9 @@ class ConceptGhostP10Gate7Runtime:
             colmap_executable=str(colmap_executable or "colmap"),
         )
         artifacts = result["artifacts"]
+        registration_payload = json.loads(
+            Path(artifacts["registration_manifest_path"]).read_text(encoding="utf-8")
+        )
         preview_path = Path(artifacts["visual_review_png_path"])
         with Image.open(preview_path) as opened:
             array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
@@ -660,17 +663,8 @@ class ConceptGhostP10Gate7Runtime:
                 str(artifacts["registration_manifest_path"]),
                 str(artifacts["confidence_manifest_path"]),
                 str(artifacts["confidence_free_space_overlay_manifest_path"]),
-                str(Path(artifacts["registration_manifest_path"]).resolve().parent.parent.parent / "gate6" / "dataset_manifest.json")
-                    if False else str(
-                        __import__("json").loads(
-                            Path(artifacts["registration_manifest_path"]).read_text(encoding="utf-8")
-                        )["dataset_manifest_path"]
-                    ),
-                str(
-                    __import__("json").loads(
-                        Path(artifacts["registration_manifest_path"]).read_text(encoding="utf-8")
-                    )["pre_fusion_mesh_path"]
-                ),
+                str(registration_payload["dataset_manifest_path"]),
+                str(registration_payload["pre_fusion_mesh_path"]),
                 str(artifacts["protected_fusion_manifest_path"]),
                 str(artifacts["visual_review_manifest_path"]),
                 rendered,
