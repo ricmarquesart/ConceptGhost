@@ -241,6 +241,10 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "selected_camera_live_preview":True,
                 "selected_camera_frustum":True,
                 "selected_camera_authoritative_refresh_node":"ConceptGhostP10SelectedDroneCameraPreview",
+                "perspective_pivot_gimbal":True,
+                "pivot_axes":["X_RIGHT","Y_UP","Z_FORWARD"],
+                "pivot_presets":["RESET_PIVOT","PIVOT_TO_SCENE","PIVOT_TO_SELECTED_CAMERA"],
+                "orbit_horizontal_default":"CONVENTIONAL_VIEWPORT",
             },
         }
         rendered_diagnostics=_pretty(diagnostics)
