@@ -8,6 +8,7 @@ on:
       - 'Experimental/P10_Lab/p10_lab/colmap_dense_io.py'
       - 'Experimental/P10_Lab/p10_lab/free_space_evidence.py'
       - 'Experimental/P10_Lab/p10_lab/free_space_constraints.py'
+      - 'Experimental/P10_Lab/p10_lab/free_space_confidence.py'
       - 'Experimental/P10_Lab/p10_lab/prefusion_mesh.py'
       - 'Experimental/P10_Lab/tests/test_gate7_free_space.py'
       - '.github/workflows/p10-g7-3-free-space.yml'
@@ -40,6 +41,7 @@ jobs:
           python -m py_compile Experimental/P10_Lab/p10_lab/colmap_dense_io.py
           python -m py_compile Experimental/P10_Lab/p10_lab/free_space_evidence.py
           python -m py_compile Experimental/P10_Lab/p10_lab/free_space_constraints.py
+          python -m py_compile Experimental/P10_Lab/p10_lab/free_space_confidence.py
           python -m py_compile Experimental/P10_Lab/p10_lab/prefusion_mesh.py
 
       - name: Run Gate 7.3 focused tests
