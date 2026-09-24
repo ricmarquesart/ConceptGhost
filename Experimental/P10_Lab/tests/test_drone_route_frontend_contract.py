@@ -91,6 +91,12 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'function drawSelectedFrustum(projectFn, mission, pointIndex, color)',
             'function drawSelectedCameraView()',
             'function nearestPerspectivePoint(x, y)',
+            '"Reset Pivot"',
+            '"Pivot to Selected Camera"',
+            '"Pivot to Scene"',
+            'function drawPivotGizmo()',
+            'function hitPivotAxis(x,y)',
+            'state.orbitYaw -= dx * 0.008',
         ):
             self.assertIn(required, source)
 
@@ -186,6 +192,23 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertIn("panel_height: int=660", preview_source)
 
 
+
+
+    def test_perspective_pivot_contract_is_display_only(self):
+        import p10_lab
+        import p10_lab.route_authoring_node as node
+
+        frontend=(Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js").read_text(encoding="utf-8")
+        backend=Path(node.__file__).read_text(encoding="utf-8")
+        for token in (
+            "Reset Pivot","Pivot to Selected Camera","Pivot to Scene",
+            "X / Right","Y / Up","Z / Forward",
+            "drawPivotGizmo","hitPivotAxis","movePivotAlongAxis",
+            "state.orbitYaw -= dx * 0.008",
+        ):
+            self.assertIn(token,frontend)
+        self.assertIn('"perspective_pivot_gimbal":True',backend)
+        self.assertIn('"orbit_horizontal_default":"CONVENTIONAL_VIEWPORT"',backend)
 
     def test_route_editor_selected_camera_preview_contract(self):
         import p10_lab
