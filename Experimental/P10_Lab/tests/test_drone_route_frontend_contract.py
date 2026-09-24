@@ -62,6 +62,16 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'manual_direction',
             'targetDragging',
             'orientationTip',
+            'function zoomControlRects(panel)',
+            'function hitZoomControl(x, y)',
+            'function applyPanelZoom(panel, factor, anchorPoint = null)',
+            'function zoomAtCanvasPoint(xy, factor)',
+            'function drawZoomControls(panel)',
+            'root.addEventListener("wheel"',
+            'event.stopPropagation()',
+            'event.stopImmediatePropagation?.()',
+            '{ passive: false, capture: true }',
+            'zoomControl.action === "in" ? 1.25 : 0.80',
         ):
             self.assertIn(required, source)
 
@@ -87,6 +97,30 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertEqual(source.count("function perspectivePanel() {"), 1)
         self.assertEqual(source.count("function eventCoordinates(event) {"), 1)
         self.assertEqual(source.count('droneSelect.addEventListener("change", () => {'), 1)
+
+    def test_route_editor_zoom_is_isolated_from_comfy_workspace(self):
+        import p10_lab
+
+        path=Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js"
+        source=path.read_text(encoding="utf-8")
+        self.assertIn('root.addEventListener("wheel"', source)
+        self.assertNotIn('canvas.addEventListener("wheel"', source)
+        self.assertIn('{ passive: false, capture: true }', source)
+        self.assertIn('event.stopPropagation()', source)
+        self.assertIn('event.stopImmediatePropagation?.()', source)
+        self.assertIn('zoomAtCanvasPoint(xy, factor)', source)
+
+    def test_each_route_view_has_explicit_zoom_buttons(self):
+        import p10_lab
+
+        path=Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js"
+        source=path.read_text(encoding="utf-8")
+        self.assertIn('function zoomControlRects(panel)', source)
+        self.assertIn('function hitZoomControl(x, y)', source)
+        self.assertIn('function drawZoomControls(panel)', source)
+        self.assertIn('if (perspective) drawZoomControls(perspective);', source)
+        self.assertIn('for (const panel of state.projection.panels || []) drawZoomControls(panel);', source)
+        self.assertIn('zoomControl.action === "in" ? 1.25 : 0.80', source)
 
     def test_frontend_javascript_parses_when_node_is_available(self):
         import p10_lab
