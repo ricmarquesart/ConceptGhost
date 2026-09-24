@@ -192,6 +192,9 @@ function setupEditor(node) {
     const clearRoute = button("Limpar rota", "Limpar os pontos do drone atual");
     const resetRoute = button("Resetar rota", "Restaurar a rota-semente desta mesma cena sem apagar P9 nem a visualização");
     const frameAll = button("Enquadrar tudo", "Restaurar zoom/pan das quatro vistas sem alterar rota ou P9");
+    const resetPivot = button("Reset Pivot", "Voltar o pivot da Perspective ao centro original da cena e zerar o pan");
+    const pivotToSelected = button("Pivot to Selected Camera", "Usar o waypoint selecionado como centro de órbita");
+    const pivotToScene = button("Pivot to Scene", "Usar o centro geométrico P9 como centro de órbita");
     const exportRoute = button("Exportar trajeto", "Salvar drones/rotas em um JSON portátil para reutilizar em outros testes");
     const importRoute = button("Importar trajeto", "Importar rapidamente um JSON de trajeto e rebindar à cena atual");
     const importInput = document.createElement("input");
@@ -228,13 +231,15 @@ function setupEditor(node) {
         "Aim:", orientationSelect, editTarget, pointAim, clearPointAim,
         "Yaw:", yawInput, "Pitch:", pitchInput,
         addDrone, removeDrone, deletePoint, undo, clearRoute, resetRoute, frameAll,
+        resetPivot, pivotToSelected, pivotToScene,
         exportRoute, importRoute, importInput
     );
 
     const help = document.createElement("div");
     help.textContent =
         "PASSO 1/2 neste workflow: após o primeiro Run, edite os drones; depois clique Run novamente para COMMITAR a rota. " +
-        "PERSPECTIVE: arraste para orbitar, Shift+arraste para pan; roda ou botões −/+ = zoom profundo. " +
+        "PERSPECTIVE: arraste para orbitar no sentido convencional de viewport, Shift+arraste para pan; roda ou botões −/+ = zoom profundo. " +
+        "O gimbal X/Right · Y/Up · Z/Forward move o pivot; há atalhos para Scene e Selected Camera. " +
         "TOP/SIDE/FRONT: roda ou botões −/+ = zoom profundo; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
         "Adicionar/mover pontos preserva exatamente zoom e pan. Exportar/Importar trajeto reutiliza os drones em novos testes. " +
         "LOOK_AT_TARGET usa Editar alvo. Display alterna Points/visual Mesh LOD sem mudar a autoridade P9; Point size é apenas visual. " +
@@ -302,6 +307,11 @@ function setupEditor(node) {
         orbitZoom: 1.0,
         orbitPanX: 0,
         orbitPanY: 0,
+        orbitPivot: null,
+        orbitPivotInitial: null,
+        pivotDragging: false,
+        pivotAxis: null,
+        pivotLast: null,
         orbitDragging: false,
         orbitPanning: false,
         orbitLast: null,
@@ -546,6 +556,7 @@ function setupEditor(node) {
         addDrone.disabled = missions.length >= 7;
         removeDrone.disabled = missions.length <= 1;
         deletePoint.disabled = state.selectedPoint == null;
+        pivotToSelected.disabled = state.selectedPoint == null;
         undo.disabled = state.history.length === 0;
 
         const planStatus = statusForPlan(state.plan);
@@ -804,10 +815,15 @@ function setupEditor(node) {
         if (!panel || !geometry) return null;
         const plot = panel.plot_rect_px;
         const center = geometry.center || [0, 0, 0];
+        const pivot = state.orbitPivot || {
+            right: Number(center[0]),
+            up: Number(center[1]),
+            forward: Number(center[2]),
+        };
         const radius = Math.max(Number(geometry.radius) || 1, 1e-3);
-        const x = Number(point.right ?? point[0]) - Number(center[0]);
-        const y = Number(point.up ?? point[1]) - Number(center[1]);
-        const z = Number(point.forward ?? point[2]) - Number(center[2]);
+        const x = Number(point.right ?? point[0]) - Number(pivot.right);
+        const y = Number(point.up ?? point[1]) - Number(pivot.up);
+        const z = Number(point.forward ?? point[2]) - Number(pivot.forward);
 
         const cy = Math.cos(state.orbitYaw);
         const sy = Math.sin(state.orbitYaw);
@@ -828,6 +844,93 @@ function setupEditor(node) {
             y: plot.y + plot.height * 0.5 + state.orbitPanY - (y2 / depth) * focal,
             depth,
         };
+    }
+
+    function scenePivot() {
+        const center = state.metadata?.preview_geometry?.center || [0,0,0];
+        return { right:Number(center[0])||0, up:Number(center[1])||0, forward:Number(center[2])||0 };
+    }
+
+    function ensureOrbitPivot(reset = false) {
+        if (reset || !state.orbitPivot) {
+            const pivot = scenePivot();
+            state.orbitPivot = { ...pivot };
+            if (reset || !state.orbitPivotInitial) state.orbitPivotInitial = { ...pivot };
+        }
+    }
+
+    function pivotAxisEndpoint(axis) {
+        ensureOrbitPivot(false);
+        const radius = Math.max(Number(state.metadata?.preview_geometry?.radius)||1,1e-3);
+        const length = Math.max(radius*0.12,0.25);
+        const point = { ...state.orbitPivot };
+        point[axis] += length;
+        return { point, length };
+    }
+
+    function pivotGizmoSegments() {
+        const pivot = state.orbitPivot;
+        if (!pivot) return [];
+        const origin = projectPerspective(pivot);
+        if (!origin) return [];
+        const defs = [
+            ["right","#ff5b5b","X / Right"],
+            ["up","#63df76","Y / Up"],
+            ["forward","#5da8ff","Z / Forward"],
+        ];
+        return defs.map(([axis,color,label]) => {
+            const endpoint = pivotAxisEndpoint(axis);
+            return { axis,color,label,length:endpoint.length,origin,end:projectPerspective(endpoint.point) };
+        }).filter((item)=>item.end);
+    }
+
+    function drawPivotGizmo() {
+        const panel = perspectivePanel();
+        if (!panel) return;
+        const segments = pivotGizmoSegments();
+        ctx.save();
+        for (const segment of segments) {
+            ctx.strokeStyle=segment.color;
+            ctx.fillStyle=segment.color;
+            ctx.lineWidth=2.2;
+            ctx.beginPath();
+            ctx.moveTo(segment.origin.x,segment.origin.y);
+            ctx.lineTo(segment.end.x,segment.end.y);
+            ctx.stroke();
+            drawArrowHead(segment.origin,segment.end,segment.color,0.85);
+            ctx.font="bold 10px sans-serif";
+            ctx.fillText(segment.label,segment.end.x+5,segment.end.y-4);
+        }
+        ctx.restore();
+    }
+
+    function pointSegmentDistance(px,py,a,b) {
+        const dx=b.x-a.x, dy=b.y-a.y;
+        const length2=dx*dx+dy*dy;
+        if(length2<1e-8) return Math.hypot(px-a.x,py-a.y);
+        const t=Math.max(0,Math.min(1,((px-a.x)*dx+(py-a.y)*dy)/length2));
+        return Math.hypot(px-(a.x+t*dx),py-(a.y+t*dy));
+    }
+
+    function hitPivotAxis(x,y) {
+        let best=null, bestDistance=10;
+        for(const segment of pivotGizmoSegments()){
+            const distance=pointSegmentDistance(x,y,segment.origin,segment.end);
+            if(distance<bestDistance){ best=segment; bestDistance=distance; }
+        }
+        return best;
+    }
+
+    function movePivotAlongAxis(axis, dx, dy) {
+        const segment=pivotGizmoSegments().find((item)=>item.axis===axis);
+        if(!segment) return;
+        const sx=segment.end.x-segment.origin.x;
+        const sy=segment.end.y-segment.origin.y;
+        const pixels=Math.hypot(sx,sy);
+        if(pixels<1e-6) return;
+        const ux=sx/pixels, uy=sy/pixels;
+        const pixelAmount=dx*ux+dy*uy;
+        state.orbitPivot[axis]+=pixelAmount/pixels*segment.length;
     }
 
     function drawArrowHead(a, b, color, scale = 1) {
@@ -1391,6 +1494,7 @@ function setupEditor(node) {
         if (perspective) {
             drawPanelShell(perspective, "ORBIT / PAN / ZOOM · inspection");
             drawPerspectiveScene();
+            drawPivotGizmo();
         }
         for (const panel of state.projection.panels || []) {
             drawPanelShell(panel, `${String(panel.x_axis).toUpperCase()} / ${String(panel.y_axis).toUpperCase()} · axis locked`);
@@ -1492,6 +1596,7 @@ function setupEditor(node) {
         state.orbitZoom = Number(perspective?.default_zoom ?? 1);
         state.orbitPanX = 0;
         state.orbitPanY = 0;
+        ensureOrbitPivot(true);
         ensureRouteVisible();
         draw();
     }
@@ -1518,6 +1623,7 @@ function setupEditor(node) {
         canvas.height = size.height;
 
         const needsInitialFraming = sceneChanged || !Object.keys(state.orthoViews).length;
+        if (sceneChanged || !state.orbitPivot) ensureOrbitPivot(true);
         if (needsInitialFraming) {
             ensureOrthoViews(true);
             resetViewportFraming();
@@ -1668,6 +1774,16 @@ function setupEditor(node) {
 
         if (perspective && insideRect(perspective.plot_rect_px, xy.x, xy.y)) {
             if (!panGesture) {
+                const pivotHit = hitPivotAxis(xy.x, xy.y);
+                if (pivotHit) {
+                    state.pivotDragging = true;
+                    state.pivotAxis = pivotHit.axis;
+                    state.pivotLast = xy;
+                    canvas.setPointerCapture?.(event.pointerId);
+                    canvas.style.cursor = "move";
+                    event.preventDefault();
+                    return;
+                }
                 const hit = nearestPerspectivePoint(xy.x, xy.y);
                 if (hit != null) {
                     state.selectedPoint = hit;
@@ -1744,6 +1860,15 @@ function setupEditor(node) {
         const xy = eventCoordinates(event);
         if (!xy) return;
 
+        if (state.pivotDragging && state.pivotLast && state.pivotAxis) {
+            const dx=xy.x-state.pivotLast.x;
+            const dy=xy.y-state.pivotLast.y;
+            movePivotAlongAxis(state.pivotAxis,dx,dy);
+            state.pivotLast=xy;
+            draw();
+            return;
+        }
+
         if ((state.orbitDragging || state.orbitPanning) && state.orbitLast) {
             const dx = xy.x - state.orbitLast.x;
             const dy = xy.y - state.orbitLast.y;
@@ -1751,7 +1876,7 @@ function setupEditor(node) {
                 state.orbitPanX += dx;
                 state.orbitPanY += dy;
             } else {
-                state.orbitYaw += dx * 0.008;
+                state.orbitYaw -= dx * 0.008;
                 state.orbitPitch = Math.max(-1.35, Math.min(1.35, state.orbitPitch + dy * 0.008));
             }
             state.orbitLast = xy;
@@ -1796,13 +1921,16 @@ function setupEditor(node) {
 
     const stopDrag = (event) => {
         const wasEditing = state.dragging || state.targetDragging;
-        if (!wasEditing && !state.orbitDragging && !state.orbitPanning && !state.orthoPanning) return;
+        if (!wasEditing && !state.orbitDragging && !state.orbitPanning && !state.orthoPanning && !state.pivotDragging) return;
         state.dragging = false;
         state.targetDragging = false;
         state.dragHistoryPushed = false;
         state.orbitDragging = false;
         state.orbitPanning = false;
         state.orbitLast = null;
+        state.pivotDragging = false;
+        state.pivotAxis = null;
+        state.pivotLast = null;
         state.orthoPanning = false;
         state.orthoPanPanel = null;
         state.orthoLast = null;
@@ -2072,6 +2200,35 @@ function setupEditor(node) {
         } finally {
             importInput.value = "";
         }
+    });
+
+    resetPivot.addEventListener("click", () => {
+        state.orbitPivot = state.orbitPivotInitial ? { ...state.orbitPivotInitial } : scenePivot();
+        state.orbitPanX = 0;
+        state.orbitPanY = 0;
+        draw();
+        status.textContent = "Pivot restaurado ao centro original da cena";
+        status.style.color = "#86e276";
+    });
+
+    pivotToScene.addEventListener("click", () => {
+        state.orbitPivot = scenePivot();
+        state.orbitPanX = 0;
+        state.orbitPanY = 0;
+        draw();
+        status.textContent = "Pivot movido para o centro P9 da cena";
+        status.style.color = "#86e276";
+    });
+
+    pivotToSelected.addEventListener("click", () => {
+        const point = selectedPointObject();
+        if (!point) return;
+        state.orbitPivot = { right:Number(point.right), up:Number(point.up), forward:Number(point.forward) };
+        state.orbitPanX = 0;
+        state.orbitPanY = 0;
+        draw();
+        status.textContent = "Pivot movido para a câmera selecionada";
+        status.style.color = "#86e276";
     });
 
     frameAll.addEventListener("click", () => {
