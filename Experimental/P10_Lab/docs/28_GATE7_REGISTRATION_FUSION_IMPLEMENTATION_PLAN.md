@@ -130,15 +130,26 @@ Key authority rules:
 Focused CI run `35953822402` passed on Ubuntu/Python 3.12 and Windows/Python 3.12. General regression run `35953822364` also passed. Formal source closeout: `29_GATE7_3_FREE_SPACE_SOURCE_CLOSEOUT.md`.
 
 ### G7.4 — Protected fusion candidate
-Status: **PLANNED**
+Status: **IMPLEMENTED / CI PASS**
 
-Create a fused candidate while preserving:
-1. original-source/P9 protected geometry;
-2. registered P10 evidence where P9 is unobserved or weak;
-3. explicit no-fill constraints from CONFIRMED_FREE;
-4. provenance for every accepted region.
+Implemented as a new non-destructive additive candidate.
 
-No destructive cleanup/remesh belongs here; that remains Gate 8.
+Rules:
+1. every P9 face is copied unchanged;
+2. P9 vertices are never moved;
+3. P10 faces are admitted only when provenance is `P10_MULTIVIEW_SUPPORTED`, confidence is sufficient, support distance is bounded, protected P9 is not overlapped, and no face probe crosses `CONFIRMED_FREE` or free-space `CONFLICT`;
+4. when a Delaunay visibility mesh exists, admitted P10 faces must also agree locally with that structural candidate;
+5. every P10 face receives an explicit accept/reject reason code and retained provenance;
+6. the output is a derived candidate only, never official geometry.
+
+Artifacts:
+- `protected_fusion_candidate.ply`;
+- `protected_fusion_face_provenance.npz`;
+- `protected_fusion_candidate_manifest.json`.
+
+No destructive cleanup/remesh occurs here; that remains Gate 8.
+
+Focused CI run `35954991624` passed on Ubuntu/Python 3.12 and Windows/Python 3.12. General regression run `35954991620` passed across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14. Formal closeout: `30_GATE7_4_PROTECTED_FUSION_SOURCE_CLOSEOUT.md`.
 
 ### G7.5 — Registration/provenance visual review
 Status: **PLANNED**
@@ -187,6 +198,7 @@ If r15 exposes another Route Setup UX/runtime defect, fix DR9R independently and
 - G7.2 provenance classifier: **COMPLETE / CI PASS**.
 - G7.2C geometry confidence field: **COMPLETE / CI PASS**.
 - G7.3 free-space / visibility no-fill authority: **COMPLETE / CI PASS**.
-- G7.2/G7.2C/G7.3 remain non-destructive; confidence refinement is OFF and destructive fusion is still blocked.
-- Next safe work: **G7.4 protected fusion candidate**.
+- G7.4 protected additive fusion candidate: **COMPLETE / CI PASS**.
+- G7.2/G7.2C/G7.3/G7.4 remain non-destructive; confidence refinement is OFF and destructive fusion is still blocked.
+- Next safe work: **G7.5 registration/provenance visual review**.
 - User-facing Gate 7 Preview remains blocked until the current DR9R runtime UX acceptance is finished.
