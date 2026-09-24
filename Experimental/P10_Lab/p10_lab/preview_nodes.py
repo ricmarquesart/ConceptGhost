@@ -383,16 +383,27 @@ class ConceptGhostP10Gate7VisualReview:
             array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
         tensor = torch.from_numpy(array).unsqueeze(0)
         rendered = _pretty(result)
-        ui = {
-            "text": [rendered],
-            "images": [
+        ui = {"text": [rendered]}
+        try:
+            import shutil
+            import folder_paths
+
+            subfolder = "conceptghost_p10_gate7"
+            temp_root = Path(folder_paths.get_temp_directory()) / subfolder
+            temp_root.mkdir(parents=True, exist_ok=True)
+            temp_preview = temp_root / preview_path.name
+            shutil.copy2(preview_path, temp_preview)
+            ui["images"] = [
                 {
-                    "filename": preview_path.name,
-                    "subfolder": "",
+                    "filename": temp_preview.name,
+                    "subfolder": subfolder,
                     "type": "temp",
                 }
-            ],
-        }
+            ]
+        except Exception:
+            # The IMAGE tensor remains the authoritative ComfyUI output even
+            # when folder_paths is unavailable in source/unit-test contexts.
+            pass
         return {
             "ui": ui,
             "result": (
