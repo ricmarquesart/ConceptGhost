@@ -200,6 +200,171 @@ def parse_colmap_images_txt(path: str | Path) -> tuple[dict[str, object], ...]:
     return tuple(rows)
 
 
+
+_COLMAP_CAMERA_MODELS = {
+    0: ("SIMPLE_PINHOLE", 3),
+    1: ("PINHOLE", 4),
+    2: ("SIMPLE_RADIAL", 4),
+    3: ("RADIAL", 5),
+    4: ("OPENCV", 8),
+    5: ("OPENCV_FISHEYE", 8),
+    6: ("FULL_OPENCV", 12),
+    7: ("FOV", 5),
+    8: ("SIMPLE_RADIAL_FISHEYE", 4),
+    9: ("RADIAL_FISHEYE", 5),
+    10: ("THIN_PRISM_FISHEYE", 12),
+}
+
+
+def _read_exact(stream, size: int, label: str) -> bytes:
+    raw = stream.read(size)
+    if len(raw) != size:
+        raise ContractError(f"Unexpected EOF while reading {label}")
+    return raw
+
+
+def parse_colmap_cameras_bin(path: str | Path) -> dict[int, dict[str, float | int | str]]:
+    """Parse COLMAP cameras.bin.
+
+    Dense image_undistorter workspaces commonly keep sparse camera models in
+    binary form even though Gate 7 only needs the undistorted PINHOLE model.
+    """
+
+    path = Path(path).resolve()
+    if not path.is_file():
+        raise ContractError(f"COLMAP cameras.bin does not exist: {path}")
+    result = {}
+    with path.open("rb") as stream:
+        (count,) = struct.unpack("<Q", _read_exact(stream, 8, "cameras.bin count"))
+        for _ in range(count):
+            camera_id, model_id = struct.unpack(
+                "<ii", _read_exact(stream, 8, "cameras.bin camera header")
+            )
+            width, height = struct.unpack(
+                "<QQ", _read_exact(stream, 16, "cameras.bin dimensions")
+            )
+            model = _COLMAP_CAMERA_MODELS.get(model_id)
+            if model is None:
+                raise ContractError(f"Unsupported COLMAP camera model id: {model_id}")
+            model_name, param_count = model
+            params = struct.unpack(
+                "<" + "d" * param_count,
+                _read_exact(stream, 8 * param_count, "cameras.bin parameters"),
+            )
+            if model_name != "PINHOLE":
+                raise ContractError(
+                    f"Free-space evidence currently requires PINHOLE, got {model_name}"
+                )
+            fx, fy, cx, cy = (float(v) for v in params)
+            if camera_id <= 0 or width <= 0 or height <= 0:
+                raise ContractError("Invalid COLMAP binary camera row")
+            if not all(math.isfinite(v) for v in (fx, fy, cx, cy)) or fx <= 0 or fy <= 0:
+                raise ContractError("Invalid COLMAP binary PINHOLE intrinsics")
+            result[int(camera_id)] = {
+                "camera_id": int(camera_id),
+                "model": model_name,
+                "width": int(width),
+                "height": int(height),
+                "fx": fx,
+                "fy": fy,
+                "cx": cx,
+                "cy": cy,
+            }
+        if stream.read(1):
+            raise ContractError("COLMAP cameras.bin contains unexpected trailing bytes")
+    if not result:
+        raise ContractError("COLMAP cameras.bin contains no cameras")
+    return result
+
+
+def _read_c_string(stream, label: str, *, max_bytes: int = 32768) -> str:
+    raw = bytearray()
+    while True:
+        value = stream.read(1)
+        if not value:
+            raise ContractError(f"Unexpected EOF while reading {label}")
+        if value == b"\x00":
+            break
+        raw.extend(value)
+        if len(raw) > max_bytes:
+            raise ContractError(f"{label} exceeds maximum length")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ContractError(f"{label} is not valid UTF-8") from error
+
+
+def parse_colmap_images_bin(path: str | Path) -> tuple[dict[str, object], ...]:
+    """Parse COLMAP images.bin pose rows, skipping POINTS2D payloads."""
+
+    path = Path(path).resolve()
+    if not path.is_file():
+        raise ContractError(f"COLMAP images.bin does not exist: {path}")
+    rows = []
+    with path.open("rb") as stream:
+        (count,) = struct.unpack("<Q", _read_exact(stream, 8, "images.bin count"))
+        for _ in range(count):
+            (image_id,) = struct.unpack("<i", _read_exact(stream, 4, "images.bin image id"))
+            qvec = struct.unpack("<dddd", _read_exact(stream, 32, "images.bin qvec"))
+            tvec = struct.unpack("<ddd", _read_exact(stream, 24, "images.bin tvec"))
+            (camera_id,) = struct.unpack("<i", _read_exact(stream, 4, "images.bin camera id"))
+            name = _read_c_string(stream, "images.bin image name")
+            (point_count,) = struct.unpack(
+                "<Q", _read_exact(stream, 8, "images.bin POINTS2D count")
+            )
+            # Each POINT2D row = x(double), y(double), point3D_id(int64).
+            skip = int(point_count) * 24
+            if skip:
+                _read_exact(stream, skip, "images.bin POINTS2D payload")
+            if image_id <= 0 or camera_id <= 0:
+                raise ContractError(f"Invalid COLMAP binary image row: {name}")
+            if not all(math.isfinite(v) for v in (*qvec, *tvec)):
+                raise ContractError(f"Non-finite COLMAP binary image pose: {name}")
+            rows.append(
+                {
+                    "image_id": int(image_id),
+                    "qvec": tuple(float(v) for v in qvec),
+                    "tvec": tuple(float(v) for v in tvec),
+                    "camera_id": int(camera_id),
+                    "name": name,
+                }
+            )
+        if stream.read(1):
+            raise ContractError("COLMAP images.bin contains unexpected trailing bytes")
+    if not rows:
+        raise ContractError("COLMAP images.bin contains no image pose rows")
+    return tuple(rows)
+
+
+def load_colmap_sparse_cameras(sparse_root: str | Path):
+    """Load dense-workspace camera authority from text when present, else binary."""
+
+    root = Path(sparse_root).resolve()
+    txt = root / "cameras.txt"
+    binary = root / "cameras.bin"
+    if txt.is_file():
+        return parse_colmap_cameras_txt(txt), "TEXT"
+    if binary.is_file():
+        return parse_colmap_cameras_bin(binary), "BINARY"
+    raise ContractError(
+        f"COLMAP sparse camera model missing: expected {txt} or {binary}"
+    )
+
+
+def load_colmap_sparse_images(sparse_root: str | Path):
+    """Load dense-workspace image poses from text when present, else binary."""
+
+    root = Path(sparse_root).resolve()
+    txt = root / "images.txt"
+    binary = root / "images.bin"
+    if txt.is_file():
+        return parse_colmap_images_txt(txt), "TEXT"
+    if binary.is_file():
+        return parse_colmap_images_bin(binary), "BINARY"
+    raise ContractError(
+        f"COLMAP sparse image model missing: expected {txt} or {binary}"
+    )
+
 def qvec_to_rotation_matrix(qvec):
     """Return COLMAP world-to-camera rotation matrix from (qw,qx,qy,qz)."""
 
