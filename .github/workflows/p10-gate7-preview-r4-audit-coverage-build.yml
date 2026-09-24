@@ -62,7 +62,7 @@ jobs:
             'Installer/verify_gate7_preview_r4_audit_coverage_fix.ps1',
             'Installer/test_gate7_r4_audit_coverage_fix.py'
           )){
-            if(-not (Test-Path (Join-Path $root $p) -PathType Leaf){throw "missing $p"}
+            if (-not (Test-Path (Join-Path $root $p) -PathType Leaf)) { throw "missing $p" }
           }
           foreach($ps1 in Get-ChildItem (Join-Path $root 'Installer') -Filter '*.ps1' -File){
             $t=$null;$e=$null
