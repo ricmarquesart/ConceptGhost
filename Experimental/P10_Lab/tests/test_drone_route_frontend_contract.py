@@ -71,7 +71,7 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'event.stopPropagation()',
             'event.stopImmediatePropagation?.()',
             '{ passive: false, capture: true }',
-            'zoomControl.action === "in" ? 1.25 : 0.80',
+            'zoomControl.action === "in" ? 1.35 : (1 / 1.35)',
         ):
             self.assertIn(required, source)
 
