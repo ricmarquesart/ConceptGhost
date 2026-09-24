@@ -140,6 +140,128 @@ class DroneRoutePlanTests(unittest.TestCase):
         self.assertEqual(authority,"ARTIST_AUTHORED")
         self.assertEqual(new_hash,payload["route_plan_sha256"])
 
+
+    def test_per_waypoint_aim_interpolates_across_path(self):
+        from p10_lab.drone_route_plan import DroneMission,DroneWaypoint,sample_mission
+
+        mission=DroneMission(
+            "per_point","PATH",
+            (
+                DroneWaypoint(0,0,0,look_right=0,look_up=0,look_forward=1),
+                DroneWaypoint(0,0,10,look_right=1,look_up=0,look_forward=0),
+            ),
+            orientation_mode="LOOK_ALONG_PATH",
+        )
+        path=sample_mission(mission,3)
+        self.assertAlmostEqual(path.waypoints[0].look_forward,1.0,places=6)
+        expected=2**-0.5
+        self.assertAlmostEqual(path.waypoints[1].look_right,expected,places=6)
+        self.assertAlmostEqual(path.waypoints[1].look_forward,expected,places=6)
+        self.assertAlmostEqual(path.waypoints[-1].look_right,1.0,places=6)
+
+    def test_single_endpoint_aim_is_held_across_segment(self):
+        from p10_lab.drone_route_plan import DroneMission,DroneWaypoint,sample_mission
+
+        mission=DroneMission(
+            "single_aim","PATH",
+            (
+                DroneWaypoint(0,0,0),
+                DroneWaypoint(0,0,5,look_right=0,look_up=-1,look_forward=1),
+            ),
+        )
+        path=sample_mission(mission,4)
+        self.assertTrue(all(point.look_up < -0.70 for point in path.waypoints))
+        self.assertTrue(all(point.look_forward > 0.70 for point in path.waypoints))
+
+    def test_spin_360_supports_pitch_and_yaw_start_offset(self):
+        from p10_lab.drone_route_plan import DroneMission,DroneWaypoint,sample_mission
+
+        mission=DroneMission(
+            "spin","SPIN_360",(DroneWaypoint(2,3,4),),
+            spin_pitch_deg=-30.0,
+            spin_yaw_start_deg=90.0,
+        )
+        path=sample_mission(mission,4)
+        self.assertTrue(all((p.right,p.up,p.forward)==(2.0,3.0,4.0) for p in path.waypoints))
+        self.assertAlmostEqual(path.waypoints[0].look_right,3**0.5/2,places=6)
+        self.assertAlmostEqual(path.waypoints[0].look_up,-0.5,places=6)
+        self.assertAlmostEqual(path.waypoints[0].look_forward,0.0,places=6)
+        self.assertTrue(all(abs(p.look_up+0.5)<1e-6 for p in path.waypoints))
+
+    def test_v03_roundtrip_preserves_per_waypoint_aim_and_spin_controls(self):
+        from p10_lab.drone_route_plan import DroneMission,DroneRoutePlan,DroneWaypoint
+
+        plan=DroneRoutePlan(missions=(
+            DroneMission(
+                "path","PATH",
+                (
+                    DroneWaypoint(0,0,0,look_right=0,look_up=0,look_forward=1),
+                    DroneWaypoint(0,0,5,look_right=0,look_up=-0.2,look_forward=1),
+                ),
+            ),
+            DroneMission(
+                "spin","SPIN_360",(DroneWaypoint(1,2,3),),
+                spin_pitch_deg=-12.0,spin_yaw_start_deg=35.0,
+            ),
+        ))
+        payload=plan.to_dict()
+        self.assertEqual(payload["schema"],"ConceptGhost.P10DroneRoutePlan.v0.3")
+        restored=DroneRoutePlan.from_dict(payload)
+        self.assertEqual(restored,plan)
+        self.assertTrue(restored.missions[0].waypoints[0].has_look_direction)
+        self.assertAlmostEqual(restored.missions[1].spin_pitch_deg,-12.0)
+
+
+
+    def test_legacy_v02_bound_hash_migrates_to_v03(self):
+        from p10_lab.drone_route_plan import (
+            DroneMission,DroneRoutePlan,DroneWaypoint,_legacy_v02_route_hash,
+            parse_bound_route_plan,
+        )
+
+        plan=DroneRoutePlan(
+            missions=(DroneMission(
+                "drone_1","PATH",
+                (DroneWaypoint(0,0,0),DroneWaypoint(0,0,5)),
+                orientation_mode="MANUAL_DIRECTION",
+                manual_direction=DroneWaypoint(0,0,1),
+            ),),
+        )
+        payload={
+            "schema":"ConceptGhost.P10DroneRoutePlan.v0.2",
+            "binding_schema":"ConceptGhost.P10BoundDroneRoutePlan.v0.2",
+            "coordinate_space":"P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+            "maximum_drone_count":7,
+            "frames_per_drone":30,
+            "collision_mode":"HOLD_AND_RESUME",
+            "min_clearance_m":0.20,
+            "missions":[{
+                "name":"drone_1","mode":"PATH","enabled":True,
+                "orientation_mode":"MANUAL_DIRECTION",
+                "look_target":None,
+                "manual_direction":{"right":0.0,"up":0.0,"forward":1.0},
+                "waypoints":[
+                    {"right":0.0,"up":0.0,"forward":0.0},
+                    {"right":0.0,"up":0.0,"forward":5.0},
+                ],
+            }],
+            "scene_contract_id":"scene","source_run_id":"run",
+            "route_authority":"ARTIST_AUTHORED",
+        }
+        payload["route_plan_sha256"]=_legacy_v02_route_hash(
+            plan,scene_contract_id="scene",source_run_id="run",
+            route_authority="ARTIST_AUTHORED",
+        )
+        restored,authority,digest=parse_bound_route_plan(
+            payload,expected_scene_contract_id="scene",expected_source_run_id="run",
+            require_hash=True,
+        )
+        self.assertEqual(authority,"ARTIST_AUTHORED")
+        self.assertEqual(digest,payload["route_plan_sha256"])
+        self.assertEqual(restored.missions[0].orientation_mode,"MANUAL_DIRECTION")
+        self.assertFalse(restored.missions[0].waypoints[0].has_look_direction)
+
+
     def test_spin_360_stays_fixed_and_rotates_full_yaw(self):
         from p10_lab.drone_route_plan import DroneMission, DroneWaypoint, sample_mission
 
