@@ -1,5 +1,20 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 Gate 7.2C source checkpoint
+
+- DR9R r15 remains under user runtime UX testing; current Gate 7 source development is isolated from that published runtime.
+- **Gate 7.1 registration authority: COMPLETE / CI PASS.**
+- **Gate 7.2 authority-aware provenance: COMPLETE / CI PASS.**
+- **Gate 7.2C geometry confidence field: COMPLETE / CI PASS at source level.**
+- Confidence analysis is ON, confidence diagnostic evidence is produced, and confidence-guided refinement remains **OFF**.
+- Thresholds remain HIGH >= 0.75, NEUTRAL >= 0.40, LOW >= 0.20 and VERY_LOW < 0.20.
+- G7.2C writes a diagnostic NPZ plus a colored PLY point proxy for later ComfyUI visualization; it never changes official geometry and is never exported to Maya.
+- UNKNOWN receives no free-space penalty before G7.3. CONFLICT is low-confidence evidence, not an automatic deletion instruction.
+- `ready_for_destructive_fusion` remains false.
+- GitHub Actions run `35946720027` completed SUCCESS on Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
+- Next source-only bounded work: **Gate 7.3 — Free-Space / Visibility No-Fill Authority**.
+- User-facing Gate 7 promotion remains blocked until DR9R r15 runtime UX acceptance is reviewed.
+
 ## Authoritative reconciliation — 2026-09-24 Gate 7.2 source checkpoint
 
 - DR9R r15 remains under user runtime UX testing; its published bundle is not modified by this source work.
