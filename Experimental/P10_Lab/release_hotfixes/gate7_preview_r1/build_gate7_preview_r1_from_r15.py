@@ -377,7 +377,7 @@ def patch_entrypoints(root: Path) -> None:
     install_old.unlink()
     verify_old.unlink()
 
-    bat = """@echo off
+    bat = r"""@echo off
 setlocal
 cd /d "%~dp0"
 echo ============================================================
@@ -406,7 +406,7 @@ pause
 """
     (root / "03_INSTALL_ALL.bat").write_bytes(bat.replace("\n", "\r\n").encode("utf-8"))
 
-    verify_bat = """@echo off
+    verify_bat = r"""@echo off
 setlocal
 cd /d "%~dp0"
 echo ============================================================
