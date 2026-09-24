@@ -9,6 +9,9 @@ from .drone_route_plan import DroneRoutePlan
 from .panorama import CameraAuthority
 
 
+_PREVIEW_GEOMETRY_CACHE: dict[tuple[object, ...], dict[str, object]] = {}
+
+
 _ROUTE_COLORS = (
     (255, 176, 64),
     (78, 190, 255),
@@ -98,9 +101,10 @@ def build_route_preview_geometry(
     camera: CameraAuthority,
     *,
     source_image: str | Path | None = None,
-    max_points: int = 12000,
+    max_points: int = 100000,
+    max_mesh_faces: int = 24000,
 ) -> dict[str, object]:
-    """Return a bounded colored P9-local point sample for the interactive orbit view."""
+    """Return bounded display-only P9 geometry LODs for the interactive editor."""
 
     try:
         import numpy as np
@@ -110,52 +114,142 @@ def build_route_preview_geometry(
 
     if type(max_points) is not int or max_points < 500:
         raise ContractError("max_points must be an integer >= 500")
+    if type(max_mesh_faces) is not int or max_mesh_faces < 100:
+        raise ContractError("max_mesh_faces must be an integer >= 100")
 
-    local = _local_vertices(primary_mesh, camera)
-    stride = max(1, (len(local) + max_points - 1) // max_points)
-    sampled = local[::stride]
-    colors = np.full((sampled.shape[0], 3), 150, dtype=np.uint8)
-
-    source_path = Path(source_image) if source_image is not None else None
+    mesh_path=Path(primary_mesh).resolve()
+    source_path=Path(source_image).resolve() if source_image is not None else None
+    try:
+        mesh_stat=mesh_path.stat()
+    except OSError as error:
+        raise ContractError(f"Cannot stat PrimaryMesh for route preview: {mesh_path}: {error}") from error
+    source_stamp=None
     if source_path is not None and source_path.is_file():
         try:
-            with np.load(Path(primary_mesh), allow_pickle=False) as payload:
-                if "grid_xy" in payload.files:
-                    grid = np.asarray(payload["grid_xy"], dtype=np.int64)
-                elif "source_uv" in payload.files:
-                    grid = np.rint(np.asarray(payload["source_uv"], dtype=np.float64)).astype(np.int64)
-                else:
-                    grid = None
-            if grid is not None and grid.shape == (local.shape[0], 2):
-                with Image.open(source_path) as opened:
-                    source = np.asarray(opened.convert("RGB"), dtype=np.uint8)
-                gx = np.clip(grid[:, 0], 0, source.shape[1] - 1)
-                gy = np.clip(grid[:, 1], 0, source.shape[0] - 1)
-                colors = source[gy, gx][::stride]
+            source_stat=source_path.stat()
+            source_stamp=(str(source_path),int(source_stat.st_mtime_ns),int(source_stat.st_size))
+        except OSError:
+            source_stamp=None
+    camera_key=tuple(round(float(value),9) for row in camera.world_matrix for value in row)
+    cache_key=(
+        str(mesh_path),int(mesh_stat.st_mtime_ns),int(mesh_stat.st_size),
+        source_stamp,camera_key,int(max_points),int(max_mesh_faces),
+    )
+    cached=_PREVIEW_GEOMETRY_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    local=_local_vertices(mesh_path,camera)
+    vertex_colors=np.full((local.shape[0],3),150,dtype=np.uint8)
+    faces=None
+    grid=None
+    try:
+        with np.load(mesh_path,allow_pickle=False) as payload:
+            if "faces" in payload.files:
+                candidate=np.asarray(payload["faces"],dtype=np.int64)
+                if candidate.ndim==2 and candidate.shape[1]>=3:
+                    faces=candidate[:,:3]
+            if "grid_xy" in payload.files:
+                grid=np.asarray(payload["grid_xy"],dtype=np.int64)
+            elif "source_uv" in payload.files:
+                grid=np.rint(np.asarray(payload["source_uv"],dtype=np.float64)).astype(np.int64)
+    except Exception:
+        faces=None
+        grid=None
+
+    if source_path is not None and source_path.is_file() and grid is not None and grid.shape==(local.shape[0],2):
+        try:
+            with Image.open(source_path) as opened:
+                source=np.asarray(opened.convert("RGB"),dtype=np.uint8)
+            gx=np.clip(grid[:,0],0,source.shape[1]-1)
+            gy=np.clip(grid[:,1],0,source.shape[0]-1)
+            vertex_colors=source[gy,gx]
         except Exception:
-            pass
+            vertex_colors=np.full((local.shape[0],3),150,dtype=np.uint8)
 
-    minimum = sampled.min(axis=0)
-    maximum = sampled.max(axis=0)
-    center = (minimum + maximum) * 0.5
-    radius = float(max(np.linalg.norm(sampled - center[None, :], axis=1).max(), 1.0e-3))
+    def point_lod(budget: int) -> dict[str,object]:
+        budget=max(500,min(int(budget),int(max_points),int(local.shape[0])))
+        stride=max(1,(int(local.shape[0])+budget-1)//budget)
+        indices=np.arange(0,int(local.shape[0]),stride,dtype=np.int64)[:budget]
+        sampled=local[indices]
+        colors=vertex_colors[indices]
+        return {
+            "budget":int(budget),
+            "sample_stride":int(stride),
+            "point_count":int(sampled.shape[0]),
+            "points":[
+                [float(p[0]),float(p[1]),float(p[2]),int(c[0]),int(c[1]),int(c[2])]
+                for p,c in zip(sampled,colors)
+            ],
+        }
 
-    return {
-        "schema": "ConceptGhost.P10RoutePreviewGeometry.v0.1",
-        "coordinate_space": "P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
-        "sample_stride": int(stride),
-        "point_count": int(sampled.shape[0]),
-        "center": [float(v) for v in center],
-        "radius": radius,
-        "points": [
-            [
-                float(point[0]), float(point[1]), float(point[2]),
-                int(color[0]), int(color[1]), int(color[2]),
-            ]
-            for point, color in zip(sampled, colors)
-        ],
+    point_lods={
+        "POINTS_LOW":point_lod(min(15000,max_points)),
+        "POINTS_MEDIUM":point_lod(min(50000,max_points)),
+        "POINTS_HIGH":point_lod(max_points),
     }
+    medium=point_lods["POINTS_MEDIUM"]
 
+    mesh_lod={
+        "available":False,
+        "source_face_count":0,
+        "face_budget":int(max_mesh_faces),
+        "face_sampling_stride":0,
+        "face_count":0,
+        "vertex_count":0,
+        "vertices":[],
+        "faces":[],
+        "authority":"DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
+    }
+    if faces is not None and len(faces):
+        source_face_count=int(len(faces))
+        face_stride=max(1,(source_face_count+max_mesh_faces-1)//max_mesh_faces)
+        selected=np.asarray(faces[::face_stride][:max_mesh_faces],dtype=np.int64)
+        valid=((selected>=0).all(axis=1)&(selected<local.shape[0]).all(axis=1))
+        selected=selected[valid]
+        if len(selected):
+            used=np.unique(selected.reshape(-1))
+            remap=np.full(local.shape[0],-1,dtype=np.int64)
+            remap[used]=np.arange(len(used),dtype=np.int64)
+            remapped=remap[selected]
+            mv=local[used]
+            mc=vertex_colors[used]
+            mesh_lod={
+                "available":True,
+                "source_face_count":source_face_count,
+                "face_budget":int(max_mesh_faces),
+                "face_sampling_stride":int(face_stride),
+                "face_count":int(remapped.shape[0]),
+                "vertex_count":int(mv.shape[0]),
+                "vertices":[
+                    [float(p[0]),float(p[1]),float(p[2]),int(c[0]),int(c[1]),int(c[2])]
+                    for p,c in zip(mv,mc)
+                ],
+                "faces":[[int(face[0]),int(face[1]),int(face[2])] for face in remapped],
+                "authority":"DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
+            }
+
+    minimum=local.min(axis=0)
+    maximum=local.max(axis=0)
+    center=(minimum+maximum)*0.5
+    radius=float(max(np.linalg.norm(local-center[None,:],axis=1).max(),1.0e-3))
+    result={
+        "schema":"ConceptGhost.P10RoutePreviewGeometry.v0.2",
+        "coordinate_space":"P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+        "authority":"DISPLAY_ONLY_NEVER_GEOMETRY_AUTHORITY",
+        "default_mode":"POINTS_MEDIUM",
+        "point_lods":point_lods,
+        "mesh_lod":mesh_lod,
+        "sample_stride":int(medium["sample_stride"]),
+        "point_count":int(medium["point_count"]),
+        "center":[float(v) for v in center],
+        "radius":radius,
+        "points":medium["points"],
+    }
+    if len(_PREVIEW_GEOMETRY_CACHE)>=3:
+        _PREVIEW_GEOMETRY_CACHE.pop(next(iter(_PREVIEW_GEOMETRY_CACHE)))
+    _PREVIEW_GEOMETRY_CACHE[cache_key]=result
+    return result
 
 def measure_route_preview_bounds(
     local_vertices,
