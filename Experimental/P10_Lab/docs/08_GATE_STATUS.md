@@ -1,5 +1,25 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 Gate 7.5 source checkpoint
+
+- DR9R r15 remains under user runtime UX testing; Gate 7 source work remains isolated from the published runtime.
+- **G7.1 registration authority: COMPLETE / CI PASS.**
+- **G7.2 authority-aware provenance: COMPLETE / CI PASS.**
+- **G7.2C geometry confidence: COMPLETE / CI PASS.**
+- **G7.3 free-space / visibility no-fill authority: COMPLETE / CI PASS.**
+- **G7.4 protected additive fusion candidate: COMPLETE / CI PASS.**
+- **G7.5 registration / provenance visual review: COMPLETE / CI PASS at source level.**
+- G7.5 renders Perspective + Top + Front + Side review panels with a shared metric scale across orthographic views.
+- The preview includes P9, source-protected P9, accepted P10, rejected P10, CONFIRMED_FREE, free-space CONFLICT and camera/frustum context.
+- The review manifest keeps `artist_review_status = PENDING` and `ready_for_gate8 = false`.
+- A ComfyUI source node now exists, but it is intentionally not inserted into the currently published r15 workflows.
+- Focused G7.5 run `35956022505`: SUCCESS on Ubuntu/Python 3.12 and Windows/Python 3.12.
+- General regression run `35956022467`: SUCCESS across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
+- Source snapshot run `35956022506`: SUCCESS.
+- Formal closeout: `Experimental/P10_Lab/docs/31_GATE7_5_VISUAL_REVIEW_SOURCE_CLOSEOUT.md`.
+- Next bounded source work: **G7.6 — Gate 7 Source Closeout / Preview-Package Readiness**.
+- Final Gate 7 promotion and Gate 8 start remain blocked until DR9R r15 runtime UX acceptance and artist review of the Gate 7 preview.
+
 ## Authoritative reconciliation — 2026-09-24 Gate 7.4 source checkpoint
 
 - DR9R r15 remains under user runtime UX testing; Gate 7 source work remains isolated from that published runtime.
