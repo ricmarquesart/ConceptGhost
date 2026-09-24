@@ -3,11 +3,11 @@
 ## Authoritative reconciliation — 2026-09-24 R6 editor refinement started
 
 - User validation is explicitly deferred until **R6F**; R6A-R6E use source/CI checkpoints only.
-- **R6A — Points/Mesh LOD + Point Size: IMPLEMENTED / CI PENDING.**
+- **R6A — Points/Mesh LOD + Point Size: COMPLETE / CI PASS.**
 - Route Setup preview now exposes deterministic POINTS_LOW / POINTS_MEDIUM / POINTS_HIGH plus bounded MESH_SURFACE / MESH_WIREFRAME.
 - Point budgets are 15k / 50k / up to 100k; display mesh is capped at 24k sampled P9 faces.
 - Preview payloads are cacheable and explicitly DISPLAY_ONLY; they cannot become collision, WAN, reconstruction or geometry authority.
-- Next bounded work after CI: **R6B — Selected Camera View + selected-camera frustum**.
+- **R6B-R6E — COMPLETE / CI PASS.** Selected Camera View/frustum, per-waypoint aim + pitched 360, Perspective pivot/gimbal/orbit correction, and portable JSON + CSV/TXT are implemented.\n- **R6F — ACTIVE:** aggregate regressions + final Evaluation_Builds bundle; this remains the only target-PC validation checkpoint.
 - R6F remains the only target-PC validation/package checkpoint.
 
 
