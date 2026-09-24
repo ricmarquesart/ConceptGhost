@@ -588,3 +588,170 @@ def run_prefusion_meshing(
         encoding="utf-8",
     )
     return result_manifest
+
+
+@dataclass(frozen=True)
+class DelaunayEvidencePlan:
+    dataset_root: Path
+    dense_root: Path
+    mesh_path: Path
+    preview_path: Path
+    comparison_path: Path
+    steps: tuple[ColmapMeshStep, ...]
+
+    def manifest(self) -> dict[str, object]:
+        return {
+            "schema": "ConceptGhost.P10DelaunayEvidencePlan.v0.1",
+            "dataset_root": str(self.dataset_root),
+            "dense_root": str(self.dense_root),
+            "mesh_path": str(self.mesh_path),
+            "preview_path": str(self.preview_path),
+            "comparison_path": str(self.comparison_path),
+            "purpose": "GATE7_FREE_SPACE_VISIBILITY_STRUCTURAL_EVIDENCE",
+            "authority": "DIAGNOSTIC_CONSTRAINT_CANDIDATE_NOT_FINAL_MESH",
+            "steps": [
+                {"command": step.command, "args": list(step.args)}
+                for step in self.steps
+            ],
+        }
+
+
+def build_delaunay_evidence_plan(
+    dataset_root: str | Path,
+    *,
+    colmap_executable: str = "colmap",
+) -> DelaunayEvidencePlan:
+    dataset_root = Path(dataset_root).resolve()
+    dense_root = dataset_root / "dense"
+    fused = dense_root / "fused.ply"
+    if not fused.is_file():
+        raise ContractError(f"Missing Gate 6.4 dense fused cloud: {fused}")
+    for required in (
+        dense_root / "sparse",
+        dense_root / "images",
+        dense_root / "stereo" / "depth_maps",
+    ):
+        if not required.exists():
+            raise ContractError(f"Delaunay evidence requires dense workspace path: {required}")
+
+    mesh_path = dense_root / "pre_fusion_mesh_delaunay.ply"
+    preview_path = dense_root / "pre_fusion_mesh_delaunay_preview.svg"
+    comparison_path = dense_root / "free_space_meshing_comparison.json"
+    step = ColmapMeshStep(
+        "delaunay_mesher",
+        (
+            "--input_path", str(dense_root),
+            "--output_path", str(mesh_path),
+        ),
+    )
+    return DelaunayEvidencePlan(
+        dataset_root=dataset_root,
+        dense_root=dense_root,
+        mesh_path=mesh_path,
+        preview_path=preview_path,
+        comparison_path=comparison_path,
+        steps=(step,),
+    )
+
+
+def run_delaunay_visibility_meshing(
+    dataset_root: str | Path,
+    *,
+    colmap_executable: str = "colmap",
+    overwrite_output: bool = False,
+) -> dict[str, object]:
+    """Build COLMAP Delaunay visibility mesh as Gate 7 structural evidence.
+
+    The existing Poisson pre-fusion mesh remains untouched and authoritative as
+    the current smooth candidate. Delaunay is retained beside it for free-space
+    and opening-boundary comparison only.
+    """
+
+    plan = build_delaunay_evidence_plan(
+        dataset_root,
+        colmap_executable=colmap_executable,
+    )
+    executable = _resolve_executable(colmap_executable)
+
+    if plan.mesh_path.exists():
+        if not overwrite_output:
+            raise ContractError(
+                f"Refusing to overwrite completed Delaunay evidence mesh: {plan.mesh_path}"
+            )
+        plan.mesh_path.unlink()
+
+    log_root = plan.dataset_root / "logs" / "gate7_3_delaunay"
+    log_root.mkdir(parents=True, exist_ok=True)
+    executed = []
+    for index, step in enumerate(plan.steps):
+        argv = list(step.argv(executable))
+        result = subprocess.run(
+            argv,
+            cwd=str(plan.dataset_root),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        log_path = log_root / f"{index:02d}_{step.command}.log"
+        log_path.write_text(
+            "COMMAND\n" + " ".join(argv)
+            + "\n\nSTDOUT\n" + (result.stdout or "")
+            + "\n\nSTDERR\n" + (result.stderr or ""),
+            encoding="utf-8",
+        )
+        executed.append({
+            "index": index,
+            "command": step.command,
+            "argv": argv,
+            "returncode": int(result.returncode),
+            "log_path": str(log_path.resolve()),
+        })
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"COLMAP {step.command} failed with exit code {result.returncode}; see {log_path}"
+            )
+
+    if not plan.mesh_path.is_file():
+        raise ContractError("Delaunay meshing completed without pre_fusion_mesh_delaunay.ply")
+
+    delaunay_health = analyze_and_render_mesh(
+        plan.mesh_path,
+        plan.preview_path,
+        max_preview_faces=12000,
+    )
+    poisson_path = plan.dense_root / "pre_fusion_mesh.ply"
+    poisson_preview = plan.dense_root / "pre_fusion_mesh_preview.svg"
+    poisson_health = (
+        analyze_and_render_mesh(poisson_path, poisson_preview, max_preview_faces=12000)
+        if poisson_path.is_file()
+        else None
+    )
+
+    comparison = {
+        "schema": "ConceptGhost.P10FreeSpaceMeshingComparison.v0.1",
+        "status": "PASS",
+        "gate": 7,
+        "subgate": "7.3C",
+        "policy": "POISSON_PLUS_DELAUNAY_EVIDENCE_NOT_AUTOMATIC_REPLACEMENT",
+        "poisson": {
+            "path": str(poisson_path.resolve()) if poisson_path.is_file() else None,
+            "mesh_health": poisson_health,
+            "role": "SMOOTH_PRE_FUSION_CANDIDATE",
+        },
+        "delaunay": {
+            "path": str(plan.mesh_path.resolve()),
+            "mesh_health": delaunay_health,
+            "role": "VISIBILITY_AWARE_STRUCTURAL_EVIDENCE",
+        },
+        "confirmed_free_veto_required_before_fusion": True,
+        "automatic_winner": None,
+        "official_geometry_changed": False,
+        "ready_for_destructive_fusion": False,
+        "executed": executed,
+        "diagnostic_log_root": str(log_root.resolve()),
+    }
+    plan.comparison_path.write_text(
+        json.dumps(comparison, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    return comparison
