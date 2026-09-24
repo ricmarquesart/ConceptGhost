@@ -258,9 +258,34 @@ def _build_core(
     rows = []
     total = 0
     final_included: list[tuple[str, Path]] = []
-    for arc, path in sorted(included.items()):
+
+    # Required audit evidence must be admitted before optional discoveries.
+    # The previous alphabetical pass could consume max_total_bytes first and
+    # then reject reconstruction_runtime_manifest.json even though it was a
+    # hard requirement. Reserve/admit required files first, then fill the
+    # remaining budget with optional evidence.
+    required_paths = [gate6_runtime]
+    for candidate in (gate7_path, visual_pack_path, failure_manifest_path):
+        if candidate is not None:
+            required_paths.append(candidate)
+    required_arcs = {
+        _archive_name(path.resolve(), attempt_root, p9_run_dir)
+        for path in required_paths
+    }
+
+    ordered_items = sorted(
+        included.items(),
+        key=lambda item: (0 if item[0] in required_arcs else 1, item[0]),
+    )
+    for arc, path in ordered_items:
         size = path.stat().st_size
+        required = arc in required_arcs
         if total + size > max_total_bytes:
+            if required:
+                raise ContractError(
+                    "RUN_AUDIT_BUNDLE total-size limit is too small for required core evidence: "
+                    f"{path}"
+                )
             omitted.append({"path": str(path), "reason": "TOTAL_SIZE_LIMIT"})
             continue
         total += size
@@ -270,6 +295,7 @@ def _build_core(
             "source_path": str(path),
             "bytes": size,
             "sha256": _sha256(path),
+            "required": required,
         })
 
     gate6_arc = _archive_name(gate6_runtime, attempt_root, p9_run_dir)
