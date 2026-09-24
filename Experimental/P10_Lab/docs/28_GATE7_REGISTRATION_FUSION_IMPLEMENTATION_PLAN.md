@@ -33,7 +33,7 @@ A new similarity solve is forbidden in this path because it could silently move 
 ## Gate 7 bounded subgates
 
 ### G7.1 — P10→P9 registration authority
-Status: **IMPLEMENTED / CI PENDING**
+Status: **IMPLEMENTED / CI PASS**
 
 Inputs:
 - authoritative P9 run;
@@ -54,11 +54,11 @@ Outputs:
 Promotion is rejected if Gate 6 geometry quality is FAIL or if P9 run / Scene Contract / known-camera authority diverges.
 
 ### G7.2 — Authority-aware geometry provenance
-Status: **NEXT**
+Status: **IMPLEMENTED / CI PASS**
 
-Build a geometry provenance classification without modifying official geometry.
+The first implementation is diagnostic-only and does not modify official geometry.
 
-Initial classes:
+Implemented classes:
 - P9_SOURCE_PROTECTED;
 - P9_RETAINED;
 - P10_MULTIVIEW_SUPPORTED;
@@ -66,7 +66,19 @@ Initial classes:
 - UNKNOWN;
 - CONFLICT.
 
-The first implementation is evidence/diagnostic only. It must be possible to inspect which geometry comes from P9 versus P10 before any fusion operation can delete or replace geometry.
+Implementation:
+- consumes the accepted G7.1 identity registration and fails closed on non-identity/Sim(3) registration;
+- samples the authoritative P9 PrimaryMesh and preserves explicit source correspondence as protected P9 evidence;
+- samples the P10 pre-fusion mesh in the same P9 canonical world;
+- parses Gate 6 sparse tracks and maps COLMAP image IDs back to authored drone missions;
+- treats support from at least two images in at least two independent authored missions as independent multiview support;
+- writes `gate7_provenance.json` plus `gate7_provenance_evidence.npz`;
+- records distance/support evidence and class histograms;
+- keeps `ready_for_destructive_fusion = false`.
+
+`P10_GENERATED_ONLY` is deliberately a conservative diagnostic candidate: it means the sampled P10 geometry lies outside the P9 conflict band and lacks independent multi-mission sparse support. That label alone never authorizes deletion/replacement.
+
+GitHub Actions run `35946502650` completed SUCCESS across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
 
 ### G7.2C — Geometry confidence field
 Status: **PLANNED**
@@ -149,6 +161,8 @@ If r15 exposes another Route Setup UX/runtime defect, fix DR9R independently and
 ## Current progress
 
 - DR9R r15: user runtime test in progress.
-- G7.1 implementation: complete in source.
-- G7.1 tests: added.
-- Next safe work: G7.2 provenance classifier.
+- G7.1 implementation: **COMPLETE / CI PASS**.
+- G7.2 provenance classifier: **COMPLETE / CI PASS**.
+- G7.2 remains diagnostic-only and cannot promote destructive fusion.
+- Next safe work: **G7.2C geometry confidence field**.
+- User-facing Gate 7 Preview remains blocked until the current DR9R runtime UX acceptance is finished.
