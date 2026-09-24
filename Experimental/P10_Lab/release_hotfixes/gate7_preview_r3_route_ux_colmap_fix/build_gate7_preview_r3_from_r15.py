@@ -333,7 +333,7 @@ def main(root):
   if token not in editor: errors.append('route editor missing '+token)
  persist=editor.split('function persist() {',1)[1].split('function setPlan',1)[0]
  if 'ensureRouteVisible()' in persist: errors.append('route edit still auto-fits viewport')
- if 'max_points=50000' not in author: errors.append('interactive route geometry budget is not 50000')
+ if not any(token in author for token in ('max_points=50000','max_points=100000')): errors.append('interactive route geometry budget is below supported r3/R6 baseline')
  if 'panel_width: int=720' not in preview or 'panel_height: int=660' not in preview: errors.append('four-view resolution not upgraded')
  workflow=json.loads((root/'Payload/workflows/02_ConceptGhost_P10_PRODUCTION.json').read_text(encoding='utf-8-sig'))
  if any('Gate8' in str(n.get('type')) or 'Gate 8' in str(n.get('type')) for n in workflow.get('nodes',[])):
