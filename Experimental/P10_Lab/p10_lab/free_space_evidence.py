@@ -9,8 +9,8 @@ from typing import Any
 from .colmap_dense_io import (
     colmap_camera_center,
     colmap_camera_point_to_world,
-    parse_colmap_cameras_txt,
-    parse_colmap_images_txt,
+    load_colmap_sparse_cameras,
+    load_colmap_sparse_images,
     read_colmap_consistency_graph,
     read_colmap_float_map,
 )
@@ -206,8 +206,9 @@ def build_free_space_evidence(
     free_step = voxel_size * float(free_step_voxels)
 
     frame_by_name = _parse_dataset_frame_map(dataset)
-    cameras = parse_colmap_cameras_txt(dense_root / "sparse" / "cameras.txt")
-    dense_images = parse_colmap_images_txt(dense_root / "sparse" / "images.txt")
+    dense_sparse_root = dense_root / "sparse"
+    cameras, camera_model_storage = load_colmap_sparse_cameras(dense_sparse_root)
+    dense_images, image_model_storage = load_colmap_sparse_images(dense_sparse_root)
     dense_name_order = [str(row["name"]) for row in dense_images]
     dense_by_name = {str(row["name"]): row for row in dense_images}
     if set(dense_name_order) != set(frame_by_name):
@@ -424,6 +425,11 @@ def build_free_space_evidence(
         "coordinate_space": "P9_CANONICAL_WORLD_METERS",
         "camera_authority": dataset.get("camera_authority"),
         "image_authority": dataset.get("image_authority"),
+        "dense_sparse_model_storage": {
+            "camera_model": camera_model_storage,
+            "image_model": image_model_storage,
+            "sparse_root": str(dense_sparse_root.resolve()),
+        },
         "depth_authority": "COLMAP_PATCHMATCH_GEOMETRIC",
         "consistency_policy": "REQUIRE_GEOMETRIC_CONSISTENCY_GRAPH_SUPPORT",
         "ray_policy": {
