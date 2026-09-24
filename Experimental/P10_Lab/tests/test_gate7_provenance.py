@@ -5,7 +5,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 
 def _write_ascii_ply(path: Path, points):
@@ -116,6 +119,7 @@ class Gate7ProvenanceTests(unittest.TestCase):
         )
         return p9, registration, boundary
 
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
     def test_diagnostic_provenance_classifies_authority_without_geometry_mutation(self):
         from p10_lab.gate7_provenance import (
             Gate7ProvenanceClass,
@@ -177,6 +181,7 @@ class Gate7ProvenanceTests(unittest.TestCase):
             self.assertEqual(result["p10_summary"]["P10_GENERATED_ONLY"]["count"], 1)
             self.assertEqual(result["p10_summary"]["UNKNOWN"]["count"], 1)
 
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
     def test_non_identity_registration_is_rejected(self):
         from p10_lab.contracts import ContractError
         from p10_lab.gate7_provenance import build_gate7_provenance
@@ -194,6 +199,7 @@ class Gate7ProvenanceTests(unittest.TestCase):
                 with self.assertRaises(ContractError):
                     build_gate7_provenance(p9, registration, root / "out")
 
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
     def test_wrong_scene_contract_is_rejected(self):
         from p10_lab.contracts import ContractError
         from p10_lab.gate7_provenance import build_gate7_provenance
@@ -211,6 +217,7 @@ class Gate7ProvenanceTests(unittest.TestCase):
                 with self.assertRaises(ContractError):
                     build_gate7_provenance(p9, registration, root / "out")
 
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
     def test_generated_only_label_cannot_promote_destructive_fusion(self):
         from p10_lab.gate7_provenance import build_gate7_provenance
 
@@ -234,6 +241,20 @@ class Gate7ProvenanceTests(unittest.TestCase):
                 "CONSERVATIVE_CANDIDATE",
                 result["classification_policy"]["p10_generated_only"],
             )
+
+
+    def test_source_contract_keeps_g7_2_diagnostic_only(self):
+        import p10_lab.gate7_provenance as provenance
+
+        source = Path(provenance.__file__).read_text(encoding="utf-8")
+        self.assertIn("DIAGNOSTIC_ONLY_NO_GEOMETRY_MUTATION", source)
+        self.assertIn('"ready_for_destructive_fusion": False', source)
+        self.assertIn("P9_ACCEPTED_IMMUTABLE_UPSTREAM", source)
+        self.assertIn("sim3_refit_allowed", source)
+        self.assertIn("P10_GENERATED_ONLY", source)
+        self.assertIn("P10_MULTIVIEW_SUPPORTED", source)
+        self.assertIn("CONFLICT", source)
+
 
 
 if __name__ == "__main__":
