@@ -1,0 +1,46 @@
+name: Visual Evidence Contract Tests
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - 'Experimental/P10_Lab/p10_lab/visual_evidence_contract.py'
+      - 'Experimental/P10_Lab/p10_lab/visual_comparisons.py'
+      - 'Experimental/P10_Lab/p10_lab/preview_nodes.py'
+      - 'Experimental/P10_Lab/tests/test_visual_evidence_contract.py'
+      - 'Experimental/P10_Lab/docs/32_VISUAL_EVIDENCE_COMPARISON_CONTRACT.md'
+      - '.github/workflows/p10-visual-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-evidence:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install focused runtime dependencies
+        run: python -m pip install numpy pillow
+
+      - name: Compile visual evidence modules
+        run: |
+          python -m py_compile Experimental/P10_Lab/p10_lab/visual_evidence_contract.py
+          python -m py_compile Experimental/P10_Lab/p10_lab/visual_comparisons.py
+          python -m py_compile Experimental/P10_Lab/p10_lab/preview_nodes.py
+
+      - name: Run visual evidence focused tests
+        working-directory: Experimental/P10_Lab
+        run: python -m unittest -v tests.test_visual_evidence_contract
