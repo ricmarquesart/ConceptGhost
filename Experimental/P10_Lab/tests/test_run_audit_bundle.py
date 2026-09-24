@@ -112,6 +112,52 @@ class RunAuditBundleTests(unittest.TestCase):
 
 
 
+    def test_required_reconstruction_manifest_is_reserved_before_optional_size_budget(self):
+        from p10_lab.run_audit_bundle import build_partial_run_audit_bundle
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            p9=root/"p9"
+            attempt=root/"attempt"
+            p9.mkdir()
+            attempt.mkdir()
+            gate6=attempt/"z_gate6"/"reconstruction_runtime_manifest.json"
+            gate6.parent.mkdir(parents=True)
+            gate6.write_text(json.dumps({
+                "schema":"ConceptGhost.P10ReconstructionRuntime.v0.2",
+                "runtime_status":"PASS",
+                "run_id":"p9",
+                "p10_attempt_id":"attempt",
+                "p10_attempt_root":str(attempt),
+            }),encoding="utf-8")
+
+            # Optional evidence sorts before z_gate6 and would consume the
+            # total budget under the old alphabetical admission policy.
+            optional=attempt/"a_optional"
+            optional.mkdir()
+            for index in range(4):
+                (optional/f"evidence_{index}.txt").write_text("x"*180,encoding="utf-8")
+
+            failure=attempt/"gate7_failure_manifest.json"
+            failure.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7Failure.v0.1",
+                "status":"FAIL",
+            }),encoding="utf-8")
+
+            minimum_required=gate6.stat().st_size+failure.stat().st_size+16
+            result=build_partial_run_audit_bundle(
+                p9,gate6,
+                gate7_failure_manifest_path=failure,
+                output_root=root/"audit",
+                max_total_bytes=minimum_required,
+            )
+            self.assertTrue(result["reconstruction_runtime_manifest_included"])
+            required_rows=[row for row in result["files"] if row.get("required")]
+            self.assertGreaterEqual(len(required_rows),2)
+            with zipfile.ZipFile(result["bundle_path"],"r") as archive:
+                names=set(archive.namelist())
+            self.assertIn("p10_attempt/z_gate6/reconstruction_runtime_manifest.json",names)
+
     def test_default_storage_is_project_sidecar_and_partial_failure_is_supported(self):
         from p10_lab.run_audit_bundle import (
             build_partial_run_audit_bundle,
