@@ -3,6 +3,10 @@ import { api } from "../../scripts/api.js";
 
 const NODE_CLASS = "ConceptGhostP10DroneRouteAuthoring";
 const COLORS = ["#ffb040", "#4ebeff", "#86e276", "#de76ff", "#ff6868", "#ffdc5a", "#5ee8d4"];
+const MAX_ORTHO_ZOOM = 160.0;
+const MAX_PERSPECTIVE_ZOOM = 48.0;
+const GEOMETRY_DRAW_BUDGET = 50000;
+const ROUTE_PRESET_SCHEMA = "ConceptGhost.P10DroneRoutePreset.v0.1";
 
 function chainCallback(object, name, callback) {
     const original = object[name];
@@ -173,6 +177,12 @@ function setupEditor(node) {
     const clearRoute = button("Limpar rota", "Limpar os pontos do drone atual");
     const resetRoute = button("Resetar rota", "Restaurar a rota-semente desta mesma cena sem apagar P9 nem a visualização");
     const frameAll = button("Enquadrar tudo", "Restaurar zoom/pan das quatro vistas sem alterar rota ou P9");
+    const exportRoute = button("Exportar trajeto", "Salvar drones/rotas em um JSON portátil para reutilizar em outros testes");
+    const importRoute = button("Importar trajeto", "Importar rapidamente um JSON de trajeto e rebindar à cena atual");
+    const importInput = document.createElement("input");
+    importInput.type = "file";
+    importInput.accept = ".json,application/json";
+    importInput.style.display = "none";
     const editTarget = button("Editar alvo", "Definir/arrastar o LOOK_AT_TARGET nas vistas ortográficas");
     const yawInput = document.createElement("input");
     const pitchInput = document.createElement("input");
@@ -188,14 +198,16 @@ function setupEditor(node) {
         "Drone:", droneSelect, modeSelect,
         "Aim:", orientationSelect, editTarget,
         "Yaw:", yawInput, "Pitch:", pitchInput,
-        addDrone, removeDrone, deletePoint, undo, clearRoute, resetRoute, frameAll
+        addDrone, removeDrone, deletePoint, undo, clearRoute, resetRoute, frameAll,
+        exportRoute, importRoute, importInput
     );
 
     const help = document.createElement("div");
     help.textContent =
         "PASSO 1/2 neste workflow: após o primeiro Run, edite os drones; depois clique Run novamente para COMMITAR a rota. " +
-        "PERSPECTIVE: arraste para orbitar, Shift+arraste para pan; roda ou botões −/+ = zoom. " +
-        "TOP/SIDE/FRONT: roda ou botões −/+ = zoom; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
+        "PERSPECTIVE: arraste para orbitar, Shift+arraste para pan; roda ou botões −/+ = zoom profundo. " +
+        "TOP/SIDE/FRONT: roda ou botões −/+ = zoom profundo; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
+        "Adicionar/mover pontos preserva exatamente zoom e pan. Exportar/Importar trajeto reutiliza os drones em novos testes. " +
         "LOOK_AT_TARGET usa Editar alvo. Resetar rota não apaga a cena; Enquadrar tudo só restaura a câmera das vistas.";
     help.style.cssText = "color:#aaa;line-height:1.3;";
 
@@ -268,7 +280,8 @@ function setupEditor(node) {
         routeWidget.value = JSON.stringify(state.plan, null, 2);
         routeWidget.callback?.(routeWidget.value);
         state.collisionStale = true;
-        if (!state.dragging && !state.targetDragging) ensureRouteVisible();
+        // Viewport is artist state. Route edits must not auto-fit or zoom out.
+        // Only initial scene framing, explicit import, or "Enquadrar tudo" may reframe.
         node.graph?.setDirtyCanvas?.(true, true);
         updateToolbar();
         draw();
@@ -441,7 +454,7 @@ function setupEditor(node) {
     function orthoExtent(panel) {
         ensureOrthoViews(false);
         const view = state.orthoViews[panel.name] || baseOrthoView(panel);
-        const zoom = Math.max(0.15, Math.min(40, Number(view.zoom) || 1));
+        const zoom = Math.max(0.15, Math.min(MAX_ORTHO_ZOOM, Number(view.zoom) || 1));
         const spanX = view.baseSpanX / zoom;
         const spanY = view.baseSpanY / zoom;
         const centerX = view.baseCenterX + Number(view.panX || 0);
@@ -577,7 +590,7 @@ function setupEditor(node) {
         if (!panel || !Number.isFinite(factor) || factor <= 0) return false;
         const perspective = perspectivePanel();
         if (perspective && panel === perspective) {
-            state.orbitZoom = Math.max(0.20, Math.min(12.0, state.orbitZoom * factor));
+            state.orbitZoom = Math.max(0.20, Math.min(MAX_PERSPECTIVE_ZOOM, state.orbitZoom * factor));
             draw();
             return true;
         }
@@ -588,7 +601,7 @@ function setupEditor(node) {
         const extent = orthoExtent(ortho);
         let before = null;
         if (anchorPoint) before = worldFromPanel(ortho, anchorPoint.x, anchorPoint.y, {});
-        extent.view.zoom = Math.max(0.20, Math.min(30.0, extent.view.zoom * factor));
+        extent.view.zoom = Math.max(0.20, Math.min(MAX_ORTHO_ZOOM, extent.view.zoom * factor));
         if (before && anchorPoint) {
             const after = worldFromPanel(ortho, anchorPoint.x, anchorPoint.y, {});
             extent.view.panX += Number(before[ortho.x_axis]) - Number(after[ortho.x_axis]);
@@ -720,14 +733,14 @@ function setupEditor(node) {
         ctx.clip();
 
         const points = geometry.points;
-        const drawStride = Math.max(1, Math.ceil(points.length / 30000));
+        const drawStride = Math.max(1, Math.ceil(points.length / GEOMETRY_DRAW_BUDGET));
         for (let index = 0; index < points.length; index += drawStride) {
             const raw = points[index];
             const p = projectPerspective(raw);
             if (!p) continue;
             if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
             ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.72)`;
-            ctx.fillRect(p.x, p.y, 0.9, 0.9);
+            ctx.fillRect(p.x, p.y, 1.1, 1.1);
         }
 
         for (let missionIndex = 0; missionIndex < (state.plan?.missions || []).length; missionIndex++) {
@@ -873,13 +886,13 @@ function setupEditor(node) {
         ctx.clip();
 
         const points = geometry.points;
-        const drawStride = Math.max(1, Math.ceil(points.length / 30000));
+        const drawStride = Math.max(1, Math.ceil(points.length / GEOMETRY_DRAW_BUDGET));
         for (let index = 0; index < points.length; index += drawStride) {
             const raw = points[index];
             const p = project(panel, geometryPoint(raw));
             if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
             ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.78)`;
-            ctx.fillRect(p.x, p.y, 0.85, 0.85);
+            ctx.fillRect(p.x, p.y, 1.05, 1.05);
         }
         ctx.restore();
 
@@ -1020,7 +1033,8 @@ function setupEditor(node) {
         canvas.width = size.width;
         canvas.height = size.height;
 
-        if (sceneChanged || !Object.keys(state.orthoViews).length) {
+        const needsInitialFraming = sceneChanged || !Object.keys(state.orthoViews).length;
+        if (needsInitialFraming) {
             ensureOrthoViews(true);
             resetViewportFraming();
         } else {
@@ -1033,10 +1047,110 @@ function setupEditor(node) {
             state.initialSeedPlan = clone(cleanPlan);
         }
         setPlan(cleanPlan, true);
-        ensureRouteVisible();
+        if (needsInitialFraming) ensureRouteVisible();
         state.collisionStale = false;
         updateToolbar();
         draw();
+    }
+
+    function portableRoutePreset() {
+        if (!validPlan(state.plan)) return null;
+        sanitizeNumericWidgets();
+        return {
+            schema: ROUTE_PRESET_SCHEMA,
+            coordinate_space: "P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+            exported_at_utc: new Date().toISOString(),
+            source_scene_contract_id: state.plan.scene_contract_id || null,
+            source_run_id: state.plan.source_run_id || null,
+            frames_per_drone: Math.max(2, Math.min(240, Math.round(Number(framesWidget?.value ?? state.plan.frames_per_drone ?? 30)))),
+            collision_mode: String(state.plan.collision_mode || "HOLD_AND_RESUME"),
+            min_clearance_m: Math.max(0, Math.min(10, Number(clearanceWidget?.value ?? state.plan.min_clearance_m ?? 0.20))),
+            missions: clone(state.plan.missions),
+        };
+    }
+
+    function validateImportedPreset(payload) {
+        const route = payload;
+        if (!route || !Array.isArray(route.missions) || route.missions.length < 1 || route.missions.length > 7) {
+            throw new Error("Arquivo de trajeto inválido: missions deve conter 1–7 drones.");
+        }
+        if (route.coordinate_space && route.coordinate_space !== "P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS") {
+            throw new Error("Arquivo usa um coordinate_space incompatível.");
+        }
+        const finitePoint = (point) =>
+            point && ["right", "up", "forward"].every((key) => Number.isFinite(Number(point[key])));
+        route.missions.forEach((mission, missionIndex) => {
+            const mode = String(mission?.mode || "PATH").toUpperCase();
+            if (!["PATH", "SPIN_360"].includes(mode)) throw new Error(`Drone ${missionIndex + 1}: modo inválido.`);
+            if (!Array.isArray(mission.waypoints)) throw new Error(`Drone ${missionIndex + 1}: waypoints ausentes.`);
+            if (mode === "PATH" && mission.waypoints.length < 2) throw new Error(`Drone ${missionIndex + 1}: PATH precisa de pelo menos 2 pontos.`);
+            if (mode === "SPIN_360" && mission.waypoints.length !== 1) throw new Error(`Drone ${missionIndex + 1}: 360° precisa de 1 ponto.`);
+            if (!mission.waypoints.every(finitePoint)) throw new Error(`Drone ${missionIndex + 1}: waypoint inválido.`);
+            const orientation = String(mission.orientation_mode || "LOOK_ALONG_PATH").toUpperCase();
+            if (!["LOOK_AT_TARGET", "LOOK_ALONG_PATH", "MANUAL_DIRECTION"].includes(orientation)) {
+                throw new Error(`Drone ${missionIndex + 1}: orientação inválida.`);
+            }
+            if (mode === "PATH" && orientation === "LOOK_AT_TARGET" && !finitePoint(mission.look_target)) {
+                throw new Error(`Drone ${missionIndex + 1}: LOOK_AT_TARGET sem alvo válido.`);
+            }
+            if (mode === "PATH" && orientation === "MANUAL_DIRECTION" && !finitePoint(mission.manual_direction)) {
+                throw new Error(`Drone ${missionIndex + 1}: MANUAL_DIRECTION inválida.`);
+            }
+        });
+        return route;
+    }
+
+    function exportRoutePreset() {
+        const preset = portableRoutePreset();
+        if (!preset) return;
+        const blob = new Blob([JSON.stringify(preset, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const run = String(state.plan?.source_run_id || "route").replace(/[^A-Za-z0-9._-]+/g, "_");
+        link.href = url;
+        link.download = `ConceptGhost_drone_route_${run}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        status.textContent = "Trajeto exportado · JSON portátil salvo";
+        status.style.color = "#86e276";
+    }
+
+    async function importRoutePresetFile(file) {
+        if (!file || !validPlan(state.plan)) return;
+        const payload = validateImportedPreset(JSON.parse(await file.text()));
+        pushHistory();
+
+        const previousScene = String(payload.source_scene_contract_id || "");
+        const currentScene = String(state.plan.scene_contract_id || "");
+        const imported = {
+            ...clone(state.plan),
+            missions: clone(payload.missions),
+            frames_per_drone: Math.max(2, Math.min(240, Math.round(Number(payload.frames_per_drone ?? 30)))),
+            collision_mode: String(payload.collision_mode || "HOLD_AND_RESUME").toUpperCase(),
+            min_clearance_m: Math.max(0, Math.min(10, Number(payload.min_clearance_m ?? 0.20))),
+            route_authority: "ARTIST_AUTHORED",
+            route_plan_dirty: true,
+        };
+        delete imported.route_plan_sha256;
+
+        if (framesWidget) framesWidget.value = imported.frames_per_drone;
+        if (clearanceWidget) clearanceWidget.value = imported.min_clearance_m;
+        state.plan = imported;
+        state.activeMission = 0;
+        state.selectedPoint = null;
+        state.editingTarget = false;
+        state.targetDragging = false;
+        persist();
+        ensureRouteVisible();
+        draw();
+
+        const crossScene = previousScene && currentScene && previousScene !== currentScene;
+        status.textContent = crossScene
+            ? `Trajeto importado de outra cena · ${imported.missions.length} drone(s) · revise posições antes do Run`
+            : `Trajeto importado · ${imported.missions.length} drone(s) · pronto para revisar`;
+        status.style.color = crossScene ? "#ffdc5a" : "#86e276";
     }
 
     canvas.addEventListener("pointerdown", (event) => {
@@ -1048,7 +1162,7 @@ function setupEditor(node) {
         if (zoomControl) {
             event.preventDefault();
             event.stopPropagation();
-            const factor = zoomControl.action === "in" ? 1.25 : 0.80;
+            const factor = zoomControl.action === "in" ? 1.35 : (1 / 1.35);
             applyPanelZoom(zoomControl.panel, factor);
             return;
         }
@@ -1189,7 +1303,7 @@ function setupEditor(node) {
         canvas.style.cursor = "crosshair";
         canvas.releasePointerCapture?.(event.pointerId);
         if (wasEditing) {
-            ensureRouteVisible();
+            // Keep the exact zoom/pan used to place the point.
             draw();
         }
     };
@@ -1367,11 +1481,37 @@ function setupEditor(node) {
         state.targetDragging = false;
         state.collisionStale = true;
         setPlan(clone(state.initialSeedPlan), true);
-        ensureRouteVisible();
-        status.textContent = "Rota restaurada para a semente desta cena · P9 e visualização preservados";
+        status.textContent = "Rota restaurada para a semente desta cena · zoom/pan preservados";
         status.style.color = "#ffdc5a";
         node.graph?.setDirtyCanvas?.(true, true);
         draw();
+    });
+
+    exportRoute.addEventListener("click", () => {
+        try {
+            exportRoutePreset();
+        } catch (error) {
+            status.textContent = "Falha ao exportar trajeto: " + String(error?.message || error);
+            status.style.color = "#ff6868";
+        }
+    });
+
+    importRoute.addEventListener("click", () => {
+        importInput.value = "";
+        importInput.click();
+    });
+
+    importInput.addEventListener("change", async () => {
+        const file = importInput.files?.[0];
+        if (!file) return;
+        try {
+            await importRoutePresetFile(file);
+        } catch (error) {
+            status.textContent = "Falha ao importar trajeto: " + String(error?.message || error);
+            status.style.color = "#ff6868";
+        } finally {
+            importInput.value = "";
+        }
     });
 
     frameAll.addEventListener("click", () => {
