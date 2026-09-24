@@ -147,6 +147,36 @@ def _validate_dataset_reuse(
     return True, "MATCHED_CONTEXT"
 
 
+def _dense_manifest_gate7_coverage_ok(manifest: dict | None) -> tuple[bool,float | None,int | None]:
+    if not isinstance(manifest,dict):
+        return False,None,None
+    depth_count=int(manifest.get("geometric_depth_map_file_count") or 0)
+    graph_count=int(manifest.get("geometric_consistency_graph_file_count") or 0)
+    usable=int(
+        manifest.get("usable_registered_geometric_image_count")
+        or min(depth_count,graph_count)
+    )
+    registered=int(manifest.get("registered_image_count") or 0)
+    if registered<=0:
+        mission_rows=manifest.get("mission_contribution")
+        if isinstance(mission_rows,list):
+            registered=sum(
+                int(row.get("selected_frame_count") or 0)
+                for row in mission_rows
+                if isinstance(row,dict)
+            )
+    if registered>0:
+        ratio=usable/float(registered)
+        return bool(ratio>=0.70),ratio,registered
+    # Very old manifests did not record a registered-view denominator. Keep
+    # their historical reuse behavior only when there is no way to infer it.
+    return bool(
+        manifest.get("gate7_geometric_evidence_ready") is True
+        and depth_count>0
+        and graph_count>0
+    ),None,None
+
+
 def _validate_mesh_reuse(dataset_root: Path, manifest: dict | None) -> bool:
     return bool(
         manifest
@@ -286,26 +316,51 @@ def run_reconstruction_pipeline(
     dense_manifest_path=dataset_root/"dense_reconstruction_manifest.json"
     dense_manifest=_stage_manifest(dense_manifest_path,require_status=True)
     dense_root=dataset_root/"dense"
+    dense_coverage_ok,dense_coverage_ratio,dense_registered_count=(
+        _dense_manifest_gate7_coverage_ok(dense_manifest)
+    )
     dense_reusable=bool(
         dense_manifest
-        and dense_manifest.get("schema")=="ConceptGhost.P10DenseReconstructionResult.v0.3"
-        and dense_manifest.get("gate7_geometric_evidence_ready") is True
-        and int(dense_manifest.get("geometric_depth_map_file_count") or 0)>0
-        and int(dense_manifest.get("geometric_consistency_graph_file_count") or 0)>0
+        and dense_manifest.get("schema") in {
+            "ConceptGhost.P10DenseReconstructionResult.v0.3",
+            "ConceptGhost.P10DenseReconstructionResult.v0.4",
+        }
+        and dense_coverage_ok
         and (dense_root/"fused.ply").is_file()
     )
     if dense_reusable:
-        stages["dense"]={"state":"REUSED","manifest_path":str(dense_manifest_path)}
+        stages["dense"]={
+            "state":"REUSED",
+            "manifest_path":str(dense_manifest_path),
+            "gate7_geometric_coverage_ratio":dense_coverage_ratio,
+            "registered_image_count":dense_registered_count,
+        }
     else:
         executable=resolve_colmap_executable(colmap_executable)
         stale_dense_exists=dense_root.exists() and any(dense_root.iterdir())
+        stale_coverage={
+            "ratio":dense_coverage_ratio,
+            "registered_image_count":dense_registered_count,
+            "geometric_depth_map_file_count":(
+                int(dense_manifest.get("geometric_depth_map_file_count") or 0)
+                if isinstance(dense_manifest,dict) else 0
+            ),
+            "geometric_consistency_graph_file_count":(
+                int(dense_manifest.get("geometric_consistency_graph_file_count") or 0)
+                if isinstance(dense_manifest,dict) else 0
+            ),
+        }
         run_dense_reconstruction(
             dataset_root,
             colmap_executable=executable,
             overwrite_output=stale_dense_exists,
         )
         stages["dense"]={
-            "state":"REBUILT_GATE7_EVIDENCE_CONTRACT" if stale_dense_exists else "BUILT",
+            "state":(
+                "REBUILT_GATE7_EVIDENCE_COVERAGE"
+                if stale_dense_exists else "BUILT"
+            ),
+            "stale_coverage":stale_coverage,
             "manifest_path":str(dense_manifest_path),
         }
 
