@@ -184,17 +184,40 @@ It remains intentionally absent from the published r15 workflows while r15 runti
 Focused CI run `35956022505` passed on Ubuntu/Python 3.12 and Windows/Python 3.12. General regression run `35956022467` passed across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14. Formal closeout: `31_GATE7_5_VISUAL_REVIEW_SOURCE_CLOSEOUT.md`.
 
 ### G7.6 — Gate 7 closeout
-Status: **PLANNED**
+Status: **SOURCE COMPLETE / CI PASS / RUNTIME PROMOTION BLOCKED**
 
-Required before Gate 8:
-- P9 unchanged byte-for-byte where the P9 contract requires immutability;
-- registration provenance PASS;
-- no unauthorized Sim(3)/scale normalization;
-- fused candidate exists and is non-empty;
-- protected source surfaces remain protected;
-- free-space no-fill rules represented;
-- provenance manifest complete;
-- Gate 7 Preview package published and user-reviewed.
+Implemented after the project-wide Visual Evidence & Comparison Contract was frozen.
+
+Source closeout now validates:
+- G7.1 identity registration;
+- G7.2 provenance;
+- G7.2C confidence with refinement OFF;
+- G7.3 free-space no-fill authority;
+- G7.4 protected additive fusion;
+- G7.5 visual review;
+- one terminal preview + one comparison branch for every Gate 7 subgate.
+
+G7.6 itself produces a visual-evidence contact sheet and an input/output summary when run against real Gate 7 artifacts.
+
+Source implementation:
+- `p10_lab/gate7_closeout.py`
+- `p10_lab/visual_evidence_contract.py`
+- `p10_lab/visual_comparisons.py`
+
+Focused visual-evidence CI `35958717367`: SUCCESS on Ubuntu/Python 3.12 and Windows/Python 3.12.
+
+Focused G7.6 CI `35958902099`: SUCCESS on Ubuntu/Python 3.12 and Windows/Python 3.12.
+
+Formal closeout:
+`33_GATE7_6_SOURCE_CLOSEOUT_VISUAL_EVIDENCE.md`
+
+Required before Gate 8 runtime promotion still remains:
+- DR9R r15 runtime UX accepted by the user;
+- Gate 7 Preview packaged and run on the real attempt;
+- artist visual review approved;
+- complete runtime visual-evidence manifests present.
+
+CI/source completion alone never promotes Gate 8.
 
 ## Parallel-development rule while r15 is under test
 
@@ -217,6 +240,8 @@ If r15 exposes another Route Setup UX/runtime defect, fix DR9R independently and
 - G7.3 free-space / visibility no-fill authority: **COMPLETE / CI PASS**.
 - G7.4 protected additive fusion candidate: **COMPLETE / CI PASS**.
 - G7.5 registration/provenance visual review: **COMPLETE / CI PASS AT SOURCE LEVEL**.
-- G7.2/G7.2C/G7.3/G7.4/G7.5 remain non-destructive; confidence refinement is OFF and Gate 8 remains blocked.
-- Next safe work: **G7.6 source closeout / preview-package readiness**.
-- Final user-facing Gate 7 promotion remains blocked until DR9R r15 UX acceptance and artist visual review are completed.
+- Visual Evidence & Comparison Contract: **COMPLETE / CI PASS**.
+- G7.6 source closeout: **COMPLETE / CI PASS**.
+- Gate 7 source implementation is now complete and remains non-destructive; confidence refinement is OFF.
+- Next safe work after DR9R r15 acceptance: **build/publish the Gate 7 Preview package and run the real visual review**.
+- Gate 8 remains blocked until DR9R r15 UX acceptance and artist review of the real Gate 7 Preview are completed.
