@@ -21,6 +21,27 @@ def _write_float_map(path: Path, array):
         stream.write(serialized.tobytes())
 
 
+def _write_cameras_bin(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as stream:
+        stream.write(struct.pack("<Q", 1))
+        stream.write(struct.pack("<iiQQ", 1, 1, 4, 4))
+        stream.write(struct.pack("<dddd", 4.0, 4.0, 2.0, 2.0))
+
+
+def _write_images_bin(path: Path, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as stream:
+        stream.write(struct.pack("<Q", len(rows)))
+        for image_id, name in rows:
+            stream.write(struct.pack("<i", image_id))
+            stream.write(struct.pack("<dddd", 1.0, 0.0, 0.0, 0.0))
+            stream.write(struct.pack("<ddd", 0.0, 0.0, 0.0))
+            stream.write(struct.pack("<i", 1))
+            stream.write(name.encode("utf-8") + b"\x00")
+            stream.write(struct.pack("<Q", 0))
+
+
 def _write_consistency(path: Path, width: int, height: int, records):
     path.parent.mkdir(parents=True, exist_ok=True)
     values = []
@@ -62,6 +83,24 @@ class ColmapDenseIOTests(unittest.TestCase):
             )
             self.assertEqual(header, (3, 2, 1))
             self.assertEqual(records, {(0, 1): (0, 2)})
+
+    def test_dense_sparse_binary_camera_and_image_models_are_supported(self):
+        from p10_lab.colmap_dense_io import (
+            load_colmap_sparse_cameras,
+            load_colmap_sparse_images,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            _write_cameras_bin(root/"cameras.bin")
+            _write_images_bin(root/"images.bin", [(1,"frame_000000.png"),(2,"frame_000001.png")])
+            cameras,camera_storage=load_colmap_sparse_cameras(root)
+            images,image_storage=load_colmap_sparse_images(root)
+            self.assertEqual(camera_storage,"BINARY")
+            self.assertEqual(image_storage,"BINARY")
+            self.assertEqual(cameras[1]["model"],"PINHOLE")
+            self.assertEqual(cameras[1]["width"],4)
+            self.assertEqual([row["name"] for row in images],["frame_000000.png","frame_000001.png"])
 
     def test_dense_reader_contract_is_fail_closed(self):
         import p10_lab.colmap_dense_io as dense_io
@@ -230,6 +269,84 @@ class Gate7FreeSpaceTests(unittest.TestCase):
             with np.load(result["evidence_npz_path"], allow_pickle=False) as payload:
                 self.assertGreater(len(payload["voxel_keys"]),0)
                 self.assertGreater(int(payload["p9_source_protected"].sum()),0)
+
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
+    def test_evidence_builder_accepts_realistic_dense_binary_sparse_model(self):
+        from p10_lab.free_space_evidence import build_free_space_evidence
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            dataset=root/"dataset"
+            dense=dataset/"dense"
+            (dense/"sparse").mkdir(parents=True)
+            (dense/"images").mkdir()
+            (dense/"stereo"/"depth_maps").mkdir(parents=True)
+            (dense/"stereo"/"consistency_graphs").mkdir(parents=True)
+
+            frames=[]
+            binary_rows=[]
+            for i,route in enumerate(["drone_a","drone_b"],start=1):
+                name=f"frame_{i-1:06d}.png"
+                frames.append({
+                    "image_id":i,"camera_id":1,"global_frame_index":i-1,
+                    "path_name":route,"path_frame_index":0,"image_name":name,
+                })
+                binary_rows.append((i,name))
+                _write_float_map(
+                    dense/"stereo"/"depth_maps"/f"{name}.geometric.bin",
+                    np.full((4,4),2.0,dtype=np.float32),
+                )
+                _write_consistency(
+                    dense/"stereo"/"consistency_graphs"/f"{name}.geometric.bin",
+                    4,4,[(r,c,[0,1]) for r in range(4) for c in range(4)],
+                )
+            _write_cameras_bin(dense/"sparse"/"cameras.bin")
+            _write_images_bin(dense/"sparse"/"images.bin",binary_rows)
+
+            dataset_manifest=dataset/"dataset_manifest.json"
+            dataset_manifest.write_text(json.dumps({
+                "schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.2",
+                "run_id":"p9","scene_contract_id":"scene",
+                "camera_authority":"P9_BASELINE_WORLD_DERIVED",
+                "image_authority":"SOURCE_PRESERVED_P10_COMPOSITE",
+                "frames":frames,
+            }),encoding="utf-8")
+            registration=root/"registration.json"
+            registration.write_text(json.dumps({
+                "dataset_manifest_path":str(dataset_manifest.resolve())
+            }),encoding="utf-8")
+            provenance=root/"provenance.json"
+            provenance.write_text(json.dumps({
+                "registration_manifest_path":str(registration.resolve()),
+                "thresholds":{"scene_diagonal_m":4.0},
+            }),encoding="utf-8")
+            evidence=root/"confidence.npz"
+            np.savez_compressed(
+                evidence,
+                p9_points=np.asarray([[0,0,2]],dtype=np.float32),
+                p9_provenance_labels=np.asarray([1],dtype=np.uint8),
+            )
+            confidence=root/"confidence.json"
+            confidence.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7GeometryConfidence.v0.1",
+                "status":"PASS","geometry_confidence_refine":False,
+                "official_geometry_changed":False,"p9_authority_changed":False,
+                "ready_for_gate7_3":True,"scene_contract_id":"scene",
+                "p9_run_id":"p9","p10_attempt_id":"attempt",
+                "provenance_manifest_path":str(provenance.resolve()),
+                "evidence_npz_path":str(evidence.resolve()),
+            }),encoding="utf-8")
+
+            result=build_free_space_evidence(
+                confidence,root/"out",max_pixels_per_frame=16,
+                min_consistent_sources=2,min_voxel_size_m=0.1,
+                max_voxel_size_m=0.1,free_step_voxels=1.0,
+                max_free_samples_per_ray=16,
+            )
+            self.assertEqual(result["status"],"PASS")
+            self.assertEqual(result["dense_sparse_model_storage"]["camera_model"],"BINARY")
+            self.assertEqual(result["dense_sparse_model_storage"]["image_model"],"BINARY")
+            self.assertGreater(result["sampling"]["accepted_consistent_rays"],0)
 
     @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
     def test_free_space_overlay_caps_confidence_without_mutating_p9(self):
