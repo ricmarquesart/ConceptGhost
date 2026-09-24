@@ -111,5 +111,60 @@ class RunAuditBundleTests(unittest.TestCase):
             self.assertIn("RUN_AUDIT_BUNDLE_index.json", names)
 
 
+
+    def test_default_storage_is_project_sidecar_and_partial_failure_is_supported(self):
+        from p10_lab.run_audit_bundle import (
+            build_partial_run_audit_bundle,
+            default_project_audit_root,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            p9=root/"20260924T080238_094583Z_408c9a94"
+            attempt=root/"local_attempt"
+            p9.mkdir()
+            attempt.mkdir()
+            (p9/"manifest.json").write_text(
+                json.dumps({"status":{"run_status":"PASS"}}),
+                encoding="utf-8",
+            )
+            gate6=attempt/"gate6"/"reconstruction_runtime_manifest.json"
+            gate6.parent.mkdir(parents=True)
+            gate6.write_text(json.dumps({
+                "schema":"ConceptGhost.P10ReconstructionRuntime.v0.2",
+                "runtime_status":"PASS",
+                "run_id":p9.name,
+                "p10_attempt_id":"attempt-123",
+                "p10_attempt_root":str(attempt),
+            }),encoding="utf-8")
+            failure=attempt/"gate7"/"gate7_failure_manifest.json"
+            failure.parent.mkdir(parents=True)
+            failure.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7Failure.v0.1",
+                "status":"FAIL",
+                "failed_stage":"G7_3_FREE_SPACE_EVIDENCE",
+            }),encoding="utf-8")
+
+            expected=default_project_audit_root(p9,"attempt-123")
+            self.assertEqual(
+                expected,
+                root/"P10_AUDITS"/p9.name/"attempt-123",
+            )
+            result=build_partial_run_audit_bundle(
+                p9,gate6,gate7_failure_manifest_path=failure
+            )
+            self.assertEqual(result["status"],"PARTIAL_FAILURE")
+            self.assertEqual(Path(result["bundle_path"]).parent,expected)
+            self.assertTrue((root/"P10_AUDITS"/"LATEST_AUDIT.txt").is_file())
+            self.assertTrue((root/"P10_AUDITS"/"LATEST_AUDIT_INDEX.json").is_file())
+            with zipfile.ZipFile(result["bundle_path"],"r") as archive:
+                names=set(archive.namelist())
+            self.assertIn(
+                "p10_attempt/gate6/reconstruction_runtime_manifest.json",names
+            )
+            self.assertIn(
+                "p10_attempt/gate7/gate7_failure_manifest.json",names
+            )
+
 if __name__ == "__main__":
     unittest.main()
