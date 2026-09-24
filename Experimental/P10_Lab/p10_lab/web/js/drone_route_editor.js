@@ -128,7 +128,7 @@ function setupEditor(node) {
         "flex-direction:column",
         "gap:6px",
         "width:100%",
-        "height:1080px",
+        "height:1320px",
         "box-sizing:border-box",
         "padding:6px",
         "background:#171717",
@@ -239,6 +239,23 @@ function setupEditor(node) {
         "Resetar rota não apaga a cena; Enquadrar tudo só restaura a câmera das vistas.";
     help.style.cssText = "color:#aaa;line-height:1.3;";
 
+    const cameraPreviewWrap = document.createElement("div");
+    cameraPreviewWrap.style.cssText =
+        "display:flex;flex-direction:column;gap:3px;background:#111;border:1px solid #333;border-radius:4px;padding:5px;";
+    const cameraPreviewTitle = document.createElement("div");
+    cameraPreviewTitle.textContent = "Selected Camera View · selecione P1/P2/P3…";
+    cameraPreviewTitle.style.cssText = "color:#ddd;font-weight:600;";
+    const cameraPreviewCanvas = document.createElement("canvas");
+    cameraPreviewCanvas.width = 640;
+    cameraPreviewCanvas.height = 360;
+    cameraPreviewCanvas.style.cssText =
+        "display:block;width:min(100%,640px);height:auto;align-self:center;background:#0b0b0b;border:1px solid #2e2e2e;";
+    const cameraPreviewHint = document.createElement("div");
+    cameraPreviewHint.textContent =
+        "Live preview rápido do P9. Para checagem de maior confiança, use P10 · Selected Drone Camera Preview.";
+    cameraPreviewHint.style.cssText = "color:#888;font-size:10px;";
+    cameraPreviewWrap.append(cameraPreviewTitle, cameraPreviewCanvas, cameraPreviewHint);
+
     const canvasWrap = document.createElement("div");
     canvasWrap.style.cssText =
         "position:relative;flex:1;min-height:0;overflow:auto;background:#111;border:1px solid #333;border-radius:4px;";
@@ -253,18 +270,19 @@ function setupEditor(node) {
     const selected = document.createElement("span");
     footer.append(status, selected);
 
-    root.append(toolbar, help, canvasWrap, footer);
+    root.append(toolbar, help, cameraPreviewWrap, canvasWrap, footer);
 
     node.addDOMWidget("cg_drone_route_editor", "route_editor", root, {
         serialize: false,
         hideOnZoom: false,
-        getMinHeight: () => 900,
-        getHeight: () => 1080,
+        getMinHeight: () => 1120,
+        getHeight: () => 1320,
     });
 
-    node.setSize?.([Math.max(node.size?.[0] || 900, 1180), Math.max(node.size?.[1] || 900, 1250)]);
+    node.setSize?.([Math.max(node.size?.[0] || 900, 1180), Math.max(node.size?.[1] || 900, 1490)]);
 
     const ctx = canvas.getContext("2d");
+    const cameraCtx = cameraPreviewCanvas.getContext("2d");
     const state = {
         plan: null,
         projection: null,
@@ -379,6 +397,57 @@ function setupEditor(node) {
             };
         }
         return normalizeVector(vector);
+    }
+
+    function vectorDot(a, b) {
+        return Number(a.right) * Number(b.right) +
+            Number(a.up) * Number(b.up) +
+            Number(a.forward) * Number(b.forward);
+    }
+
+    function physicalCrossRuf(a, b) {
+        return {
+            right: -(Number(a.up) * Number(b.forward) - Number(a.forward) * Number(b.up)),
+            up: -(Number(a.forward) * Number(b.right) - Number(a.right) * Number(b.forward)),
+            forward: -(Number(a.right) * Number(b.up) - Number(a.up) * Number(b.right)),
+        };
+    }
+
+    function cameraBasisForLook(rawLook) {
+        const forward = normalizeVector(rawLook);
+        const canonicalUp = { right: 0, up: 1, forward: 0 };
+        let right = physicalCrossRuf(forward, canonicalUp);
+        if (Math.hypot(right.right, right.up, right.forward) < 1e-8) {
+            const canonicalRight = { right: 1, up: 0, forward: 0 };
+            const amount = vectorDot(canonicalRight, forward);
+            right = {
+                right: canonicalRight.right - amount * forward.right,
+                up: canonicalRight.up - amount * forward.up,
+                forward: canonicalRight.forward - amount * forward.forward,
+            };
+        }
+        right = normalizeVector(right);
+        const up = normalizeVector(physicalCrossRuf(right, forward));
+        return { right, up, forward };
+    }
+
+    function cameraContract() {
+        return state.metadata?.camera_preview_contract || null;
+    }
+
+    function selectedCameraState() {
+        const mission = activeMission();
+        const pointIndex = state.selectedPoint;
+        const point = pointIndex == null ? null : mission?.waypoints?.[pointIndex];
+        if (!mission || !point) return null;
+        const look = lookVectorForMission(mission, pointIndex);
+        return {
+            mission,
+            pointIndex,
+            point,
+            look,
+            basis: cameraBasisForLook(look),
+        };
     }
 
     function manualDirectionFromInputs() {
