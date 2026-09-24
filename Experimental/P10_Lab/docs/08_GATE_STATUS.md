@@ -1,5 +1,32 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 Gate 7.6 source closeout + visual evidence contract
+
+- **Ordering completed as requested: Visual Evidence/Comparison policy first, Gate 7.6 closeout second.**
+- DR9R r15 remains under user runtime UX testing; the published r15 bundle was not modified.
+- **G7.1 registration authority: COMPLETE / CI PASS.**
+- **G7.2 authority-aware provenance: COMPLETE / CI PASS.**
+- **G7.2C geometry confidence: COMPLETE / CI PASS.**
+- **G7.3 free-space / no-fill authority: COMPLETE / CI PASS.**
+- **G7.4 protected additive fusion candidate: COMPLETE / CI PASS.**
+- **G7.5 registration / provenance visual review: COMPLETE / CI PASS at source level.**
+- **Project-wide Visual Evidence & Comparison Contract: COMPLETE / CI PASS.**
+- **G7.6 source closeout: COMPLETE / CI PASS.**
+- Every meaningful gate now requires a terminal state preview plus a BEFORE/AFTER or REFERENCE/RESULT comparison.
+- Visual branches may not feed the geometry pipeline, modify P9, modify official geometry or promote results.
+- Implemented reusable confidence comparison: BLUE=high, RED=low, with BEFORE / AFTER / DELTA.
+- Implemented reusable same-camera drone mesh replay producing BEFORE GIF, AFTER GIF and side-by-side comparison GIF using identical Gate 6 qvec/tvec, intrinsics and frame selection.
+- G7.6 runtime closeout also generates a Gate 7 visual-evidence contact sheet and Gate 7 input/output summary.
+- Visual Evidence focused CI run `35958717367`: SUCCESS on Ubuntu/Python 3.12 and Windows/Python 3.12.
+- G7.6 focused CI run `35958902099`: SUCCESS on Ubuntu/Python 3.12 and Windows/Python 3.12.
+- G7.6 general regression run `35958901952`: SUCCESS.
+- G7.6 source snapshot run `35958901957`: SUCCESS.
+- Formal visual contract: `Experimental/P10_Lab/docs/32_VISUAL_EVIDENCE_COMPARISON_CONTRACT.md`.
+- Formal G7.6 closeout: `Experimental/P10_Lab/docs/33_GATE7_6_SOURCE_CLOSEOUT_VISUAL_EVIDENCE.md`.
+- **Gate 7 source implementation is COMPLETE.**
+- **Gate 7 runtime acceptance is NOT complete.**
+- Gate 8 remains blocked until DR9R r15 UX acceptance, Gate 7 Preview packaging/runtime execution, and artist visual approval.
+
 ## Authoritative reconciliation — 2026-09-24 Gate 7.5 source checkpoint
 
 - DR9R r15 remains under user runtime UX testing; Gate 7 source work remains isolated from the published runtime.
