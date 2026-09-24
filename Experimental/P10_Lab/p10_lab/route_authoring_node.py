@@ -238,6 +238,9 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "preview_default":"POINTS_MEDIUM",
                 "point_size_control":True,
                 "mesh_preview_is_display_only":True,
+                "selected_camera_live_preview":True,
+                "selected_camera_frustum":True,
+                "selected_camera_authoritative_refresh_node":"ConceptGhostP10SelectedDroneCameraPreview",
             },
         }
         rendered_diagnostics=_pretty(diagnostics)
@@ -246,6 +249,17 @@ class ConceptGhostP10DroneRouteAuthoring:
             "projection":projection,
             "collision_preflight":collision_report.to_dict(),
             "preview_geometry":preview_geometry,
+            "camera_preview_contract":{
+                "width":int(camera.width),
+                "height":int(camera.height),
+                "fx":float(camera.fx),
+                "fy":float(camera.fy),
+                "cx":float(camera.cx),
+                "cy":float(camera.cy),
+                "horizontal_fov_deg":float(camera.horizontal_fov_deg),
+                "vertical_fov_deg":float(camera.vertical_fov_deg),
+                "authority":"P9_ACCEPTED_CAMERA",
+            },
             "diagnostics":diagnostics,
         }
         return {
