@@ -1,5 +1,20 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 Gate 7.2 source checkpoint
+
+- DR9R r15 remains under user runtime UX testing; its published bundle is not modified by this source work.
+- **Gate 7.1 — P10→P9 registration authority: COMPLETE / CI PASS.**
+- G7.1 validates that current known-camera Gate 6 geometry is already in the P9 canonical metric world and therefore uses an identity transform: scale 1, translation 0, no Sim(3) refit.
+- **Gate 7.2 — authority-aware geometry provenance: COMPLETE / CI PASS at source level.**
+- G7.2 writes diagnostic-only provenance evidence/classes without mutating P9 or official P10 geometry.
+- Provenance classes are `P9_SOURCE_PROTECTED`, `P9_RETAINED`, `P10_MULTIVIEW_SUPPORTED`, `P10_GENERATED_ONLY`, `UNKNOWN`, and `CONFLICT`.
+- Independent multiview support requires sparse support across at least two images from at least two authored missions.
+- `P10_GENERATED_ONLY` is conservative diagnostic evidence and cannot authorize deletion/replacement.
+- `ready_for_destructive_fusion` remains false until G7.2C confidence, G7.3 free-space/no-fill, and G7.4 protected fusion are implemented.
+- GitHub Actions run `35946502650` completed SUCCESS on Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
+- Next source-only bounded work: **Gate 7.2C — Geometry Confidence Field**.
+- User-facing Gate 7 promotion remains blocked until DR9R r15 runtime UX acceptance is reviewed.
+
 ## Authoritative reconciliation — 2026-09-23 DR9R-F r7 ready for runtime acceptance
 
 - P9 remains the accepted immutable upstream authority.
