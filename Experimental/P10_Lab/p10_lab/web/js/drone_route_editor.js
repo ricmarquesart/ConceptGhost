@@ -8,7 +8,8 @@ const MAX_PERSPECTIVE_ZOOM = 48.0;
 const GEOMETRY_DRAW_BUDGET = 100000;
 const MESH_DRAW_BUDGET = 24000;
 const PREVIEW_MODES = ["POINTS_LOW", "POINTS_MEDIUM", "POINTS_HIGH", "MESH_SURFACE", "MESH_WIREFRAME"];
-const ROUTE_PRESET_SCHEMA = "ConceptGhost.P10DroneRoutePreset.v0.1";
+const ROUTE_PRESET_SCHEMA = "ConceptGhost.P10DroneRoutePreset.v0.2";
+const LEGACY_ROUTE_PRESET_SCHEMAS = new Set(["ConceptGhost.P10DroneRoutePreset.v0.1", ROUTE_PRESET_SCHEMA]);
 
 function chainCallback(object, name, callback) {
     const original = object[name];
@@ -1661,6 +1662,10 @@ function setupEditor(node) {
 
     function validateImportedPreset(payload) {
         const route = payload;
+        const schema = String(route?.schema || "ConceptGhost.P10DroneRoutePreset.v0.1");
+        if (!LEGACY_ROUTE_PRESET_SCHEMAS.has(schema)) {
+            throw new Error("Arquivo de trajeto usa um schema de preset incompatível: " + schema);
+        }
         if (!route || !Array.isArray(route.missions) || route.missions.length < 1 || route.missions.length > 7) {
             throw new Error("Arquivo de trajeto inválido: missions deve conter 1–7 drones.");
         }
@@ -1702,20 +1707,91 @@ function setupEditor(node) {
         return route;
     }
 
-    function exportRoutePreset() {
-        const preset = portableRoutePreset();
-        if (!preset) return;
-        const blob = new Blob([JSON.stringify(preset, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        const run = String(state.plan?.source_run_id || "route").replace(/[^A-Za-z0-9._-]+/g, "_");
-        link.href = url;
-        link.download = `ConceptGhost_drone_route_${run}.json`;
+    function routeRowsForExport() {
+        const rows=[];
+        for (const mission of state.plan?.missions || []) {
+            const points=mission.waypoints || [];
+            points.forEach((point,index) => {
+                const look=lookVectorForMission(mission,index);
+                const yaw=Math.atan2(look.right,look.forward)*180/Math.PI;
+                const horizontal=Math.hypot(look.right,look.forward);
+                const pitch=Math.atan2(look.up,horizontal)*180/Math.PI;
+                rows.push({
+                    drone:mission.name || "",
+                    mode:mission.mode || "PATH",
+                    point:index+1,
+                    right:Number(point.right),
+                    up:Number(point.up),
+                    forward:Number(point.forward),
+                    look_right:Number(look.right),
+                    look_up:Number(look.up),
+                    look_forward:Number(look.forward),
+                    yaw_deg:yaw,
+                    pitch_deg:pitch,
+                    aim_authority:point.look_direction ? "WAYPOINT_EXPLICIT" :
+                        (mission.mode === "SPIN_360" ? "SPIN_360" : String(mission.orientation_mode || "LOOK_ALONG_PATH")),
+                    spin_yaw_start_deg:Number(mission.spin_yaw_start_deg || 0),
+                    spin_pitch_deg:Number(mission.spin_pitch_deg || 0),
+                });
+            });
+        }
+        return rows;
+    }
+
+    function downloadTextFile(filename, content, mimeType) {
+        const blob=new Blob([content],{type:mimeType || "text/plain;charset=utf-8"});
+        const url=URL.createObjectURL(blob);
+        const link=document.createElement("a");
+        link.href=url;
+        link.download=filename;
         document.body.appendChild(link);
         link.click();
         link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        status.textContent = "Trajeto exportado · JSON portátil salvo";
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+
+    function csvCell(value) {
+        const text=String(value ?? "");
+        if (/[",\r\n]/.test(text)) return "\"" + text.replaceAll("\"","\"\"") + "\"";
+        return text;
+    }
+
+    function readableRouteExports(run) {
+        const rows=routeRowsForExport();
+        const columns=["drone","mode","point","right","up","forward","look_right","look_up","look_forward","yaw_deg","pitch_deg","aim_authority","spin_yaw_start_deg","spin_pitch_deg"];
+        const csvLines=[columns.join(",")];
+        for(const row of rows){
+            csvLines.push(columns.map((column)=>csvCell(typeof row[column] === "number" ? row[column].toFixed(6) : row[column])).join(","));
+        }
+        const textLines=[
+            "ConceptGhost P10 Drone Route — camera pose export",
+            "Coordinate space: P9_CAMERA_LOCAL_RIGHT_UP_FORWARD_METERS",
+            "",
+            "Drone | Mode | Point | X/Right | Y/Up | Z/Forward | LookX | LookY | LookZ | Yaw | Pitch | Aim Authority",
+        ];
+        for(const row of rows){
+            textLines.push([
+                row.drone,row.mode,"P"+row.point,
+                row.right.toFixed(6),row.up.toFixed(6),row.forward.toFixed(6),
+                row.look_right.toFixed(6),row.look_up.toFixed(6),row.look_forward.toFixed(6),
+                row.yaw_deg.toFixed(3),row.pitch_deg.toFixed(3),row.aim_authority
+            ].join(" | "));
+        }
+        downloadTextFile("ConceptGhost_drone_route_"+run+".csv",csvLines.join("\r\n")+"\r\n","text/csv;charset=utf-8");
+        downloadTextFile("ConceptGhost_drone_route_"+run+".txt",textLines.join("\r\n")+"\r\n","text/plain;charset=utf-8");
+    }
+
+    function exportRoutePreset() {
+        const preset = portableRoutePreset();
+        if (!preset) return;
+        const run = String(state.plan?.source_run_id || "route").replace(/[^A-Za-z0-9._-]+/g, "_");
+        downloadTextFile(
+            "ConceptGhost_drone_route_" + run + ".json",
+            JSON.stringify(preset, null, 2) + "\n",
+            "application/json"
+        );
+        readableRouteExports(run);
+        status.textContent = "Trajeto exportado · JSON de autoridade + CSV/TXT legíveis";
         status.style.color = "#86e276";
     }
 
