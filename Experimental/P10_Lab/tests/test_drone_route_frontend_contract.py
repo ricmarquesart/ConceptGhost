@@ -72,6 +72,17 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'event.stopImmediatePropagation?.()',
             '{ passive: false, capture: true }',
             'zoomControl.action === "in" ? 1.35 : (1 / 1.35)',
+            '"Points Low"',
+            '"Points Medium"',
+            '"Points High"',
+            '"Mesh Surface"',
+            '"Mesh Wireframe"',
+            'previewModeSelect',
+            'pointSizeInput',
+            'function activePointLod()',
+            'function activeMeshLod()',
+            'function drawPerspectiveMesh(mode)',
+            'function drawOrthographicMesh(panel, mode)',
         ):
             self.assertIn(required, source)
 
@@ -161,10 +172,30 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         frontend=(Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js").read_text(encoding="utf-8")
         backend=Path(node.__file__).read_text(encoding="utf-8")
         preview_source=Path(preview.__file__).read_text(encoding="utf-8")
-        self.assertIn("GEOMETRY_DRAW_BUDGET = 50000", frontend)
-        self.assertIn("max_points=50000", backend)
+        self.assertIn("GEOMETRY_DRAW_BUDGET = 100000", frontend)
+        self.assertIn("max_points=100000", backend)
         self.assertIn("panel_width: int=720", preview_source)
         self.assertIn("panel_height: int=660", preview_source)
+
+
+    def test_route_editor_preview_lods_are_display_only(self):
+        import p10_lab
+        import p10_lab.route_authoring_node as node
+        import p10_lab.drone_route_preview as preview
+
+        frontend=(Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js").read_text(encoding="utf-8")
+        backend=Path(node.__file__).read_text(encoding="utf-8")
+        preview_source=Path(preview.__file__).read_text(encoding="utf-8")
+        for token in (
+            "POINTS_LOW","POINTS_MEDIUM","POINTS_HIGH",
+            "MESH_SURFACE","MESH_WIREFRAME",
+            "DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
+        ):
+            self.assertIn(token,frontend+backend+preview_source)
+        self.assertIn('"mesh_preview_is_display_only":True',backend)
+        self.assertIn('"authority":"DISPLAY_ONLY_NEVER_GEOMETRY_AUTHORITY"',preview_source)
+        self.assertIn("max_mesh_faces=24000",backend)
+        self.assertIn("MESH_DRAW_BUDGET = 24000",frontend)
 
     def test_frontend_javascript_parses_when_node_is_available(self):
         import p10_lab
