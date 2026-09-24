@@ -1,0 +1,64 @@
+{
+  "schema": "ConceptGhost.P10Gate7PreviewR3RouteUxColmapFixPackageRecord.v0.1",
+  "date_utc": "2026-09-24",
+  "package": "ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX.zip",
+  "package_status": "CANDIDATE_READY_FOR_USER_RUNTIME_TEST",
+  "inner_package_sha256": "de9c377e4da3d5cbf103bd1c1cbd626469fb0f9ef1049b6d84d9ad16a3b10f05",
+  "inner_package_size_bytes": 12348390,
+  "base_r15": {
+    "package": "ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15",
+    "sha256": "cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd"
+  },
+  "source_and_package_build_commit": "09183c3d40e181dd7da6d0777d48681b56fd3e14",
+  "documentation_commit": "b116eee23445be71c0536101c3066168928f2a61",
+  "github_actions": {
+    "build_run_id": 35971021535,
+    "build_status": "SUCCESS",
+    "artifact_id": 10796072070,
+    "artifact_wrapper_digest": "sha256:7c34390df7a6991b2b1fce1a700e453593a99fb9da6ce92b18d5acb3be81a5d8",
+    "general_tests_run_id": 35971021815,
+    "general_tests_status": "SUCCESS",
+    "source_snapshot_run_id": 35971021529,
+    "source_snapshot_status": "SUCCESS",
+    "focused_gate7_3_binary_regression_run_id": 35970218207,
+    "focused_gate7_3_binary_regression_status": "SUCCESS"
+  },
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "folder_id": "1QJLvO8GaA92pvSkU5A7FoyFgoPwf2nIP",
+    "package_file_id": "1HCJTk1t-MNUECW7ZMYrEKoJjWOc2hZpr",
+    "sha_sidecar_file_id": "1wPFvU72M6U6EGK_LkoK7M9h5WvZ0sEQb",
+    "validation_file_id": "1oF1qftrX4T5kKEikgBQvCuu3oAXhYDAu"
+  },
+  "fixes": {
+    "gate7_dense_sparse_model": {
+      "observed_failure": "dense/sparse/cameras.txt missing after valid COLMAP dense reconstruction",
+      "text_models_supported": true,
+      "binary_models_supported": true,
+      "camera_model_required": "PINHOLE",
+      "p9_camera_authority_changed": false
+    },
+    "drone_route_editor": {
+      "max_orthographic_zoom": 160,
+      "max_perspective_zoom": 48,
+      "route_edit_preserves_zoom_pan": true,
+      "same_scene_execution_preserves_zoom_pan": true,
+      "route_preset_export_import": true,
+      "route_preset_rebind_current_scene": true,
+      "four_view_panel_resolution": [
+        720,
+        660
+      ],
+      "interactive_preview_point_budget": 50000,
+      "backend_preview_point_budget": 70000
+    },
+    "run_audit_bundle_retained": true,
+    "gate8_present": false
+  },
+  "authority": {
+    "p9_changed": false,
+    "gate7_source_fixed": true,
+    "gate7_runtime_user_accepted": false,
+    "gate8_ready": false
+  }
+}
