@@ -1,5 +1,27 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 Gate 7.4 source checkpoint
+
+- DR9R r15 remains under user runtime UX testing; Gate 7 source work remains isolated from that published runtime.
+- **G7.1 registration authority: COMPLETE / CI PASS.**
+- **G7.2 authority-aware provenance: COMPLETE / CI PASS.**
+- **G7.2C geometry confidence: COMPLETE / CI PASS.**
+- **G7.3 free-space / visibility no-fill authority: COMPLETE / CI PASS.**
+- **G7.4 protected fusion candidate: COMPLETE / CI PASS at source level.**
+- G7.4 is additive only: all P9 faces are retained unchanged and no P9 vertices are moved.
+- P10 faces are admitted only with `P10_MULTIVIEW_SUPPORTED` provenance, sufficient confidence and bounded support distance.
+- `CONFIRMED_FREE` and free-space `CONFLICT` veto P10 face admission; protected P9 source overlap also vetoes P10 admission.
+- When Delaunay evidence is available, local Delaunay agreement is additionally required.
+- Every P10 input face receives an explicit accept/reject provenance reason.
+- The fused PLY is a disposable Gate 7 candidate, **not official geometry**.
+- Destructive cleanup/remesh remains Gate 8 work.
+- Focused G7.4 run `35954991624`: SUCCESS on Ubuntu/Python 3.12 and Windows/Python 3.12.
+- General regression run `35954991620`: SUCCESS across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14.
+- Source snapshot run `35954991565`: SUCCESS.
+- Formal closeout: `Experimental/P10_Lab/docs/30_GATE7_4_PROTECTED_FUSION_SOURCE_CLOSEOUT.md`.
+- Next bounded source work: **G7.5 — Registration / Provenance Visual Review**.
+- User-facing Gate 7 promotion remains blocked until the current DR9R r15 runtime UX acceptance is reviewed.
+
 ## Authoritative reconciliation — 2026-09-24 Gate 7.3 source checkpoint
 
 - DR9R r15 remains under user runtime UX testing; Gate 7 source work remains isolated from the published runtime.
