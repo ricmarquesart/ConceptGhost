@@ -194,15 +194,15 @@ class RunAuditBundleTests(unittest.TestCase):
             expected=default_project_audit_root(p9,"attempt-123")
             self.assertEqual(
                 expected,
-                (root/"P10_AUDITS"/p9.name/"attempt-123").resolve(),
+                (p9/"P10_AUDIT"/"attempt-123").resolve(),
             )
             result=build_partial_run_audit_bundle(
                 p9,gate6,gate7_failure_manifest_path=failure
             )
             self.assertEqual(result["status"],"PARTIAL_FAILURE")
             self.assertEqual(Path(result["bundle_path"]).parent.resolve(),expected.resolve())
-            self.assertTrue((root/"P10_AUDITS"/"LATEST_AUDIT.txt").is_file())
-            self.assertTrue((root/"P10_AUDITS"/"LATEST_AUDIT_INDEX.json").is_file())
+            self.assertTrue((p9/"P10_AUDIT"/"LATEST_AUDIT.txt").is_file())
+            self.assertTrue((p9/"P10_AUDIT"/"LATEST_AUDIT_INDEX.json").is_file())
             with zipfile.ZipFile(result["bundle_path"],"r") as archive:
                 names=set(archive.namelist())
             self.assertIn(
