@@ -829,6 +829,164 @@ function setupEditor(node) {
         ctx.strokeRect(p.x - 4, p.y - 4, 8, 8);
     }
 
+    function projectSelectedCamera(raw) {
+        const selectedCamera = selectedCameraState();
+        const contract = cameraContract();
+        if (!selectedCamera || !contract) return null;
+        const point = selectedCamera.point;
+        const basis = selectedCamera.basis;
+        const delta = {
+            right: Number(raw.right ?? raw[0]) - Number(point.right),
+            up: Number(raw.up ?? raw[1]) - Number(point.up),
+            forward: Number(raw.forward ?? raw[2]) - Number(point.forward),
+        };
+        const depth = vectorDot(delta, basis.forward);
+        if (!Number.isFinite(depth) || depth <= 1e-4) return null;
+        const cameraX = vectorDot(delta, basis.right);
+        const cameraY = vectorDot(delta, basis.up);
+        const width = cameraPreviewCanvas.width;
+        const height = cameraPreviewCanvas.height;
+        const hfov = Number(contract.horizontal_fov_deg) * Math.PI / 180;
+        const vfov = Number(contract.vertical_fov_deg) * Math.PI / 180;
+        if (!(hfov > 0) || !(vfov > 0)) return null;
+        const fx = (width * 0.5) / Math.tan(hfov * 0.5);
+        const fy = (height * 0.5) / Math.tan(vfov * 0.5);
+        return {
+            x: width * 0.5 + cameraX / depth * fx,
+            y: height * 0.5 - cameraY / depth * fy,
+            depth,
+        };
+    }
+
+    function selectedFrustumCorners(mission, pointIndex) {
+        const point = mission?.waypoints?.[pointIndex];
+        const contract = cameraContract();
+        const geometry = state.metadata?.preview_geometry;
+        if (!point || !contract || !geometry) return null;
+        const look = lookVectorForMission(mission, pointIndex);
+        const basis = cameraBasisForLook(look);
+        const distance = Math.max(Number(geometry.radius || 1) * 0.09, 0.25);
+        const halfWidth = Math.tan(Number(contract.horizontal_fov_deg) * Math.PI / 360) * distance;
+        const halfHeight = Math.tan(Number(contract.vertical_fov_deg) * Math.PI / 360) * distance;
+        const add = (sr, su) => ({
+            right: Number(point.right) + basis.forward.right * distance + basis.right.right * halfWidth * sr + basis.up.right * halfHeight * su,
+            up: Number(point.up) + basis.forward.up * distance + basis.right.up * halfWidth * sr + basis.up.up * halfHeight * su,
+            forward: Number(point.forward) + basis.forward.forward * distance + basis.right.forward * halfWidth * sr + basis.up.forward * halfHeight * su,
+        });
+        return {
+            apex: point,
+            corners: [add(-1,-1), add(1,-1), add(1,1), add(-1,1)],
+        };
+    }
+
+    function drawSelectedFrustum(projectFn, mission, pointIndex, color) {
+        if (pointIndex == null) return;
+        const frustum = selectedFrustumCorners(mission, pointIndex);
+        if (!frustum) return;
+        const apex = projectFn(frustum.apex);
+        const corners = frustum.corners.map(projectFn);
+        if (!apex || corners.some((item) => !item)) return;
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.3;
+        ctx.setLineDash([5,3]);
+        for (const corner of corners) {
+            ctx.beginPath();
+            ctx.moveTo(apex.x,apex.y);
+            ctx.lineTo(corner.x,corner.y);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x,corners[0].y);
+        for (let i=1;i<corners.length;i++) ctx.lineTo(corners[i].x,corners[i].y);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawSelectedCameraView() {
+        const width = cameraPreviewCanvas.width;
+        const height = cameraPreviewCanvas.height;
+        cameraCtx.clearRect(0,0,width,height);
+        cameraCtx.fillStyle = "#0b0b0b";
+        cameraCtx.fillRect(0,0,width,height);
+        const selectedCamera = selectedCameraState();
+        const geometry = state.metadata?.preview_geometry;
+        if (!selectedCamera || !geometry) {
+            cameraCtx.fillStyle = "#777";
+            cameraCtx.font = "14px sans-serif";
+            cameraCtx.textAlign = "center";
+            cameraCtx.fillText("Selecione um waypoint para ver exatamente para onde a câmera aponta.",width*0.5,height*0.5);
+            cameraPreviewTitle.textContent = "Selected Camera View · nenhum waypoint selecionado";
+            return;
+        }
+        const mission = selectedCamera.mission;
+        cameraPreviewTitle.textContent = "Selected Camera View · " + mission.name + " · P" + (selectedCamera.pointIndex + 1);
+
+        if (String(state.previewMode).startsWith("MESH_") && activeMeshLod()) {
+            const mesh = activeMeshLod();
+            const vertices = mesh.vertices || [];
+            const faces = mesh.faces || [];
+            const triangles = [];
+            const stride = Math.max(1, Math.ceil(faces.length / MESH_DRAW_BUDGET));
+            for (let index=0; index<faces.length; index+=stride) {
+                const face=faces[index];
+                const a=projectSelectedCamera(vertices[face[0]]);
+                const b=projectSelectedCamera(vertices[face[1]]);
+                const c=projectSelectedCamera(vertices[face[2]]);
+                if(!a||!b||!c) continue;
+                const minX=Math.min(a.x,b.x,c.x), maxX=Math.max(a.x,b.x,c.x);
+                const minY=Math.min(a.y,b.y,c.y), maxY=Math.max(a.y,b.y,c.y);
+                if(maxX<0||minX>width||maxY<0||minY>height) continue;
+                triangles.push({a,b,c,depth:(a.depth+b.depth+c.depth)/3,color:averageTriangleColor(vertices,face)});
+            }
+            if(state.previewMode==="MESH_SURFACE") triangles.sort((left,right)=>right.depth-left.depth);
+            for(const tri of triangles){
+                cameraCtx.beginPath();
+                cameraCtx.moveTo(tri.a.x,tri.a.y);
+                cameraCtx.lineTo(tri.b.x,tri.b.y);
+                cameraCtx.lineTo(tri.c.x,tri.c.y);
+                cameraCtx.closePath();
+                if(state.previewMode==="MESH_SURFACE"){
+                    cameraCtx.fillStyle="rgba("+tri.color[0]+","+tri.color[1]+","+tri.color[2]+",0.48)";
+                    cameraCtx.fill();
+                    cameraCtx.strokeStyle="rgba(20,20,20,0.18)";
+                    cameraCtx.lineWidth=0.5;
+                    cameraCtx.stroke();
+                } else {
+                    cameraCtx.strokeStyle="rgba(215,225,235,0.62)";
+                    cameraCtx.lineWidth=0.7;
+                    cameraCtx.stroke();
+                }
+            }
+        } else {
+            const points=activePointLod().points || [];
+            const stride=Math.max(1,Math.ceil(points.length/GEOMETRY_DRAW_BUDGET));
+            const size=Math.max(0.5,Math.min(4.0,Number(state.pointSize)||1.25));
+            for(let index=0;index<points.length;index+=stride){
+                const raw=points[index];
+                const p=projectSelectedCamera(raw);
+                if(!p||p.x<0||p.x>width||p.y<0||p.y>height) continue;
+                cameraCtx.fillStyle="rgba("+(raw[3] ?? 150)+","+(raw[4] ?? 150)+","+(raw[5] ?? 150)+",0.82)";
+                cameraCtx.fillRect(p.x-size*0.5,p.y-size*0.5,size,size);
+            }
+        }
+
+        cameraCtx.strokeStyle="rgba(255,255,255,0.55)";
+        cameraCtx.lineWidth=1;
+        cameraCtx.beginPath();
+        cameraCtx.moveTo(width*0.5-8,height*0.5);
+        cameraCtx.lineTo(width*0.5+8,height*0.5);
+        cameraCtx.moveTo(width*0.5,height*0.5-8);
+        cameraCtx.lineTo(width*0.5,height*0.5+8);
+        cameraCtx.stroke();
+        cameraCtx.fillStyle="#aaa";
+        cameraCtx.font="11px sans-serif";
+        cameraCtx.textAlign="left";
+        cameraCtx.fillText(state.previewMode+" · live P9 preview",8,height-9);
+    }
+
     function activePointLod() {
         const geometry = state.metadata?.preview_geometry;
         if (!geometry) return { points: [] };
@@ -1027,6 +1185,9 @@ function setupEditor(node) {
                     }
                 }
             });
+            if (missionIndex === state.activeMission && state.selectedPoint != null) {
+                drawSelectedFrustum(projectPerspective, mission, state.selectedPoint, color);
+            }
             if (mission.orientation_mode === "LOOK_AT_TARGET") {
                 drawTargetMarker(projectPerspective, mission.look_target, color);
             }
@@ -1058,6 +1219,23 @@ function setupEditor(node) {
         let bestDistance = 14;
         (mission.waypoints || []).forEach((point, index) => {
             const p = project(panel, point);
+            const distance = Math.hypot(p.x - x, p.y - y);
+            if (distance < bestDistance) {
+                best = index;
+                bestDistance = distance;
+            }
+        });
+        return best;
+    }
+
+    function nearestPerspectivePoint(x, y) {
+        const mission = activeMission();
+        if (!mission) return null;
+        let best = null;
+        let bestDistance = 14;
+        (mission.waypoints || []).forEach((point, index) => {
+            const p = projectPerspective(point);
+            if (!p) return;
             const distance = Math.hypot(p.x - x, p.y - y);
             if (distance < bestDistance) {
                 best = index;
@@ -1244,12 +1422,16 @@ function setupEditor(node) {
                         drawArrowHead(p, tip, "#f5f5f5", 0.65);
                     }
                 });
+                if (missionIndex === state.activeMission && state.selectedPoint != null) {
+                    drawSelectedFrustum((point) => project(panel, point), mission, state.selectedPoint, color);
+                }
                 if (mission.orientation_mode === "LOOK_AT_TARGET") {
                     drawTargetMarker((point) => project(panel, point), mission.look_target, color);
                 }
                 ctx.restore();
             }
         }
+        drawSelectedCameraView();
     }
 
     function resetViewportFraming() {
@@ -1276,6 +1458,11 @@ function setupEditor(node) {
         state.metadata = meta;
         state.projection = meta.projection;
         state.collisionStale = false;
+        const cameraMeta = meta.camera_preview_contract;
+        if (cameraMeta?.width && cameraMeta?.height) {
+            cameraPreviewCanvas.width = 640;
+            cameraPreviewCanvas.height = Math.max(180, Math.round(640 * Number(cameraMeta.height) / Number(cameraMeta.width)));
+        }
 
         const size = canvasDimensionsFromProjection();
         canvas.width = size.width;
@@ -1419,6 +1606,16 @@ function setupEditor(node) {
         const panGesture = event.shiftKey || event.button === 1;
 
         if (perspective && insideRect(perspective.plot_rect_px, xy.x, xy.y)) {
+            if (!panGesture) {
+                const hit = nearestPerspectivePoint(xy.x, xy.y);
+                if (hit != null) {
+                    state.selectedPoint = hit;
+                    updateToolbar();
+                    draw();
+                    event.preventDefault();
+                    return;
+                }
+            }
             state.orbitLast = xy;
             if (panGesture) state.orbitPanning = true;
             else state.orbitDragging = true;
