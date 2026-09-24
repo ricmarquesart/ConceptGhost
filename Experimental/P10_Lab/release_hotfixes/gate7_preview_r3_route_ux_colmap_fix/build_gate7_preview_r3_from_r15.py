@@ -50,6 +50,16 @@ def replace_text_tree(root: Path, old: str, new: str) -> None:
             wt(path, text.replace(old, new))
 
 
+
+def overlay_latest_route_frontend(root: Path, source_root: Path) -> None:
+    source = source_root.resolve() / "web" / "js" / "drone_route_editor.js"
+    target = root / "Payload/custom_nodes/ConceptGhost_P10_Lab/web/js/drone_route_editor.js"
+    if not source.is_file():
+        raise RuntimeError(f"Latest route editor frontend is missing: {source}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+
+
 def patch_entrypoints(root: Path) -> None:
     old_install = root / "Installer/install_gate7_preview_r2_audit.ps1"
     old_verify = root / "Installer/verify_gate7_preview_r2_audit.ps1"
@@ -230,9 +240,18 @@ RUN_AUDIT_BUNDLE remains terminal and Gate 8 remains blocked.
 
     code_manifest = root / "P10_DR9_CODE_MANIFEST.json"
     data = json.loads(rt(code_manifest))
+    rows = []
+    for path in sorted(node_root.rglob("*")):
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix.lower() != ".pyc":
+            rows.append({
+                "path": path.relative_to(node_root).as_posix(),
+                "bytes": path.stat().st_size,
+                "sha256": sha256(path),
+            })
     data["schema"] = "ConceptGhost.P10Gate7PreviewRouteUxColmapFixCodeManifest.v0.3"
     data["release"] = R3_NAME
     data["source_commit"] = source_commit
+    data["files"] = rows
     wt(code_manifest, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
     for name in ("RELEASE.json", "P10_DR9_RELEASE.json"):
@@ -440,6 +459,7 @@ def main() -> int:
         if result.returncode:
             raise SystemExit(result.stdout + result.stderr)
 
+        overlay_latest_route_frontend(root, args.p10_source_root)
         patch_entrypoints(root)
         replace_text_tree(root, R2_NAME, R3_NAME)
         patch_package_contracts(root, args.source_commit, args.package_commit)
