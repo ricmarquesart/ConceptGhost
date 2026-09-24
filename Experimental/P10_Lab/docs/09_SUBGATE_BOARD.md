@@ -3,12 +3,12 @@
 ## R6 Route Editor refinement — 2026-09-24
 
 - Validation policy: no intermediate target-PC validation; first user validation is R6F.
-- R6A Points/Mesh LOD + Point Size — IMPLEMENTED / CI PENDING.
-- R6B Selected Camera View + frustum — NEXT.
-- R6C Per-waypoint camera pose + SPIN_360 pitch/yaw — PLANNED.
-- R6D Perspective pivot/gimbal + orbit correction — PLANNED.
-- R6E portable route schema v0.2 + TXT/CSV orientation export/import — PLANNED.
-- R6F aggregate regression + final Evaluation_Builds bundle — PLANNED.
+- R6A Points/Mesh LOD + Point Size — COMPLETE / CI PASS.
+- R6B Selected Camera View + frustum — COMPLETE / CI PASS.
+- R6C Per-waypoint camera pose + SPIN_360 pitch/yaw — COMPLETE / CI PASS.
+- R6D Perspective pivot/gimbal + orbit correction — COMPLETE / CI PASS.
+- R6E portable route schema v0.2 + TXT/CSV orientation export/import — COMPLETE / CI PASS.
+- R6F aggregate regression + final Evaluation_Builds bundle — ACTIVE.
 
 
 This board decomposes every P10 development gate into bounded, checkpointable
