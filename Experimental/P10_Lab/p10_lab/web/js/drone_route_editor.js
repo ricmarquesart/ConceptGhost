@@ -966,7 +966,7 @@ function setupEditor(node) {
         ctx.restore();
         ctx.fillStyle = "#aaa";
         ctx.font = "11px sans-serif";
-        ctx.fillText("drag: orbit · Shift+drag: pan · wheel / −/+ : zoom · " + state.previewMode, plot.x + 8, plot.y + plot.height - 10);
+        ctx.fillText("drag: orbit · Shift+drag: pan · wheel / −/+ : zoom · inspection only · " + state.previewMode, plot.x + 8, plot.y + plot.height - 10);
     }
 
     function pointFromPanel(panel, x, y, base) {
