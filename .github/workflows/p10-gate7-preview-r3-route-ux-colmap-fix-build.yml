@@ -1,0 +1,136 @@
+name: Build Gate 7 Preview r3 Route UX COLMAP Fix
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - 'Experimental/P10_Lab/p10_lab/**'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r1/**'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r2_audit/**'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
+      - '.github/workflows/p10-gate7-preview-r3-route-ux-colmap-fix-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download frozen r15 base
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-g7-preview-r3'
+          New-Item -ItemType Directory -Force -Path $build | Out-Null
+          gh release download p10-dr9r-r15 --repo ${{ github.repository }} --pattern 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15.zip' --dir $build
+          $source = Join-Path $build 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15.zip'
+          if (-not (Test-Path $source)) { throw 'Frozen r15 release asset was not downloaded.' }
+          $hash = (Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne 'cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd') {
+            throw "Unexpected r15 base digest: $hash"
+          }
+
+      - name: Build r3 candidate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-g7-preview-r3'
+          $source = Join-Path $build 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15.zip'
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $zip = Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX.zip'
+          $extracted = Join-Path $build 'ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX'
+          python Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/build_gate7_preview_r3_from_r15.py --source $source --output $zip --p10-source-root Experimental/P10_Lab/p10_lab --source-commit $env:GITHUB_SHA --package-commit $env:GITHUB_SHA --keep-extracted $extracted
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate r3 extracted package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-g7-preview-r3'
+          $root = Join-Path $build 'ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX'
+
+          foreach ($rel in @(
+            'Installer/install_gate7_preview_r3_route_ux_colmap_fix.ps1',
+            'Installer/verify_gate7_preview_r3_route_ux_colmap_fix.ps1',
+            'Installer/test_gate7_r3_route_ux_colmap_fix.py'
+          )) {
+            if (-not (Test-Path (Join-Path $root $rel) -PathType Leaf)) { throw "Missing r3 file: $rel" }
+          }
+
+          foreach ($ps1 in Get-ChildItem (Join-Path $root 'Installer') -Filter '*.ps1' -File) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($ps1.FullName,[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$($ps1.Name): $($_.Message)" }
+              throw "PowerShell parse failed: $($ps1.Name)"
+            }
+          }
+
+          foreach ($batName in @('03_INSTALL_ALL.bat','04_VERIFY_INSTALL.bat')) {
+            $bat = Join-Path $root $batName
+            $bytes = [System.IO.File]::ReadAllBytes($bat)
+            for ($i=0; $i -lt $bytes.Length; $i++) {
+              if ($bytes[$i] -eq 10 -and ($i -eq 0 -or $bytes[$i-1] -ne 13)) {
+                throw "CRLF validation failed for $batName"
+              }
+            }
+          }
+
+          python (Join-Path $root 'Installer/test_dr9_bundle.py') $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python (Join-Path $root 'Installer/test_gate7_preview_bundle.py') $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python (Join-Path $root 'Installer/test_run_audit_bundle_package.py') $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python (Join-Path $root 'Installer/test_gate7_r3_route_ux_colmap_fix.py') $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $js = Join-Path $root 'Payload/custom_nodes/ConceptGhost_P10_Lab/web/js/drone_route_editor.js'
+          node --check $js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $workflow = Get-Content (Join-Path $root 'Payload/workflows/02_ConceptGhost_P10_PRODUCTION.json') -Raw | ConvertFrom-Json
+          $types = @($workflow.nodes | ForEach-Object { $_.type })
+          foreach ($required in @('ConceptGhostP10Gate7Runtime','ConceptGhostP10Gate7VisualEvidencePack','ConceptGhostP10RunAuditBundle')) {
+            if ($types -notcontains $required) { throw "r3 workflow missing $required" }
+          }
+          if (@($types | Where-Object { "$_" -match 'Gate.?8' }).Count -gt 0) {
+            throw 'Gate 8 node leaked into r3 package.'
+          }
+
+      - name: Write integrity sidecars
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX.zip'
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX.zip" | Set-Content -Encoding ascii release/ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX_SHA256.txt
+          $build = Join-Path $env:RUNNER_TEMP 'conceptghost-g7-preview-r3'
+          Copy-Item (Join-Path $build 'ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX/P10_GATE7_PREVIEW_R3_ROUTE_UX_COLMAP_FIX_VALIDATION.txt') release/P10_GATE7_PREVIEW_R3_ROUTE_UX_COLMAP_FIX_VALIDATION.txt -Force
+          Write-Host "r3 SHA-256: $hash"
+          Write-Host "r3 bytes: $((Get-Item $zip).Length)"
+
+      - name: Upload r3 candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConceptGhost_GATE7_PREVIEW_R3_ROUTE_UX_COLMAP_FIX_CANDIDATE
+          path: |
+            release/ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX.zip
+            release/ConceptGhost_v1.54_P10_GATE7_PREVIEW_r3_ROUTE_UX_COLMAP_FIX_SHA256.txt
+            release/P10_GATE7_PREVIEW_R3_ROUTE_UX_COLMAP_FIX_VALIDATION.txt
+          if-no-files-found: error
+          retention-days: 30
