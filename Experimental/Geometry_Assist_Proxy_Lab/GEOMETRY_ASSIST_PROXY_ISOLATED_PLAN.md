@@ -718,3 +718,34 @@ Package:
 - Google Drive Evaluation_Builds file ID: `1wpYOozH0SbhK5GIy6YV8If3yBDfA1e6s`
 
 Static local validation confirms JSON parse success, 24 visible nodes, 25 valid links, five visual groups, and all required node classes. Hardware execution inside the user's ComfyUI remains the next acceptance step.
+
+## r8 ComfyUI repair status — 2026-09-24
+
+r7 hardware/UI validation exposed setup failures before execution:
+- ComfyUI reported missing node pack `ComfyUI_IPAdapter_plus` for `IPAdapterAdvanced`, `IPAdapterModelLoader`, and `PrepImageForClipVision`;
+- ComfyUI reported missing CLIP Vision model `ConceptGhost/model.safetensors`;
+- ComfyUI reported missing ControlNet model `ConceptGhost/diffusion_pytorch_model.fp16.safetensors`;
+- the UI also showed an `Apply Changes / restart ComfyUI` requirement after node-pack installation.
+
+r8 fixes the installation contract:
+- expose the already-downloaded ViT-H CLIP Vision model directly as `models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors`;
+- expose the already-downloaded ViT-H IP-Adapter directly as `models/ipadapter/ip-adapter_sdxl_vit-h.safetensors`;
+- expose the already-downloaded SDXL Canny weight directly as `models/controlnet/controlnet-canny-sdxl-1.0-small.safetensors`;
+- installer uses NTFS hardlinks first to avoid duplicating multi-GB weights, with copy fallback;
+- install/reuse `ComfyUI_IPAdapter_plus` and explicitly require ComfyUI restart / Apply Changes before execution;
+- workflow uses native `DiffControlNetLoader` because the reused Canny weights are stored in Diffusers format;
+- add `02_VERIFY_COMFYUI_GEOMETRY_ASSIST_r8.bat` to verify every required file before runtime testing.
+
+Package:
+- `ConceptGhost_Geometry_Assist_ComfyUI_Workflow_r8.zip`
+- SHA-256: `685862a068a574dfcd83fb3ea08eafb856c7ad38553fe1d39653bfaffe04b53c`
+- Google Drive Evaluation_Builds file ID: `11KAXcrwBknm-tfUdtkiV8JJ2PAkqLcYi`
+
+Static package validation:
+- 24 visible nodes;
+- 26 valid links;
+- canonical model names present;
+- `DiffControlNetLoader` present;
+- workflow JSON parses successfully.
+
+Next acceptance: run the r8 repair installer, restart ComfyUI, load only the r8 workflow, confirm no red UNKNOWN nodes / Missing Models warnings, then execute the source image.
