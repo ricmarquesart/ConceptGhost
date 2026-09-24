@@ -326,6 +326,84 @@ class ConceptGhostP10RefinedEvidencePreview:
         }
 
 
+class ConceptGhostP10Gate7VisualReview:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "protected_fusion_manifest_path": ("STRING", {"forceInput": True}),
+                "panel_size": ("INT", {"default": 600, "min": 320, "max": 1400, "step": 20}),
+            },
+            "optional": {
+                "output_root": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING")
+    RETURN_NAMES = (
+        "review_image",
+        "preview_png_path",
+        "visual_review_manifest_path",
+        "diagnostics_json",
+    )
+    FUNCTION = "review"
+    CATEGORY = "ConceptGhost/P10 Refined"
+    OUTPUT_NODE = True
+
+    def review(
+        self,
+        protected_fusion_manifest_path: str,
+        panel_size: int,
+        output_root: str = "",
+    ):
+        try:
+            import numpy as np
+            import torch
+            from PIL import Image
+        except ImportError as error:
+            raise RuntimeError(
+                "Gate 7 visual review requires NumPy, Pillow and torch in the ComfyUI runtime"
+            ) from error
+
+        from .gate7_visual_review import build_gate7_visual_review
+
+        manifest_path = Path(protected_fusion_manifest_path).expanduser().resolve()
+        root = (
+            Path(output_root).expanduser().resolve()
+            if str(output_root or "").strip()
+            else manifest_path.parent / "gate7_visual_review"
+        )
+        result = build_gate7_visual_review(
+            manifest_path,
+            root,
+            panel_size=int(panel_size),
+        )
+        preview_path = Path(result["preview_png_path"])
+        with Image.open(preview_path) as opened:
+            array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
+        tensor = torch.from_numpy(array).unsqueeze(0)
+        rendered = _pretty(result)
+        ui = {
+            "text": [rendered],
+            "images": [
+                {
+                    "filename": preview_path.name,
+                    "subfolder": "",
+                    "type": "temp",
+                }
+            ],
+        }
+        return {
+            "ui": ui,
+            "result": (
+                tensor,
+                str(preview_path),
+                str(result["manifest_path"]),
+                rendered,
+            ),
+        }
+
+
 NODE_CLASS_MAPPINGS = {
     "ConceptGhostMoGeDiagnosticsControl": ConceptGhostMoGeDiagnosticsControl,
     "ConceptGhostMoGeDiagnosticProfileTap": ConceptGhostMoGeDiagnosticProfileTap,
@@ -341,6 +419,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10WanMaskedConditioning": ConceptGhostP10WanMaskedConditioning,
     "ConceptGhostP10WanSequentialSampler": ConceptGhostP10WanSequentialSampler,
     "ConceptGhostP10ReconstructionRuntime": ConceptGhostP10ReconstructionRuntime,
+    "ConceptGhostP10Gate7VisualReview": ConceptGhostP10Gate7VisualReview,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -358,4 +437,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10WanMaskedConditioning": "P10 Refined · WAN Masked Conditioning",
     "ConceptGhostP10WanSequentialSampler": "P10 Refined · Sequential WAN + Source Composite",
     "ConceptGhostP10ReconstructionRuntime": "P10 Refined · Reconstruction Runtime + Mesh Preview",
+    "ConceptGhostP10Gate7VisualReview": "P10 · Gate 7 · Registration + Provenance Review",
 }
