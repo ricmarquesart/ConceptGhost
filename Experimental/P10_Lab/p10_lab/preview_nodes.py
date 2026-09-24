@@ -568,6 +568,189 @@ class ConceptGhostP10DroneMeshComparisonReplay:
         }
 
 
+class ConceptGhostP10Gate7Runtime:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "p9_run_dir": ("STRING", {"forceInput": True}),
+                "reconstruction_runtime_manifest_path": ("STRING", {"forceInput": True}),
+                "resume_existing": ("BOOLEAN", {"default": True}),
+                "run_delaunay": ("BOOLEAN", {"default": True}),
+                "colmap_executable": ("STRING", {"default": ""}),
+            },
+            "optional": {
+                "output_root": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = (
+        "gate7_review_image",
+        "protected_fusion_candidate_ply",
+        "gate7_runtime_manifest_path",
+        "protected_fusion_manifest_path",
+        "visual_review_manifest_path",
+        "diagnostics_json",
+    )
+    FUNCTION = "run"
+    CATEGORY = "ConceptGhost/P10 Refined"
+    OUTPUT_NODE = True
+
+    def run(
+        self,
+        p9_run_dir: str,
+        reconstruction_runtime_manifest_path: str,
+        resume_existing: bool,
+        run_delaunay: bool,
+        colmap_executable: str,
+        output_root: str = "",
+    ):
+        try:
+            import numpy as np
+            import torch
+            from PIL import Image
+        except ImportError as error:
+            raise RuntimeError("Gate 7 runtime requires NumPy, Pillow and torch") from error
+
+        from .gate7_runtime import run_gate7_pipeline
+
+        result = run_gate7_pipeline(
+            p9_run_dir,
+            reconstruction_runtime_manifest_path,
+            output_root=output_root or None,
+            resume_existing=bool(resume_existing),
+            run_delaunay=bool(run_delaunay),
+            colmap_executable=str(colmap_executable or "colmap"),
+        )
+        artifacts = result["artifacts"]
+        preview_path = Path(artifacts["visual_review_png_path"])
+        with Image.open(preview_path) as opened:
+            array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
+        tensor = torch.from_numpy(array).unsqueeze(0)
+        rendered = _pretty(result)
+        ui = {"text": [rendered]}
+        try:
+            import shutil
+            import folder_paths
+
+            subfolder = "conceptghost_p10_gate7"
+            temp_root = Path(folder_paths.get_temp_directory()) / subfolder
+            temp_root.mkdir(parents=True, exist_ok=True)
+            temp_preview = temp_root / preview_path.name
+            shutil.copy2(preview_path, temp_preview)
+            ui["images"] = [{
+                "filename": temp_preview.name,
+                "subfolder": subfolder,
+                "type": "temp",
+            }]
+        except Exception:
+            pass
+        return {
+            "ui": ui,
+            "result": (
+                tensor,
+                str(artifacts["protected_fusion_candidate_ply_path"]),
+                str(result["manifest_path"]),
+                str(artifacts["protected_fusion_manifest_path"]),
+                str(artifacts["visual_review_manifest_path"]),
+                rendered,
+            ),
+        }
+
+
+class ConceptGhostP10Gate7VisualEvidencePack:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "gate7_runtime_manifest_path": ("STRING", {"forceInput": True}),
+                "dr9r_runtime_accepted": ("BOOLEAN", {"default": False}),
+                "artist_visual_review_approved": ("BOOLEAN", {"default": False}),
+            },
+            "optional": {
+                "output_root": ("STRING", {"default": ""}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = (
+        "visual_evidence_index",
+        "visual_pack_manifest_path",
+        "confidence_before_after_png",
+        "drone_before_after_gif",
+        "gate7_closeout_manifest_path",
+        "diagnostics_json",
+    )
+    FUNCTION = "build"
+    CATEGORY = "ConceptGhost/P10 Visual Evidence"
+    OUTPUT_NODE = True
+
+    def build(
+        self,
+        gate7_runtime_manifest_path: str,
+        dr9r_runtime_accepted: bool,
+        artist_visual_review_approved: bool,
+        output_root: str = "",
+    ):
+        try:
+            import numpy as np
+            import torch
+            from PIL import Image
+        except ImportError as error:
+            raise RuntimeError("Gate 7 visual pack requires NumPy, Pillow and torch") from error
+
+        from .gate7_visual_pack import build_gate7_visual_evidence_pack
+
+        source = Path(gate7_runtime_manifest_path).expanduser().resolve()
+        root = (
+            Path(output_root).expanduser().resolve()
+            if str(output_root or "").strip()
+            else source.parent / "visual_evidence"
+        )
+        result = build_gate7_visual_evidence_pack(
+            source,
+            root,
+            dr9r_runtime_accepted=bool(dr9r_runtime_accepted),
+            artist_visual_review_approved=bool(artist_visual_review_approved),
+        )
+        outputs = result["key_outputs"]
+        index_path = Path(outputs["gate7_visual_evidence_index_png"])
+        with Image.open(index_path) as opened:
+            array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
+        tensor = torch.from_numpy(array).unsqueeze(0)
+        closeout_manifest = Path(root) / "g7_6" / "gate7_closeout_manifest.json"
+        rendered = _pretty(result)
+        ui = {"text": [rendered]}
+        try:
+            import shutil
+            import folder_paths
+
+            subfolder = "conceptghost_p10_gate7_visual_evidence"
+            temp_root = Path(folder_paths.get_temp_directory()) / subfolder
+            temp_root.mkdir(parents=True, exist_ok=True)
+            temp_preview = temp_root / index_path.name
+            shutil.copy2(index_path, temp_preview)
+            ui["images"] = [{
+                "filename": temp_preview.name,
+                "subfolder": subfolder,
+                "type": "temp",
+            }]
+        except Exception:
+            pass
+        return {
+            "ui": ui,
+            "result": (
+                tensor,
+                str(result["manifest_path"]),
+                str(outputs["confidence_before_after_png"]),
+                str(outputs["drone_replay_comparison_gif"]),
+                str(closeout_manifest),
+                rendered,
+            ),
+        }
+
+
 NODE_CLASS_MAPPINGS = {
     "ConceptGhostMoGeDiagnosticsControl": ConceptGhostMoGeDiagnosticsControl,
     "ConceptGhostMoGeDiagnosticProfileTap": ConceptGhostMoGeDiagnosticProfileTap,
@@ -586,6 +769,8 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10Gate7VisualReview": ConceptGhostP10Gate7VisualReview,
     "ConceptGhostP10ConfidenceComparison": ConceptGhostP10ConfidenceComparison,
     "ConceptGhostP10DroneMeshComparisonReplay": ConceptGhostP10DroneMeshComparisonReplay,
+    "ConceptGhostP10Gate7Runtime": ConceptGhostP10Gate7Runtime,
+    "ConceptGhostP10Gate7VisualEvidencePack": ConceptGhostP10Gate7VisualEvidencePack,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -606,4 +791,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10Gate7VisualReview": "P10 · Gate 7 · Registration + Provenance Review",
     "ConceptGhostP10ConfidenceComparison": "P10 · Visual Evidence · Confidence BEFORE / AFTER",
     "ConceptGhostP10DroneMeshComparisonReplay": "P10 · Visual Evidence · Same-Camera BEFORE / AFTER GIF",
+    "ConceptGhostP10Gate7Runtime": "P10 · STEP 5 · Gate 7 Protected Fusion Runtime",
+    "ConceptGhostP10Gate7VisualEvidencePack": "P10 · Gate 7 · Visual Evidence + BEFORE / AFTER Pack",
 }
