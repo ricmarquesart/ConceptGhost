@@ -47,6 +47,70 @@ class DenseReconstructionTests(unittest.TestCase):
         self.assertIn("--PatchMatchStereo.write_consistency_graph 1", joined)
         self.assertNotIn("--PatchMatchStereo.geom_consistency true", joined)
 
+
+    def test_explicit_source_selection_covers_every_registered_reference(self):
+        from p10_lab.dense_reconstruction import _select_patch_match_sources
+
+        rows=[]
+        frames={}
+        for index in range(8):
+            name=f"frame_{index:06d}.png"
+            rows.append({
+                "name":name,
+                "qvec":(1.0,0.0,0.0,0.0),
+                "tvec":(-float(index)*0.2,0.0,0.0),
+                "camera_id":1,
+            })
+            frames[name]={
+                "image_name":name,
+                "path_name":"drone_a" if index<4 else "drone_b",
+                "global_frame_index":index,
+            }
+        selected=_select_patch_match_sources(
+            rows,frames,max_sources=6,same_route_budget=3,cross_route_budget=3
+        )
+        self.assertEqual(set(selected),set(frames))
+        self.assertTrue(all(len(values)>=2 for values in selected.values()))
+        self.assertTrue(all(
+            any(frames[source]["path_name"]!=frames[name]["path_name"] for source in values)
+            for name,values in selected.items()
+        ))
+
+    def test_dense_geometric_evidence_requires_registered_coverage_not_nonzero_count(self):
+        from p10_lab.dense_reconstruction import inspect_dense_geometric_evidence
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset=Path(tmp)
+            dense=dataset/"dense"
+            sparse=dense/"sparse"
+            sparse.mkdir(parents=True)
+            registered=[
+                {
+                    "name":f"frame_{index:06d}.png",
+                    "qvec":(1.0,0.0,0.0,0.0),
+                    "tvec":(0.0,0.0,0.0),
+                    "camera_id":1,
+                }
+                for index in range(10)
+            ]
+            for index in range(4):
+                name=f"frame_{index:06d}.png"
+                depth=dense/"stereo"/"depth_maps"/f"{name}.geometric.bin"
+                graph=dense/"stereo"/"consistency_graphs"/f"{name}.geometric.bin"
+                depth.parent.mkdir(parents=True,exist_ok=True)
+                graph.parent.mkdir(parents=True,exist_ok=True)
+                depth.write_bytes(b"x")
+                graph.write_bytes(b"x")
+            with patch(
+                "p10_lab.dense_reconstruction.load_colmap_sparse_images",
+                return_value=(tuple(registered),"BINARY"),
+            ):
+                result=inspect_dense_geometric_evidence(dataset,min_coverage_ratio=0.70)
+            self.assertEqual(result["registered_image_count"],10)
+            self.assertEqual(result["usable_registered_geometric_image_count"],4)
+            self.assertAlmostEqual(result["geometric_evidence_coverage_ratio"],0.4)
+            self.assertFalse(result["gate7_geometric_evidence_ready"])
+
     def test_fusion_plan_requires_two_supporting_pixels_first_pass(self):
         from p10_lab.dense_reconstruction import build_dense_plan
         with tempfile.TemporaryDirectory() as tmp:
