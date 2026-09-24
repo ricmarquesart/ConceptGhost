@@ -152,19 +152,36 @@ No destructive cleanup/remesh occurs here; that remains Gate 8.
 Focused CI run `35954991624` passed on Ubuntu/Python 3.12 and Windows/Python 3.12. General regression run `35954991620` passed across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14. Formal closeout: `30_GATE7_4_PROTECTED_FUSION_SOURCE_CLOSEOUT.md`.
 
 ### G7.5 — Registration/provenance visual review
-Status: **PLANNED**
+Status: **IMPLEMENTED / CI PASS AT SOURCE LEVEL**
 
-User-facing Gate 7 preview must show:
-- P9 geometry;
-- P10 registered geometry;
-- source-protected regions;
-- P10-generated/multiview-supported regions;
-- FREE / UNKNOWN / CONFLICT evidence where available;
-- camera/frustum context;
-- metric-isotropic views and/or dedicated 3D provenance view.
+Implemented as a non-promoting four-view diagnostic review:
 
-Expected preview result remains the Master Plan contract:
-`P9/P10 registration overlay + geometry provenance`.
+- Perspective;
+- Top X/Z;
+- Front X/Y;
+- Side Z/Y.
+
+The orthographic panels share one metric world-units-per-pixel scale.
+
+Visible layers:
+- authoritative P9 geometry;
+- `P9_SOURCE_PROTECTED`;
+- accepted P10 Gate 7.4 geometry;
+- rejected P10 source-face locations;
+- `CONFIRMED_FREE`;
+- free-space `CONFLICT`;
+- Gate 6 camera centers / forward context.
+
+Artifacts:
+- `gate7_registration_provenance_review.png`;
+- `gate7_visual_review_manifest.json`.
+
+A source ComfyUI node is registered as:
+`P10 · Gate 7 · Registration + Provenance Review`.
+
+It remains intentionally absent from the published r15 workflows while r15 runtime UX acceptance is still active. The manifest keeps `artist_review_status = PENDING` and `ready_for_gate8 = false`.
+
+Focused CI run `35956022505` passed on Ubuntu/Python 3.12 and Windows/Python 3.12. General regression run `35956022467` passed across Ubuntu/Python 3.12, Windows/Python 3.12 and Windows/Python 3.14. Formal closeout: `31_GATE7_5_VISUAL_REVIEW_SOURCE_CLOSEOUT.md`.
 
 ### G7.6 — Gate 7 closeout
 Status: **PLANNED**
@@ -199,6 +216,7 @@ If r15 exposes another Route Setup UX/runtime defect, fix DR9R independently and
 - G7.2C geometry confidence field: **COMPLETE / CI PASS**.
 - G7.3 free-space / visibility no-fill authority: **COMPLETE / CI PASS**.
 - G7.4 protected additive fusion candidate: **COMPLETE / CI PASS**.
-- G7.2/G7.2C/G7.3/G7.4 remain non-destructive; confidence refinement is OFF and destructive fusion is still blocked.
-- Next safe work: **G7.5 registration/provenance visual review**.
-- User-facing Gate 7 Preview remains blocked until the current DR9R runtime UX acceptance is finished.
+- G7.5 registration/provenance visual review: **COMPLETE / CI PASS AT SOURCE LEVEL**.
+- G7.2/G7.2C/G7.3/G7.4/G7.5 remain non-destructive; confidence refinement is OFF and Gate 8 remains blocked.
+- Next safe work: **G7.6 source closeout / preview-package readiness**.
+- Final user-facing Gate 7 promotion remains blocked until DR9R r15 UX acceptance and artist visual review are completed.
