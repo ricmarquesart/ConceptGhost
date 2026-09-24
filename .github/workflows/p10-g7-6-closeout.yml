@@ -1,0 +1,40 @@
+name: Gate 7.6 Closeout Tests
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - 'Experimental/P10_Lab/p10_lab/gate7_closeout.py'
+      - 'Experimental/P10_Lab/tests/test_gate7_closeout.py'
+      - '.github/workflows/p10-g7-6-closeout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate7-6:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install focused runtime dependency
+        run: python -m pip install pillow
+
+      - name: Compile Gate 7.6 module
+        run: python -m py_compile Experimental/P10_Lab/p10_lab/gate7_closeout.py
+
+      - name: Run Gate 7.6 focused tests
+        working-directory: Experimental/P10_Lab
+        run: python -m unittest -v tests.test_gate7_closeout
