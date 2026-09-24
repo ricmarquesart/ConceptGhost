@@ -120,7 +120,51 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertIn('function drawZoomControls(panel)', source)
         self.assertIn('if (perspective) drawZoomControls(perspective);', source)
         self.assertIn('for (const panel of state.projection.panels || []) drawZoomControls(panel);', source)
-        self.assertIn('zoomControl.action === "in" ? 1.25 : 0.80', source)
+        self.assertIn('zoomControl.action === "in" ? 1.35 : (1 / 1.35)', source)
+
+    def test_route_edits_preserve_artist_zoom_and_pan(self):
+        import p10_lab
+
+        path=Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js"
+        source=path.read_text(encoding="utf-8")
+        persist_block=source.split("function persist() {",1)[1].split("function setPlan",1)[0]
+        self.assertNotIn("ensureRouteVisible()", persist_block)
+        stop_block=source.split("const stopDrag = (event) => {",1)[1].split('canvas.addEventListener("pointerup"',1)[0]
+        self.assertNotIn("ensureRouteVisible()", stop_block)
+        self.assertIn("MAX_ORTHO_ZOOM = 160.0", source)
+        self.assertIn("MAX_PERSPECTIVE_ZOOM = 48.0", source)
+        self.assertIn("if (needsInitialFraming) ensureRouteVisible();", source)
+
+    def test_route_editor_has_portable_export_import(self):
+        import p10_lab
+
+        path=Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js"
+        source=path.read_text(encoding="utf-8")
+        for required in (
+            '"Exportar trajeto"',
+            '"Importar trajeto"',
+            'ROUTE_PRESET_SCHEMA = "ConceptGhost.P10DroneRoutePreset.v0.1"',
+            "function portableRoutePreset()",
+            "function exportRoutePreset()",
+            "async function importRoutePresetFile(file)",
+            'route_authority: "ARTIST_AUTHORED"',
+            "delete imported.route_plan_sha256",
+            "source_scene_contract_id",
+        ):
+            self.assertIn(required, source)
+
+    def test_route_editor_uses_higher_detail_four_view(self):
+        import p10_lab
+        import p10_lab.route_authoring_node as node
+        import p10_lab.drone_route_preview as preview
+
+        frontend=(Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js").read_text(encoding="utf-8")
+        backend=Path(node.__file__).read_text(encoding="utf-8")
+        preview_source=Path(preview.__file__).read_text(encoding="utf-8")
+        self.assertIn("GEOMETRY_DRAW_BUDGET = 50000", frontend)
+        self.assertIn("max_points=50000", backend)
+        self.assertIn("panel_width: int=720", preview_source)
+        self.assertIn("panel_height: int=660", preview_source)
 
     def test_frontend_javascript_parses_when_node_is_available(self):
         import p10_lab
