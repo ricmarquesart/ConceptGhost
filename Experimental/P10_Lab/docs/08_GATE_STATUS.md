@@ -1,5 +1,27 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 Gate 7.3 source checkpoint
+
+- DR9R r15 remains under user runtime UX testing; Gate 7 source work remains isolated from the published runtime.
+- **G7.1 registration authority: COMPLETE / CI PASS.**
+- **G7.2 authority-aware provenance: COMPLETE / CI PASS.**
+- **G7.2C geometry confidence: COMPLETE / CI PASS.**
+- **G7.3 free-space / visibility no-fill authority: COMPLETE / CI PASS at source level.**
+- G7.3 consumes the existing Gate 6 geometric depth maps and consistency graphs; camera/depth calibration mismatch fails closed.
+- Sparse visibility evidence records camera-to-first-surface FREE votes and first-surface OCCUPIED votes; space behind the first surface stays UNKNOWN.
+- `CONFIRMED_FREE` requires >=3 effective views, >=2 authored routes, angular diversity and a strong free-vote ratio.
+- `CONFIRMED_FREE` is a future `NO_FILL / NO_BRIDGE` constraint; `UNKNOWN` is never treated as FREE.
+- P9 source-protected evidence is forced OCCUPIED and cannot be carved by generated P10 evidence.
+- COLMAP Delaunay meshing is now available as a separate visibility-aware structural candidate beside Poisson; no automatic winner is selected.
+- Free-space is coupled back into confidence diagnostics: CONFIRMED_FREE/CONFLICT lower P10 confidence; UNKNOWN has no penalty; P9 confidence is unchanged.
+- Official geometry changed: **NO**. Destructive fusion enabled: **NO**.
+- General CI run `35953822364`: SUCCESS.
+- Focused Gate 7.3 runtime-format/free-space run `35953822402`: SUCCESS on Ubuntu/Python 3.12 and Windows/Python 3.12.
+- Source snapshot run `35953822367`: SUCCESS.
+- Formal closeout: `Experimental/P10_Lab/docs/29_GATE7_3_FREE_SPACE_SOURCE_CLOSEOUT.md`.
+- Next bounded source work: **G7.4 — Protected Fusion Candidate**.
+- User-facing Gate 7 promotion remains blocked until the current DR9R r15 runtime UX acceptance is reviewed.
+
 ## Authoritative reconciliation — 2026-09-24 Gate 7.2C source checkpoint
 
 - DR9R r15 remains under user runtime UX testing; current Gate 7 source development is isolated from that published runtime.
