@@ -159,7 +159,8 @@ class ConceptGhostP10DroneRouteAuthoring:
             boundary.primary_mesh,
             camera,
             source_image=boundary.source_image,
-            max_points=50000,
+            max_points=100000,
+            max_mesh_faces=24000,
         )
 
         # DR9R-F: the four-view editor is rendered dynamically from preview_geometry.
@@ -204,6 +205,16 @@ class ConceptGhostP10DroneRouteAuthoring:
             "base_preview_png_path":None,
             "workspace_rendering":"DYNAMIC_GEOMETRY_NO_STATIC_BACKGROUND",
             "preview_point_budget":preview_geometry["point_count"],
+            "preview_point_lods":{
+                name:int(payload["point_count"])
+                for name,payload in preview_geometry.get("point_lods",{}).items()
+            },
+            "preview_mesh_lod":{
+                "available":bool(preview_geometry.get("mesh_lod",{}).get("available")),
+                "face_count":int(preview_geometry.get("mesh_lod",{}).get("face_count",0)),
+                "vertex_count":int(preview_geometry.get("mesh_lod",{}).get("vertex_count",0)),
+                "authority":"DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
+            },
             "route_editor_cache_path":str(output_root.resolve()),
             "interaction_contract":{
                 "perspective":"ORBIT_PAN_ZOOM_INSPECTION_ONLY",
@@ -223,6 +234,10 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "route_preset_rebinds_current_scene":True,
                 "four_view_internal_resolution":[720,660],
                 "static_background_used":False,
+                "preview_modes":["POINTS_LOW","POINTS_MEDIUM","POINTS_HIGH","MESH_SURFACE","MESH_WIREFRAME"],
+                "preview_default":"POINTS_MEDIUM",
+                "point_size_control":True,
+                "mesh_preview_is_display_only":True,
             },
         }
         rendered_diagnostics=_pretty(diagnostics)
