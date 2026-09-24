@@ -349,6 +349,121 @@ class Gate7FreeSpaceTests(unittest.TestCase):
             self.assertGreater(result["sampling"]["accepted_consistent_rays"],0)
 
     @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
+    def test_free_space_uses_registered_intersection_when_coverage_is_at_least_70_percent(self):
+        from p10_lab.free_space_evidence import build_free_space_evidence
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            dataset=root/"dataset"
+            dense=dataset/"dense"
+            (dense/"sparse").mkdir(parents=True)
+            (dense/"images").mkdir()
+            (dense/"stereo"/"depth_maps").mkdir(parents=True)
+            (dense/"stereo"/"consistency_graphs").mkdir(parents=True)
+
+            # 20 authored frames across five drone missions. COLMAP registers
+            # only 15 (75%); four of five missions retain >=70% of their frames.
+            missing={3,7,12,13,18}
+            frames=[]
+            image_rows=[]
+            dense_id=1
+            for index in range(20):
+                mission=f"drone_{index//4 + 1}"
+                name=f"frame_{index:06d}.png"
+                frames.append({
+                    "image_id":index+1,
+                    "camera_id":1,
+                    "global_frame_index":index,
+                    "path_name":mission,
+                    "path_frame_index":index%4,
+                    "image_name":name,
+                })
+                if index in missing:
+                    continue
+                image_rows.append(f"{dense_id} 1 0 0 0 0 0 0 1 {name}\n\n")
+                _write_float_map(
+                    dense/"stereo"/"depth_maps"/f"{name}.geometric.bin",
+                    np.full((4,4),2.0,dtype=np.float32),
+                )
+                _write_consistency(
+                    dense/"stereo"/"consistency_graphs"/f"{name}.geometric.bin",
+                    4,4,[(r,c,[0,1]) for r in range(4) for c in range(4)],
+                )
+                dense_id+=1
+
+            (dense/"sparse"/"cameras.txt").write_text(
+                "1 PINHOLE 4 4 4 4 2 2\n",encoding="utf-8"
+            )
+            (dense/"sparse"/"images.txt").write_text("".join(image_rows),encoding="utf-8")
+            dataset_manifest=dataset/"dataset_manifest.json"
+            dataset_manifest.write_text(json.dumps({
+                "schema":"ConceptGhost.P10KnownCameraColmapDataset.v0.2",
+                "run_id":"p9","scene_contract_id":"scene",
+                "camera_authority":"P9_BASELINE_WORLD_DERIVED",
+                "image_authority":"SOURCE_PRESERVED_P10_COMPOSITE",
+                "frames":frames,
+            }),encoding="utf-8")
+            registration=root/"registration.json"
+            registration.write_text(json.dumps({
+                "dataset_manifest_path":str(dataset_manifest.resolve())
+            }),encoding="utf-8")
+            provenance=root/"provenance.json"
+            provenance.write_text(json.dumps({
+                "registration_manifest_path":str(registration.resolve()),
+                "thresholds":{"scene_diagonal_m":4.0},
+            }),encoding="utf-8")
+            confidence_npz=root/"confidence.npz"
+            np.savez_compressed(
+                confidence_npz,
+                p9_points=np.asarray([[0,0,2]],dtype=np.float32),
+                p9_provenance_labels=np.asarray([1],dtype=np.uint8),
+            )
+            confidence=root/"confidence.json"
+            confidence.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7GeometryConfidence.v0.1",
+                "status":"PASS",
+                "geometry_confidence_refine":False,
+                "official_geometry_changed":False,
+                "p9_authority_changed":False,
+                "ready_for_gate7_3":True,
+                "scene_contract_id":"scene",
+                "p9_run_id":"p9",
+                "p10_attempt_id":"attempt",
+                "provenance_manifest_path":str(provenance.resolve()),
+                "evidence_npz_path":str(confidence_npz.resolve()),
+            }),encoding="utf-8")
+
+            result=build_free_space_evidence(
+                confidence,root/"out",
+                max_pixels_per_frame=16,
+                min_consistent_sources=2,
+                min_voxel_size_m=0.1,
+                max_voxel_size_m=0.1,
+                free_step_voxels=1.0,
+                max_free_samples_per_ray=16,
+            )
+            coverage=result["colmap_coverage"]
+            self.assertTrue(coverage["pass"])
+            self.assertEqual(coverage["dataset_frame_count"],20)
+            self.assertEqual(coverage["usable_geometric_frame_count"],15)
+            self.assertEqual(coverage["missing_dense_frame_count"],5)
+            self.assertAlmostEqual(coverage["frame_coverage_ratio"],0.75)
+            self.assertGreaterEqual(coverage["mission_coverage_ratio"],0.70)
+            self.assertEqual(result["sampling"]["frame_count"],15)
+
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
+    def test_free_space_fails_closed_below_70_percent_colmap_frame_coverage(self):
+        import p10_lab.free_space_evidence as evidence
+
+        source=Path(evidence.__file__).read_text(encoding="utf-8")
+        self.assertIn("min_frame_coverage_ratio: float = 0.70",source)
+        self.assertIn("min_mission_coverage_ratio: float = 0.70",source)
+        self.assertIn("min_per_mission_frame_ratio: float = 0.70",source)
+        self.assertIn("Gate 7 COLMAP usable-frame coverage below threshold",source)
+        self.assertIn("Gate 7 COLMAP mission coverage below threshold",source)
+        self.assertIn("USE_REGISTERED_GEOMETRIC_INTERSECTION_REQUIRE_70_PERCENT",source)
+
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
     def test_free_space_overlay_caps_confidence_without_mutating_p9(self):
         from p10_lab.free_space_confidence import build_confidence_free_space_overlay
         from p10_lab.free_space_constraints import FreeSpaceState
