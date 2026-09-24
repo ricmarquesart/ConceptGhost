@@ -282,10 +282,10 @@ def render_route_authoring_preview(
     plan: DroneRoutePlan | None,
     *,
     source_image: str | Path | None = None,
-    panel_width: int=600,
-    panel_height: int=560,
+    panel_width: int=720,
+    panel_height: int=660,
     gap: int=14,
-    max_geometry_points: int=50000,
+    max_geometry_points: int=70000,
 ):
     try:
         import numpy as np
