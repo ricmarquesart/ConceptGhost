@@ -14,6 +14,7 @@ from pathlib import Path
 
 
 R1_NAME = "ConceptGhost_v1.54_P10_GATE7_PREVIEW_r1"
+R1_SOURCE_COMMIT = "ebf41821177b384d18565f5c7bcb813901bbc7b6"
 R2_NAME = "ConceptGhost_v1.54_P10_GATE7_PREVIEW_r2_AUDIT"
 BASE_SHA256 = "cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd"
 EXCLUDED = {"BUNDLE_MANIFEST.json", "P10_DR9_BUNDLE_MANIFEST.json", "SHA256SUMS.txt"}
@@ -114,6 +115,19 @@ def patch_workflow(root: Path) -> None:
             "Esse ZIP cresce automaticamente quando novos gates persistem evidencias seguras."
         )
     wt(path, json.dumps(workflow, indent=2, ensure_ascii=False) + "\n")
+
+
+def patch_source_commit_references(root: Path, source_commit: str) -> None:
+    text_suffixes = {".py", ".ps1", ".md", ".json", ".txt"}
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in text_suffixes:
+            continue
+        try:
+            text = rt(path)
+        except UnicodeDecodeError:
+            continue
+        if R1_SOURCE_COMMIT in text:
+            wt(path, text.replace(R1_SOURCE_COMMIT, source_commit))
 
 
 def update_code_manifest(root: Path, source_commit: str) -> None:
@@ -322,11 +336,17 @@ User runtime acceptance: PENDING
 def patch_bundle_tests(root: Path, source_commit: str) -> None:
     path = root / "Installer/test_dr9_bundle.py"
     text = rt(path)
-    old_source = re.search(r"EXPECTED_SOURCE='([0-9a-f]{40})'", text)
-    if old_source:
-        text = text.replace(old_source.group(1), source_commit)
+    text = text.replace(R1_SOURCE_COMMIT, source_commit)
     text = text.replace("USER_GUIDE_GATE7_PREVIEW_R1.md", "USER_GUIDE_GATE7_PREVIEW_R2_AUDIT.md")
     wt(path, text)
+
+    gate7_test = root / "Installer/test_gate7_preview_bundle.py"
+    text = rt(gate7_test)
+    text = text.replace(R1_SOURCE_COMMIT, source_commit)
+    text = text.replace("GATE7_PREVIEW_R1_RUNTIME_VERIFY_PASS", "GATE7_PREVIEW_R2_AUDIT_RUNTIME_VERIFY_PASS")
+    text = text.replace("Installer/install_gate7_preview_r1.ps1", "Installer/install_gate7_preview_r2_audit.ps1")
+    text = text.replace("Installer/verify_gate7_preview_r1.ps1", "Installer/verify_gate7_preview_r2_audit.ps1")
+    wt(gate7_test, text)
 
     test = """from pathlib import Path
 import sys,json
@@ -459,6 +479,7 @@ def main() -> int:
             raise SystemExit(result.stdout + result.stderr)
 
         patch_workflow(root)
+        patch_source_commit_references(root, args.source_commit)
         update_code_manifest(root, args.source_commit)
         patch_runtime_verifier(root, args.source_commit)
         patch_entrypoints(root)
