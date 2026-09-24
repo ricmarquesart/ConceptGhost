@@ -298,6 +298,7 @@ def run_gate7_pipeline(
                 "VISUAL_EVIDENCE_PACK_REQUIRED",
                 "ARTIST_VISUAL_REVIEW_REQUIRED",
                 "GATE7_RUNTIME_ACCEPTANCE_REQUIRED",
+                "DR9R_R15_RUNTIME_UX_ACCEPTANCE_REQUIRED",
             ],
             "resumed": False,
         }
