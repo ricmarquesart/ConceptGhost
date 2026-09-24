@@ -1,7 +1,7 @@
 # ConceptGhost — Route Editor Camera Aim + Mesh Preview Plan
 
 Date: 2026-09-24
-Status: R6A IMPLEMENTED / CI PENDING · R6B-R6F PLANNED · USER VALIDATION DEFERRED TO R6F
+Status: R6A-R6E COMPLETE / CI PASS · R6F ACTIVE · USER VALIDATION DEFERRED TO R6F
 
 ## 1. Current route-editor facts
 
@@ -19,12 +19,12 @@ The artist requested no intermediate target-PC validation. R6A-R6E are source/CI
 The first user validation package is R6F after all editor improvements are integrated.
 
 Current sequence:
-- R6A Points/Mesh LOD + Point Size — IMPLEMENTED / CI PENDING
-- R6B Selected Camera View + frustum — NEXT
-- R6C Per-waypoint camera pose + SPIN_360 pitch/yaw — PLANNED
-- R6D Perspective pivot/gimbal + orbit-direction correction — PLANNED
-- R6E Route schema/export/import v0.2 + readable CSV/TXT — PLANNED
-- R6F aggregate regression + Evaluation_Builds bundle — PLANNED / ONLY USER VALIDATION POINT
+- R6A Points/Mesh LOD + Point Size — COMPLETE / CI PASS
+- R6B Selected Camera View + frustum — COMPLETE / CI PASS
+- R6C Per-waypoint camera pose + SPIN_360 pitch/yaw — COMPLETE / CI PASS
+- R6D Perspective pivot/gimbal + orbit-direction correction — COMPLETE / CI PASS
+- R6E Route schema/export/import v0.2 + readable CSV/TXT — COMPLETE / CI PASS
+- R6F aggregate regression + Evaluation_Builds bundle — ACTIVE / ONLY USER VALIDATION POINT
 
 ## 2. Preview representation
 
@@ -152,3 +152,13 @@ Use cached bounded LODs rather than the full P9 mesh.
 - horizontal orbit direction feels consistent with standard viewport navigation.
 - old v0.1/v0.2 route files still load.
 - P9 critical file hashes remain unchanged.
+
+
+### R6B-R6E implementation closeout — 2026-09-24
+
+- **R6B:** Selected Camera View is live inside Route Setup, uses accepted P9 camera FOV and P9 display geometry, draws the selected waypoint frustum in Perspective/TOP/SIDE/FRONT, and a dedicated `ConceptGhostP10SelectedDroneCameraPreview` node provides a higher-confidence refresh/render path.
+- **R6C:** Route schema is `ConceptGhost.P10DroneRoutePlan.v0.3`. Each waypoint can carry an explicit normalized `look_direction`; sampled PATH views interpolate those directions. SPIN_360 now supports `spin_pitch_deg` and `spin_yaw_start_deg`. Legacy v0.1/v0.2 bound hashes remain accepted.
+- **R6D:** Perspective has an explicit RUF pivot/gimbal (X/Right, Y/Up, Z/Forward), Reset/Pivot-to-Scene/Pivot-to-Selected controls, and horizontal orbit uses conventional viewport direction.
+- **R6E:** Portable route preset is v0.2 while v0.1 remains import-compatible. Export writes the authority JSON plus readable CSV/TXT rows containing position, look vector, yaw, pitch and aim authority.
+- Aggregate source CI after these changes passed on Ubuntu Python 3.12, Windows Python 3.12 and Windows Python 3.14 in ConceptGhost Tests run `36057359547`.
+- No target-PC validation has been requested or performed for R6A-R6E. The first artist/runtime validation remains **R6F**.
