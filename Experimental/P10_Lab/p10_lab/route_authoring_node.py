@@ -159,7 +159,7 @@ class ConceptGhostP10DroneRouteAuthoring:
             boundary.primary_mesh,
             camera,
             source_image=boundary.source_image,
-            max_points=30000,
+            max_points=50000,
         )
 
         # DR9R-F: the four-view editor is rendered dynamically from preview_geometry.
@@ -216,6 +216,12 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "downstream_updates_on_next_queue_prompt":True,
                 "reset_route_preserves_scene":True,
                 "viewport_reset_preserves_route":True,
+                "route_edit_preserves_zoom_pan":True,
+                "max_orthographic_zoom":160.0,
+                "max_perspective_zoom":48.0,
+                "route_preset_export_import":True,
+                "route_preset_rebinds_current_scene":True,
+                "four_view_internal_resolution":[720,660],
                 "static_background_used":False,
             },
         }
