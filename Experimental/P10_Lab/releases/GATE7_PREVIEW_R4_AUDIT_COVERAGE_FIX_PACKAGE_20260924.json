@@ -1,0 +1,48 @@
+{
+  "schema": "ConceptGhost.P10Gate7PreviewR4AuditCoveragePackageRecord.v0.1",
+  "date_utc": "2026-09-24",
+  "package": "ConceptGhost_v1.54_P10_GATE7_PREVIEW_r4_AUDIT_COVERAGE_FIX.zip",
+  "package_status": "CANDIDATE_READY_FOR_USER_RUNTIME_TEST",
+  "inner_package_sha256": "66b6fec5976c75b7c0cedbe8edb27a03547a20ae144806efca8ac87086e09699",
+  "inner_package_size_bytes": 12353885,
+  "frozen_base_r15_sha256": "cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd",
+  "package_source_commit": "8832368a204c73e61c46612344f3286ed70732f4",
+  "documentation_commit": "2c224f37f6c727b1f600cc91e480811b93574bd1",
+  "github_actions": {
+    "build_run_id": 36036861885,
+    "build_status": "SUCCESS",
+    "artifact_id": 10824323613,
+    "artifact_wrapper_digest": "sha256:93a6e8bb98e5bf6e7cee30691d61b21a4946e97c6375103c2c31b585de21b6c7",
+    "general_tests_run_id": 36036861827,
+    "general_tests_status": "SUCCESS",
+    "source_snapshot_run_id": 36036861946,
+    "source_snapshot_status": "SUCCESS",
+    "focused_free_space_run_id": 36035809357,
+    "focused_free_space_status": "SUCCESS",
+    "focused_gate7_runtime_run_id": 36036144159,
+    "focused_gate7_runtime_status": "SUCCESS"
+  },
+  "google_drive": {
+    "evaluation_builds_folder_id": "1QJLvO8GaA92pvSkU5A7FoyFgoPwf2nIP",
+    "package_file_id": "1E6iFmZUOl_r62DKskZCTIbLqEqxtL2Mx",
+    "concept_scene_folder_id": "1bBXPzHSKDz3uOSrSDauZxOTnHcLM2tlT",
+    "p10_audits_folder_id": "1aMkNbw3ziJDdKt17d49laimVGJnC1jqc"
+  },
+  "runtime_policy": {
+    "colmap_view_selection": "REGISTERED_GEOMETRIC_INTERSECTION",
+    "min_frame_coverage_ratio": 0.7,
+    "min_mission_coverage_ratio": 0.7,
+    "min_per_mission_frame_ratio": 0.7,
+    "min_qualifying_independent_missions": 2,
+    "missing_views_state": "UNKNOWN_NEVER_FREE",
+    "automatic_audit_on_gate7_success": true,
+    "automatic_partial_audit_on_gate7_failure": true,
+    "audit_storage": "concept_scene/P10_AUDITS/<P9_RUN>/<P10_ATTEMPT>",
+    "terminal_audit_refresh_with_visual_pack": true
+  },
+  "authority": {
+    "p9_changed": false,
+    "gate8_ready": false,
+    "user_runtime_accepted": false
+  }
+}
