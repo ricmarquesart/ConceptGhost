@@ -714,7 +714,7 @@ Balanced defaults:
 
 Package:
 - `ConceptGhost_Geometry_Assist_ComfyUI_Workflow_r7.zip`
-- SHA-256: `683a28fab8b45606b3d0648d096cc231ab8dcce282f92f7ec36330790a94a396`
+- SHA-256: `5c11e4ac368db74eb8e757d02a3bf7894d2c995b2a882a2494cdbcade675d62d`
 - Google Drive Evaluation_Builds file ID: `1wpYOozH0SbhK5GIy6YV8If3yBDfA1e6s`
 
 Static local validation confirms JSON parse success, 24 visible nodes, 25 valid links, five visual groups, and all required node classes. Hardware execution inside the user's ComfyUI remains the next acceptance step.
