@@ -5,7 +5,9 @@ const NODE_CLASS = "ConceptGhostP10DroneRouteAuthoring";
 const COLORS = ["#ffb040", "#4ebeff", "#86e276", "#de76ff", "#ff6868", "#ffdc5a", "#5ee8d4"];
 const MAX_ORTHO_ZOOM = 160.0;
 const MAX_PERSPECTIVE_ZOOM = 48.0;
-const GEOMETRY_DRAW_BUDGET = 50000;
+const GEOMETRY_DRAW_BUDGET = 100000;
+const MESH_DRAW_BUDGET = 24000;
+const PREVIEW_MODES = ["POINTS_LOW", "POINTS_MEDIUM", "POINTS_HIGH", "MESH_SURFACE", "MESH_WIREFRAME"];
 const ROUTE_PRESET_SCHEMA = "ConceptGhost.P10DroneRoutePreset.v0.1";
 
 function chainCallback(object, name, callback) {
@@ -143,6 +145,19 @@ function setupEditor(node) {
     const droneSelect = document.createElement("select");
     const modeSelect = document.createElement("select");
     const orientationSelect = document.createElement("select");
+    const previewModeSelect = document.createElement("select");
+    for (const [value, label] of [
+        ["POINTS_LOW", "Points Low"],
+        ["POINTS_MEDIUM", "Points Medium"],
+        ["POINTS_HIGH", "Points High"],
+        ["MESH_SURFACE", "Mesh Surface"],
+        ["MESH_WIREFRAME", "Mesh Wireframe"],
+    ]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        previewModeSelect.appendChild(option);
+    }
     for (const [value, label] of [
         ["LOOK_AT_TARGET", "Look at target"],
         ["LOOK_ALONG_PATH", "Look along path"],
@@ -193,8 +208,20 @@ function setupEditor(node) {
     }
     yawInput.title = "Yaw manual em graus";
     pitchInput.title = "Pitch manual em graus";
+    const pointSizeInput = document.createElement("input");
+    pointSizeInput.type = "range";
+    pointSizeInput.min = "0.5";
+    pointSizeInput.max = "4.0";
+    pointSizeInput.step = "0.25";
+    pointSizeInput.value = "1.25";
+    pointSizeInput.title = "Tamanho visual dos pontos; não altera a geometria";
+    pointSizeInput.style.cssText = "width:90px;";
+    const pointSizeValue = document.createElement("span");
+    pointSizeValue.textContent = "1.25 px";
+    pointSizeValue.style.cssText = "min-width:48px;color:#aaa;";
 
     toolbar.append(
+        "Display:", previewModeSelect, "Point size:", pointSizeInput, pointSizeValue,
         "Drone:", droneSelect, modeSelect,
         "Aim:", orientationSelect, editTarget,
         "Yaw:", yawInput, "Pitch:", pitchInput,
@@ -208,7 +235,8 @@ function setupEditor(node) {
         "PERSPECTIVE: arraste para orbitar, Shift+arraste para pan; roda ou botões −/+ = zoom profundo. " +
         "TOP/SIDE/FRONT: roda ou botões −/+ = zoom profundo; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
         "Adicionar/mover pontos preserva exatamente zoom e pan. Exportar/Importar trajeto reutiliza os drones em novos testes. " +
-        "LOOK_AT_TARGET usa Editar alvo. Resetar rota não apaga a cena; Enquadrar tudo só restaura a câmera das vistas.";
+        "LOOK_AT_TARGET usa Editar alvo. Display alterna Points/visual Mesh LOD sem mudar a autoridade P9; Point size é apenas visual. " +
+        "Resetar rota não apaga a cena; Enquadrar tudo só restaura a câmera das vistas.";
     help.style.cssText = "color:#aaa;line-height:1.3;";
 
     const canvasWrap = document.createElement("div");
@@ -263,6 +291,8 @@ function setupEditor(node) {
         orthoLast: null,
         editingTarget: false,
         targetDragging: false,
+        previewMode: "POINTS_MEDIUM",
+        pointSize: 1.25,
     };
 
     function pushHistory() {
@@ -390,6 +420,15 @@ function setupEditor(node) {
         yawInput.disabled = mission?.mode === "SPIN_360" || orientationSelect.value !== "MANUAL_DIRECTION";
         pitchInput.disabled = yawInput.disabled;
         updateManualInputs(mission);
+        const meshAvailable = Boolean(state.metadata?.preview_geometry?.mesh_lod?.available);
+        for (const option of previewModeSelect.options) {
+            if (String(option.value).startsWith("MESH_")) option.disabled = !meshAvailable;
+        }
+        if (String(state.previewMode).startsWith("MESH_") && !meshAvailable) state.previewMode = "POINTS_MEDIUM";
+        previewModeSelect.value = state.previewMode;
+        pointSizeInput.disabled = String(state.previewMode).startsWith("MESH_");
+        pointSizeInput.value = String(state.pointSize);
+        pointSizeValue.textContent = Number(state.pointSize).toFixed(2) + " px";
         addDrone.disabled = missions.length >= 7;
         removeDrone.disabled = missions.length <= 1;
         deletePoint.disabled = state.selectedPoint == null;
@@ -721,6 +760,126 @@ function setupEditor(node) {
         ctx.strokeRect(p.x - 4, p.y - 4, 8, 8);
     }
 
+    function activePointLod() {
+        const geometry = state.metadata?.preview_geometry;
+        if (!geometry) return { points: [] };
+        const lod = geometry.point_lods?.[state.previewMode];
+        if (lod?.points) return lod;
+        return geometry.point_lods?.POINTS_MEDIUM || { points: geometry.points || [] };
+    }
+
+    function activeMeshLod() {
+        const mesh = state.metadata?.preview_geometry?.mesh_lod;
+        return mesh?.available ? mesh : null;
+    }
+
+    function averageTriangleColor(vertices, face) {
+        const a = vertices[face[0]] || [];
+        const b = vertices[face[1]] || [];
+        const c = vertices[face[2]] || [];
+        return [
+            Math.round(((Number(a[3]) || 150) + (Number(b[3]) || 150) + (Number(c[3]) || 150)) / 3),
+            Math.round(((Number(a[4]) || 150) + (Number(b[4]) || 150) + (Number(c[4]) || 150)) / 3),
+            Math.round(((Number(a[5]) || 150) + (Number(b[5]) || 150) + (Number(c[5]) || 150)) / 3),
+        ];
+    }
+
+    function drawPerspectiveMesh(mode) {
+        const panel = perspectivePanel();
+        const mesh = activeMeshLod();
+        if (!panel || !mesh) return false;
+        const plot = panel.plot_rect_px;
+        const vertices = mesh.vertices || [];
+        const faces = mesh.faces || [];
+        const stride = Math.max(1, Math.ceil(faces.length / MESH_DRAW_BUDGET));
+        const triangles = [];
+        for (let index = 0; index < faces.length; index += stride) {
+            const face = faces[index];
+            const a = projectPerspective(vertices[face[0]]);
+            const b = projectPerspective(vertices[face[1]]);
+            const c = projectPerspective(vertices[face[2]]);
+            if (!a || !b || !c) continue;
+            const minX = Math.min(a.x,b.x,c.x), maxX = Math.max(a.x,b.x,c.x);
+            const minY = Math.min(a.y,b.y,c.y), maxY = Math.max(a.y,b.y,c.y);
+            if (maxX < plot.x || minX > plot.x + plot.width || maxY < plot.y || minY > plot.y + plot.height) continue;
+            triangles.push({a,b,c,depth:(a.depth+b.depth+c.depth)/3,color:averageTriangleColor(vertices,face)});
+        }
+        if (mode === "MESH_SURFACE") triangles.sort((left,right) => right.depth-left.depth);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(plot.x,plot.y,plot.width,plot.height);
+        ctx.clip();
+        for (const tri of triangles) {
+            ctx.beginPath();
+            ctx.moveTo(tri.a.x,tri.a.y);
+            ctx.lineTo(tri.b.x,tri.b.y);
+            ctx.lineTo(tri.c.x,tri.c.y);
+            ctx.closePath();
+            if (mode === "MESH_SURFACE") {
+                ctx.fillStyle = "rgba(" + tri.color[0] + "," + tri.color[1] + "," + tri.color[2] + ",0.42)";
+                ctx.fill();
+                ctx.strokeStyle = "rgba(15,15,15,0.16)";
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            } else {
+                ctx.strokeStyle = "rgba(205,215,225,0.56)";
+                ctx.lineWidth = 0.65;
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+        return true;
+    }
+
+    function drawOrthographicMesh(panel, mode) {
+        const mesh = activeMeshLod();
+        if (!mesh) return false;
+        const plot = panel.plot_rect_px;
+        const vertices = mesh.vertices || [];
+        const faces = mesh.faces || [];
+        const stride = Math.max(1, Math.ceil(faces.length / MESH_DRAW_BUDGET));
+        const hiddenAxis = ["right","up","forward"].find((axis) => axis !== panel.x_axis && axis !== panel.y_axis) || "forward";
+        const axisIndex = { right:0, up:1, forward:2 }[hiddenAxis];
+        const triangles = [];
+        for (let index = 0; index < faces.length; index += stride) {
+            const face = faces[index];
+            const va = vertices[face[0]], vb = vertices[face[1]], vc = vertices[face[2]];
+            if (!va || !vb || !vc) continue;
+            const a = project(panel, geometryPoint(va));
+            const b = project(panel, geometryPoint(vb));
+            const c = project(panel, geometryPoint(vc));
+            const minX = Math.min(a.x,b.x,c.x), maxX = Math.max(a.x,b.x,c.x);
+            const minY = Math.min(a.y,b.y,c.y), maxY = Math.max(a.y,b.y,c.y);
+            if (maxX < plot.x || minX > plot.x + plot.width || maxY < plot.y || minY > plot.y + plot.height) continue;
+            triangles.push({a,b,c,depth:(Number(va[axisIndex])+Number(vb[axisIndex])+Number(vc[axisIndex]))/3,color:averageTriangleColor(vertices,face)});
+        }
+        if (mode === "MESH_SURFACE") triangles.sort((left,right) => left.depth-right.depth);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(plot.x,plot.y,plot.width,plot.height);
+        ctx.clip();
+        for (const tri of triangles) {
+            ctx.beginPath();
+            ctx.moveTo(tri.a.x,tri.a.y);
+            ctx.lineTo(tri.b.x,tri.b.y);
+            ctx.lineTo(tri.c.x,tri.c.y);
+            ctx.closePath();
+            if (mode === "MESH_SURFACE") {
+                ctx.fillStyle = "rgba(" + tri.color[0] + "," + tri.color[1] + "," + tri.color[2] + ",0.42)";
+                ctx.fill();
+                ctx.strokeStyle = "rgba(15,15,15,0.14)";
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            } else {
+                ctx.strokeStyle = "rgba(205,215,225,0.56)";
+                ctx.lineWidth = 0.65;
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+        return true;
+    }
+
     function drawPerspectiveScene() {
         const panel = perspectivePanel();
         const geometry = state.metadata?.preview_geometry;
@@ -732,15 +891,25 @@ function setupEditor(node) {
         ctx.rect(plot.x, plot.y, plot.width, plot.height);
         ctx.clip();
 
-        const points = geometry.points;
-        const drawStride = Math.max(1, Math.ceil(points.length / GEOMETRY_DRAW_BUDGET));
-        for (let index = 0; index < points.length; index += drawStride) {
-            const raw = points[index];
-            const p = projectPerspective(raw);
-            if (!p) continue;
-            if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
-            ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.72)`;
-            ctx.fillRect(p.x, p.y, 1.1, 1.1);
+        if (String(state.previewMode).startsWith("MESH_")) {
+            ctx.restore();
+            drawPerspectiveMesh(state.previewMode);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(plot.x, plot.y, plot.width, plot.height);
+            ctx.clip();
+        } else {
+            const points = activePointLod().points || [];
+            const drawStride = Math.max(1, Math.ceil(points.length / GEOMETRY_DRAW_BUDGET));
+            const size = Math.max(0.5, Math.min(4.0, Number(state.pointSize) || 1.25));
+            for (let index = 0; index < points.length; index += drawStride) {
+                const raw = points[index];
+                const p = projectPerspective(raw);
+                if (!p) continue;
+                if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
+                ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.72)`;
+                ctx.fillRect(p.x - size * 0.5, p.y - size * 0.5, size, size);
+            }
         }
 
         for (let missionIndex = 0; missionIndex < (state.plan?.missions || []).length; missionIndex++) {
@@ -797,7 +966,7 @@ function setupEditor(node) {
         ctx.restore();
         ctx.fillStyle = "#aaa";
         ctx.font = "11px sans-serif";
-        ctx.fillText("drag: orbit · Shift+drag: pan · wheel / −/+ : zoom · inspection only", plot.x + 8, plot.y + plot.height - 10);
+        ctx.fillText("drag: orbit · Shift+drag: pan · wheel / −/+ : zoom · " + state.previewMode, plot.x + 8, plot.y + plot.height - 10);
     }
 
     function pointFromPanel(panel, x, y, base) {
@@ -885,14 +1054,24 @@ function setupEditor(node) {
         ctx.rect(plot.x, plot.y, plot.width, plot.height);
         ctx.clip();
 
-        const points = geometry.points;
-        const drawStride = Math.max(1, Math.ceil(points.length / GEOMETRY_DRAW_BUDGET));
-        for (let index = 0; index < points.length; index += drawStride) {
-            const raw = points[index];
-            const p = project(panel, geometryPoint(raw));
-            if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
-            ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.78)`;
-            ctx.fillRect(p.x, p.y, 1.05, 1.05);
+        if (String(state.previewMode).startsWith("MESH_")) {
+            ctx.restore();
+            drawOrthographicMesh(panel, state.previewMode);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(plot.x, plot.y, plot.width, plot.height);
+            ctx.clip();
+        } else {
+            const points = activePointLod().points || [];
+            const drawStride = Math.max(1, Math.ceil(points.length / GEOMETRY_DRAW_BUDGET));
+            const size = Math.max(0.5, Math.min(4.0, Number(state.pointSize) || 1.25));
+            for (let index = 0; index < points.length; index += drawStride) {
+                const raw = points[index];
+                const p = project(panel, geometryPoint(raw));
+                if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
+                ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.78)`;
+                ctx.fillRect(p.x - size * 0.5, p.y - size * 0.5, size, size);
+            }
         }
         ctx.restore();
 
@@ -900,7 +1079,7 @@ function setupEditor(node) {
         ctx.fillStyle = "#999";
         ctx.font = "10px sans-serif";
         ctx.fillText(
-            `zoom ${extent.view.zoom.toFixed(2)}x · Shift+drag/middle = pan · wheel / −/+ = zoom`,
+            `zoom ${extent.view.zoom.toFixed(2)}x · ${state.previewMode} · Shift+drag/middle = pan · wheel / −/+ = zoom`,
             plot.x + 7, plot.y + plot.height - 8
         );
     }
@@ -1331,6 +1510,27 @@ function setupEditor(node) {
         if ((perspectivePanel() && insideRect(perspectivePanel().plot_rect_px, xy.x, xy.y)) || panelAt(xy.x, xy.y)) {
             if (event.shiftKey) event.preventDefault();
         }
+    });
+
+    previewModeSelect.addEventListener("change", () => {
+        const requested = PREVIEW_MODES.includes(previewModeSelect.value) ? previewModeSelect.value : "POINTS_MEDIUM";
+        if (requested.startsWith("MESH_") && !activeMeshLod()) {
+            state.previewMode = "POINTS_MEDIUM";
+            previewModeSelect.value = state.previewMode;
+            status.textContent = "Mesh visual indisponível neste PrimaryMesh · usando Points Medium";
+            status.style.color = "#ffdc5a";
+        } else {
+            state.previewMode = requested;
+        }
+        pointSizeInput.disabled = state.previewMode.startsWith("MESH_");
+        draw();
+    });
+
+    pointSizeInput.addEventListener("input", () => {
+        const value = Number(pointSizeInput.value);
+        state.pointSize = Math.max(0.5, Math.min(4.0, Number.isFinite(value) ? value : 1.25));
+        pointSizeValue.textContent = state.pointSize.toFixed(2) + " px";
+        draw();
     });
 
     droneSelect.addEventListener("change", () => {
