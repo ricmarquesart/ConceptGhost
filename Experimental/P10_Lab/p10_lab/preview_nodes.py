@@ -15,6 +15,7 @@ from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
 from .wan_sequence import ConceptGhostP10WanSequentialSampler
 from .reconstruction_node import ConceptGhostP10ReconstructionRuntime
 from .route_authoring_node import ConceptGhostP10DroneRouteAuthoring
+from .selected_camera_preview import ConceptGhostP10SelectedDroneCameraPreview
 from .route_handoff import ConceptGhostP10RouteCommit, ConceptGhostP10ProductionEntryLoader
 from .moge_diagnostics import ConceptGhostMoGeDiagnosticsControl, ConceptGhostMoGeDiagnosticProfileTap, ConceptGhostMoGeDepthDiagnostics
 
@@ -821,6 +822,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
     "ConceptGhostP10DroneRouteAuthoring": ConceptGhostP10DroneRouteAuthoring,
+    "ConceptGhostP10SelectedDroneCameraPreview": ConceptGhostP10SelectedDroneCameraPreview,
     "ConceptGhostP10RouteCommit": ConceptGhostP10RouteCommit,
     "ConceptGhostP10ProductionEntryLoader": ConceptGhostP10ProductionEntryLoader,
     "ConceptGhostP10WanMaskedConditioning": ConceptGhostP10WanMaskedConditioning,
@@ -844,6 +846,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
     "ConceptGhostP10DroneRouteAuthoring": "P10 Refined · Artist Drone Route Authoring",
+    "ConceptGhostP10SelectedDroneCameraPreview": "P10 · Selected Drone Camera Preview",
     "ConceptGhostP10RouteCommit": "P10 Refined · Commit Artist Route / Production Entry",
     "ConceptGhostP10ProductionEntryLoader": "P10 Refined · Load Production Entry",
     "ConceptGhostP10WanMaskedConditioning": "P10 Refined · WAN Masked Conditioning",
