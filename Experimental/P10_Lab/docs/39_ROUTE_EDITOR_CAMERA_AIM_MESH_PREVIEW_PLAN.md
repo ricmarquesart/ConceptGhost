@@ -1,7 +1,7 @@
 # ConceptGhost — Route Editor Camera Aim + Mesh Preview Plan
 
 Date: 2026-09-24
-Status: PLANNED FOR NEXT PREVIEW AFTER CURRENT r4 RUNTIME TEST
+Status: R6A IMPLEMENTED / CI PENDING · R6B-R6F PLANNED · USER VALIDATION DEFERRED TO R6F
 
 ## 1. Current route-editor facts
 
@@ -12,6 +12,19 @@ metadata budget is 50,000 points. Collision preflight uses a separate bounded P9
 
 Therefore a mesh/surface preview does not require waiting for Gate 6 or Gate 7. The P9 mesh already
 exists at Route Setup time.
+
+## R6 execution policy
+
+The artist requested no intermediate target-PC validation. R6A-R6E are source/CI checkpoints only.
+The first user validation package is R6F after all editor improvements are integrated.
+
+Current sequence:
+- R6A Points/Mesh LOD + Point Size — IMPLEMENTED / CI PENDING
+- R6B Selected Camera View + frustum — NEXT
+- R6C Per-waypoint camera pose + SPIN_360 pitch/yaw — PLANNED
+- R6D Perspective pivot/gimbal + orbit-direction correction — PLANNED
+- R6E Route schema/export/import v0.2 + readable CSV/TXT — PLANNED
+- R6F aggregate regression + Evaluation_Builds bundle — PLANNED / ONLY USER VALIDATION POINT
 
 ## 2. Preview representation
 
@@ -37,6 +50,11 @@ Mesh mode:
 
 Do not send the full multi-million-face PrimaryMesh to the browser. The display mesh must be bounded
 to an interactive face/vertex budget.
+
+R6A implementation uses deterministic point LODs (15k / 50k / up to 100k points) and a bounded
+24k-face mesh LOD. The backend caches up to three preview payloads by PrimaryMesh bytes/timestamp,
+source-image identity, camera transform and LOD budgets. The mesh/point payload is explicitly marked
+DISPLAY_ONLY and is never fed back into route, collision, WAN, reconstruction or official geometry.
 
 ## 3. Selected camera preview
 
