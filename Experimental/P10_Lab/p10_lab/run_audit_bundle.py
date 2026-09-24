@@ -115,10 +115,10 @@ def default_project_audit_root(
     p9_run_dir: str | Path,
     p10_attempt_id: str,
 ) -> Path:
-    """Stable Drive-visible audit path without mutating the accepted P9 run."""
+    """Store each P10 audit inside its source run folder without touching P9 authority files."""
     p9 = Path(p9_run_dir).expanduser().resolve()
     attempt = str(p10_attempt_id or "").strip() or "UNKNOWN_ATTEMPT"
-    return p9.parent / "P10_AUDITS" / p9.name / attempt
+    return p9 / "P10_AUDIT" / attempt
 
 
 def _write_latest_pointers(
@@ -131,9 +131,9 @@ def _write_latest_pointers(
     p10_attempt_id: str | None,
 ) -> None:
     project_audit_root = audit_root
-    while project_audit_root.name != "P10_AUDITS" and project_audit_root.parent != project_audit_root:
+    while project_audit_root.name != "P10_AUDIT" and project_audit_root.parent != project_audit_root:
         project_audit_root = project_audit_root.parent
-    if project_audit_root.name != "P10_AUDITS":
+    if project_audit_root.name != "P10_AUDIT":
         return
     project_audit_root.mkdir(parents=True, exist_ok=True)
     (project_audit_root / "LATEST_AUDIT.txt").write_text(
@@ -162,9 +162,9 @@ def _write_latest_pointers(
     if not readme.exists():
         readme.write_text(
             "ConceptGhost P10 audit mirror.\n"
-            "For the newest execution, read LATEST_AUDIT_INDEX.json.\n"
-            "Each P9 run / P10 attempt gets its own RUN_AUDIT_BUNDLE.zip and manifest.\n"
-            "This folder is diagnostic sidecar storage and does not alter P9 authority.\n",
+            "For the newest execution of this P9 run, read LATEST_AUDIT_INDEX.json.\n"
+            "Each P10 attempt gets its own RUN_AUDIT_BUNDLE.zip and manifest.\n"
+            "This P10_AUDIT folder is diagnostic sidecar storage; existing P9 authority files are untouched.\n",
             encoding="utf-8",
         )
 
@@ -323,8 +323,8 @@ def _build_core(
             "AUTO_INCLUDE_SAFE_JSON_LOG_TEXT_AND_PREVIEW_EVIDENCE_UNDER_IMMUTABLE_P10_ATTEMPT"
         ),
         "storage_policy": (
-            "DRIVE_VISIBLE_PROJECT_SIDECAR_AT_CONCEPT_SCENE/P10_AUDITS/"
-            "<P9_RUN>/<P10_ATTEMPT>; ACCEPTED_P9_RUN_REMAINS_UNMODIFIED"
+            "DRIVE_VISIBLE_RUN_LOCAL_SIDECAR_AT_<P9_RUN>/P10_AUDIT/"
+            "<P10_ATTEMPT>; EXISTING_P9_AUTHORITY_FILES_REMAIN_UNMODIFIED"
         ),
         "heavy_payload_policy": "EXCLUDE_PLY_NPZ_FBX_MA_USDA_AND_OTHER_HEAVY_GEOMETRY",
         "limits": {
