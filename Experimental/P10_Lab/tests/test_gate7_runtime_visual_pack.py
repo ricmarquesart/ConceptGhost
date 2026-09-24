@@ -97,6 +97,23 @@ class Gate7RuntimeNodeContractTests(unittest.TestCase):
         self.assertIn("DR9R_R15_RUNTIME_UX_ACCEPTANCE_REQUIRED",source)
 
 
+    def test_runtime_self_heals_incomplete_dense_geometric_evidence(self):
+        import p10_lab.gate7_runtime as runtime
+
+        source=Path(runtime.__file__).read_text(encoding="utf-8")
+        for token in (
+            "G7_0_DENSE_GEOMETRIC_PREFLIGHT",
+            "_repair_gate6_dense_evidence_for_gate7",
+            "repair_dense_geometric_evidence",
+            "REPAIRED_FOR_GATE7_GEOMETRIC_COVERAGE",
+            "AUTO_REPAIR_EXPLICIT_REGISTERED_REFERENCES_IF_BELOW_70_PERCENT",
+            "sparse_rebuilt",
+            "wan_rebuilt",
+        ):
+            self.assertIn(token,source)
+        self.assertIn('"p9_authority_changed":False',source)
+
+
 class Gate7VisualPackTests(unittest.TestCase):
     @unittest.skipIf(np is None or Image is None,"NumPy/Pillow unavailable")
     def test_visual_pack_outputs_every_gate_and_keeps_promotion_blocked(self):
