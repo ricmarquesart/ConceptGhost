@@ -140,6 +140,14 @@ def patch_package_contracts(root: Path, source_commit: str, package_commit: str)
     )
     wt(verifier, text)
 
+    dr9_test = root / "Installer/test_dr9_bundle.py"
+    text = rt(dr9_test)
+    text = text.replace(
+        "USER_GUIDE_GATE7_PREVIEW_R2_AUDIT.md",
+        "USER_GUIDE_GATE7_PREVIEW_R3_ROUTE_UX_COLMAP_FIX.md",
+    )
+    wt(dr9_test, text)
+
     gate7_test = root / "Installer/test_gate7_preview_bundle.py"
     text = rt(gate7_test)
     text = text.replace(
