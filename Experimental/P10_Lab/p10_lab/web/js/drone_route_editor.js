@@ -199,6 +199,8 @@ function setupEditor(node) {
     importInput.accept = ".json,application/json";
     importInput.style.display = "none";
     const editTarget = button("Editar alvo", "Definir/arrastar o LOOK_AT_TARGET nas vistas ortográficas");
+    const pointAim = button("Aim deste ponto", "Criar orientação explícita somente para o waypoint selecionado");
+    const clearPointAim = button("Usar padrão", "Remover a orientação explícita do waypoint e voltar à orientação da missão");
     const yawInput = document.createElement("input");
     const pitchInput = document.createElement("input");
     for (const input of [yawInput, pitchInput]) {
@@ -223,7 +225,7 @@ function setupEditor(node) {
     toolbar.append(
         "Display:", previewModeSelect, "Point size:", pointSizeInput, pointSizeValue,
         "Drone:", droneSelect, modeSelect,
-        "Aim:", orientationSelect, editTarget,
+        "Aim:", orientationSelect, editTarget, pointAim, clearPointAim,
         "Yaw:", yawInput, "Pitch:", pitchInput,
         addDrone, removeDrone, deletePoint, undo, clearRoute, resetRoute, frameAll,
         exportRoute, importRoute, importInput
@@ -367,7 +369,17 @@ function setupEditor(node) {
         const points = mission?.waypoints || [];
         const point = points[pointIndex];
         if (!point) return { right: 0, up: 0, forward: 1 };
-        if (mission.mode === "SPIN_360") return { right: 0, up: 0, forward: 1 };
+        if (point.look_direction) return normalizeVector(point.look_direction);
+        if (mission.mode === "SPIN_360") {
+            const yaw = (Number(mission.spin_yaw_start_deg) || 0) * Math.PI / 180;
+            const pitch = (Number(mission.spin_pitch_deg) || 0) * Math.PI / 180;
+            const cp = Math.cos(pitch);
+            return normalizeVector({
+                right: Math.sin(yaw) * cp,
+                up: Math.sin(pitch),
+                forward: Math.cos(yaw) * cp,
+            });
+        }
 
         const orientation = mission.orientation_mode || "LOOK_ALONG_PATH";
         if (orientation === "LOOK_AT_TARGET" && mission.look_target) {
@@ -461,13 +473,36 @@ function setupEditor(node) {
         });
     }
 
-    function updateManualInputs(mission) {
-        const direction = normalizeVector(mission?.manual_direction || { right: 0, up: 0, forward: 1 });
+    function yawPitchFromDirection(rawDirection) {
+        const direction = normalizeVector(rawDirection || { right: 0, up: 0, forward: 1 });
         const yaw = Math.atan2(direction.right, direction.forward) * 180 / Math.PI;
         const horizontal = Math.hypot(direction.right, direction.forward);
         const pitch = Math.atan2(direction.up, horizontal) * 180 / Math.PI;
-        yawInput.value = yaw.toFixed(1);
-        pitchInput.value = pitch.toFixed(1);
+        return { yaw, pitch };
+    }
+
+    function selectedPointObject() {
+        const mission = activeMission();
+        if (!mission || state.selectedPoint == null) return null;
+        return mission.waypoints?.[state.selectedPoint] || null;
+    }
+
+    function updateManualInputs(mission) {
+        const point = selectedPointObject();
+        if (point?.look_direction) {
+            const values = yawPitchFromDirection(point.look_direction);
+            yawInput.value = values.yaw.toFixed(1);
+            pitchInput.value = values.pitch.toFixed(1);
+            return;
+        }
+        if (mission?.mode === "SPIN_360") {
+            yawInput.value = Number(mission.spin_yaw_start_deg || 0).toFixed(1);
+            pitchInput.value = Number(mission.spin_pitch_deg || 0).toFixed(1);
+            return;
+        }
+        const values = yawPitchFromDirection(mission?.manual_direction || { right: 0, up: 0, forward: 1 });
+        yawInput.value = values.yaw.toFixed(1);
+        pitchInput.value = values.pitch.toFixed(1);
     }
 
     function updateToolbar() {
@@ -486,7 +521,17 @@ function setupEditor(node) {
         orientationSelect.disabled = mission?.mode === "SPIN_360";
         editTarget.disabled = mission?.mode === "SPIN_360" || orientationSelect.value !== "LOOK_AT_TARGET";
         editTarget.style.background = state.editingTarget ? "#594d13" : "#2d2d2d";
-        yawInput.disabled = mission?.mode === "SPIN_360" || orientationSelect.value !== "MANUAL_DIRECTION";
+        const point = selectedPointObject();
+        const pointAimActive = Boolean(point?.look_direction);
+        pointAim.disabled = !mission || mission.mode === "SPIN_360" || state.selectedPoint == null || pointAimActive;
+        clearPointAim.disabled = !pointAimActive;
+        pointAim.style.background = pointAimActive ? "#27482d" : "#2d2d2d";
+        clearPointAim.style.background = pointAimActive ? "#594d13" : "#2d2d2d";
+        yawInput.disabled = !mission || (
+            mission.mode !== "SPIN_360" &&
+            !pointAimActive &&
+            orientationSelect.value !== "MANUAL_DIRECTION"
+        );
         pitchInput.disabled = yawInput.disabled;
         updateManualInputs(mission);
         const meshAvailable = Boolean(state.metadata?.preview_geometry?.mesh_lod?.available);
@@ -522,10 +567,14 @@ function setupEditor(node) {
             status.textContent = planStatus.text;
             status.style.color = "#86e276";
         }
-        selected.textContent =
-            state.selectedPoint == null
-                ? (state.editingTarget ? "Editando alvo da câmera" : "Nenhum ponto selecionado")
-                : `Ponto ${state.selectedPoint + 1}`;
+        if (state.selectedPoint == null) {
+            selected.textContent = state.editingTarget ? "Editando alvo da câmera" : "Nenhum ponto selecionado";
+        } else {
+            const selectedWaypoint = selectedPointObject();
+            const aimLabel = selectedWaypoint?.look_direction ? " · aim individual" :
+                (mission?.mode === "SPIN_360" ? " · 360 pitch/yaw" : " · aim da missão");
+            selected.textContent = "Ponto " + (state.selectedPoint + 1) + aimLabel;
+        }
     }
 
     function panelAt(x, y) {
@@ -1521,6 +1570,18 @@ function setupEditor(node) {
             if (mode === "PATH" && mission.waypoints.length < 2) throw new Error(`Drone ${missionIndex + 1}: PATH precisa de pelo menos 2 pontos.`);
             if (mode === "SPIN_360" && mission.waypoints.length !== 1) throw new Error(`Drone ${missionIndex + 1}: 360° precisa de 1 ponto.`);
             if (!mission.waypoints.every(finitePoint)) throw new Error(`Drone ${missionIndex + 1}: waypoint inválido.`);
+            for (const point of mission.waypoints) {
+                if (point.look_direction && !finitePoint(point.look_direction)) {
+                    throw new Error(`Drone ${missionIndex + 1}: look_direction inválida.`);
+                }
+            }
+            if (mode === "SPIN_360") {
+                const pitch = Number(mission.spin_pitch_deg || 0);
+                const yaw = Number(mission.spin_yaw_start_deg || 0);
+                if (!Number.isFinite(pitch) || pitch < -89 || pitch > 89 || !Number.isFinite(yaw)) {
+                    throw new Error(`Drone ${missionIndex + 1}: pitch/yaw do 360° inválido.`);
+                }
+            }
             const orientation = String(mission.orientation_mode || "LOOK_ALONG_PATH").toUpperCase();
             if (!["LOOK_AT_TARGET", "LOOK_ALONG_PATH", "MANUAL_DIRECTION"].includes(orientation)) {
                 throw new Error(`Drone ${missionIndex + 1}: orientação inválida.`);
@@ -1835,12 +1896,41 @@ function setupEditor(node) {
         persist();
     });
 
+    pointAim.addEventListener("click", () => {
+        const mission = activeMission();
+        const point = selectedPointObject();
+        if (!mission || mission.mode === "SPIN_360" || !point) return;
+        pushHistory();
+        const look = lookVectorForMission(mission, state.selectedPoint);
+        point.look_direction = { right: look.right, up: look.up, forward: look.forward };
+        state.editingTarget = false;
+        persist();
+    });
+
+    clearPointAim.addEventListener("click", () => {
+        const point = selectedPointObject();
+        if (!point?.look_direction) return;
+        pushHistory();
+        delete point.look_direction;
+        persist();
+    });
+
     const manualChanged = () => {
         const mission = activeMission();
-        if (!mission || mission.mode === "SPIN_360") return;
+        if (!mission) return;
         pushHistory();
-        mission.orientation_mode = "MANUAL_DIRECTION";
-        mission.manual_direction = manualDirectionFromInputs();
+        if (mission.mode === "SPIN_360") {
+            mission.spin_yaw_start_deg = Number(yawInput.value) || 0;
+            mission.spin_pitch_deg = Math.max(-89, Math.min(89, Number(pitchInput.value) || 0));
+        } else {
+            const point = selectedPointObject();
+            if (point?.look_direction) {
+                point.look_direction = manualDirectionFromInputs();
+            } else {
+                mission.orientation_mode = "MANUAL_DIRECTION";
+                mission.manual_direction = manualDirectionFromInputs();
+            }
+        }
         state.editingTarget = false;
         persist();
     };
@@ -1855,6 +1945,8 @@ function setupEditor(node) {
         if (mode === "SPIN_360") {
             mission.mode = "SPIN_360";
             mission.waypoints = [mission.waypoints?.[0] || defaultPoint(state.projection)];
+            mission.spin_pitch_deg = Number(mission.spin_pitch_deg || 0);
+            mission.spin_yaw_start_deg = Number(mission.spin_yaw_start_deg || 0);
             state.selectedPoint = 0;
         } else {
             mission.mode = "PATH";
@@ -1887,6 +1979,8 @@ function setupEditor(node) {
             orientation_mode: "LOOK_AT_TARGET",
             look_target: defaultPoint(state.projection),
             manual_direction: { right: 0, up: 0, forward: 1 },
+            spin_pitch_deg: 0,
+            spin_yaw_start_deg: 0,
             waypoints: seedPath(state.projection),
         });
         state.activeMission = index;
