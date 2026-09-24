@@ -1,5 +1,17 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-24 R6F2 MoGe-3 Turing runtime fix
+
+- The first R6F target-PC run failed before Gate 7 inside P9/Stage68 `ConceptGhostMoGe3Inference`: ViT-G loaded, then production `resolution_level=9 / refine_steps=7` remained in `INFERENCE_START` until the 1500-second hard timeout.
+- Root runtime compatibility risk is now bounded: the private MoGe runtime had unbounded current Torch/Triton resolution while the target GPU is RTX 2080 Ti / Turing sm75.
+- **R6F2 source/package fix: COMPLETE / CI PASS.**
+- Private runtime is now frozen to Python 3.11.9 + PyTorch 2.6.0 + torchvision 0.21.0 + cu124 + Triton Windows 3.2.x (<3.3).
+- High Fidelity geometry contract is unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7, Split Clean; no silent downgrade and no accepted P9 output is rewritten.
+- Worker now emits `RUNTIME_CAPABILITY` and fails fast on an incompatible Turing runtime instead of consuming the full 1500-second timeout.
+- R6F2 build run `36074801033`: SUCCESS. General ConceptGhost Tests run `36074801055`: SUCCESS.
+- R6F2 target-PC runtime acceptance remains PENDING.
+- User explicitly authorized Gate 8 source-only work in parallel while R6F2 is tested; Gate 8 promotion/official geometry remains blocked until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-24 R6 editor refinement started
 
 - User validation is explicitly deferred until **R6F**; R6A-R6E use source/CI checkpoints only.
