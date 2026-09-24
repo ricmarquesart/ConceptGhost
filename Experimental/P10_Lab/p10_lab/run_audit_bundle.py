@@ -10,7 +10,7 @@ from typing import Any
 from .contracts import ContractError
 
 
-_SCHEMA = "ConceptGhost.P10RunAuditBundle.v0.1"
+_SCHEMA = "ConceptGhost.P10RunAuditBundle.v0.2"
 _SAFE_SUFFIXES = {
     ".json", ".txt", ".log", ".md", ".csv", ".tsv",
     ".png", ".jpg", ".jpeg", ".gif", ".svg",
@@ -111,56 +111,89 @@ def _extract_referenced_paths(value: Any):
             yield candidate.resolve()
 
 
-def build_run_audit_bundle(
-    gate7_runtime_manifest_path: str | Path,
-    visual_pack_manifest_path: str | Path | None = None,
+def default_project_audit_root(
+    p9_run_dir: str | Path,
+    p10_attempt_id: str,
+) -> Path:
+    """Stable Drive-visible audit path without mutating the accepted P9 run."""
+    p9 = Path(p9_run_dir).expanduser().resolve()
+    attempt = str(p10_attempt_id or "").strip() or "UNKNOWN_ATTEMPT"
+    return p9.parent / "P10_AUDITS" / p9.name / attempt
+
+
+def _write_latest_pointers(
+    audit_root: Path,
+    bundle_path: Path,
+    manifest_path: Path,
     *,
-    output_root: str | Path | None = None,
-    max_file_bytes: int = 50 * 1024 * 1024,
-    max_total_bytes: int = 250 * 1024 * 1024,
+    status: str,
+    p9_run_id: str | None,
+    p10_attempt_id: str | None,
+) -> None:
+    project_audit_root = audit_root
+    while project_audit_root.name != "P10_AUDITS" and project_audit_root.parent != project_audit_root:
+        project_audit_root = project_audit_root.parent
+    if project_audit_root.name != "P10_AUDITS":
+        return
+    project_audit_root.mkdir(parents=True, exist_ok=True)
+    (project_audit_root / "LATEST_AUDIT.txt").write_text(
+        str(bundle_path) + "\n", encoding="utf-8"
+    )
+    (project_audit_root / "LATEST_AUDIT_MANIFEST.txt").write_text(
+        str(manifest_path) + "\n", encoding="utf-8"
+    )
+    (project_audit_root / "LATEST_AUDIT_INDEX.json").write_text(
+        json.dumps(
+            {
+                "schema": "ConceptGhost.P10LatestAuditPointer.v0.1",
+                "status": status,
+                "p9_run_id": p9_run_id,
+                "p10_attempt_id": p10_attempt_id,
+                "bundle_path": str(bundle_path),
+                "manifest_path": str(manifest_path),
+                "updated_at_utc": datetime.now(timezone.utc).isoformat(),
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    readme = project_audit_root / "README_P10_AUDITS.txt"
+    if not readme.exists():
+        readme.write_text(
+            "ConceptGhost P10 audit mirror.\n"
+            "For the newest execution, read LATEST_AUDIT_INDEX.json.\n"
+            "Each P9 run / P10 attempt gets its own RUN_AUDIT_BUNDLE.zip and manifest.\n"
+            "This folder is diagnostic sidecar storage and does not alter P9 authority.\n",
+            encoding="utf-8",
+        )
+
+
+def _build_core(
+    *,
+    gate6_runtime: Path,
+    p9_run_dir: Path,
+    attempt_root: Path,
+    p9_run_id: str | None,
+    p10_attempt_id: str | None,
+    scene_contract_id: str | None,
+    gate7_path: Path | None,
+    visual_pack_path: Path | None,
+    failure_manifest_path: Path | None,
+    status: str,
+    output_root: str | Path | None,
+    max_file_bytes: int,
+    max_total_bytes: int,
 ) -> dict[str, Any]:
-    """Build a compact, future-growing audit ZIP for one P10 attempt.
-
-    The bundle is intentionally evidence-only. Heavy geometry / DCC payloads
-    such as PLY, NPZ, FBX, MA and USDA are never copied. Every future gate that
-    persists JSON/log/preview evidence under the same immutable p10_attempt_root
-    is discovered automatically, so the audit bundle becomes richer as the
-    pipeline grows without changing its basic contract.
-    """
-
-    gate7_path = Path(gate7_runtime_manifest_path).expanduser().resolve()
-    gate7 = _read_json(gate7_path, "Gate 7 runtime manifest")
-    if gate7.get("schema") != "ConceptGhost.P10Gate7Runtime.v0.1":
-        raise ContractError("RUN_AUDIT_BUNDLE requires ConceptGhost.P10Gate7Runtime.v0.1")
-    if gate7.get("status") != "PASS":
-        raise ContractError("RUN_AUDIT_BUNDLE requires Gate 7 runtime status PASS")
-
-    attempt_root_raw = gate7.get("p10_attempt_root")
-    p9_run_dir_raw = gate7.get("p9_run_dir")
-    gate6_runtime_raw = gate7.get("gate6_runtime_manifest_path")
-    if not attempt_root_raw or not p9_run_dir_raw or not gate6_runtime_raw:
-        raise ContractError("Gate 7 runtime is missing p10_attempt_root / p9_run_dir / Gate 6 runtime")
-
-    attempt_root = Path(str(attempt_root_raw)).expanduser().resolve()
-    p9_run_dir = Path(str(p9_run_dir_raw)).expanduser().resolve()
-    gate6_runtime = Path(str(gate6_runtime_raw)).expanduser().resolve()
     if not gate6_runtime.is_file():
         raise ContractError(
             f"Required reconstruction_runtime_manifest.json is missing: {gate6_runtime}"
         )
 
-    visual_pack = None
-    visual_pack_path = None
-    if visual_pack_manifest_path is not None and str(visual_pack_manifest_path).strip():
-        visual_pack_path = Path(str(visual_pack_manifest_path)).expanduser().resolve()
-        if not visual_pack_path.is_file():
-            raise ContractError(f"Visual evidence pack manifest is missing: {visual_pack_path}")
-        visual_pack = _read_json(visual_pack_path, "Gate 7 visual evidence manifest")
-
     audit_root = (
         Path(output_root).expanduser().resolve()
         if output_root is not None and str(output_root).strip()
-        else attempt_root / "audit"
+        else default_project_audit_root(p9_run_dir, str(p10_attempt_id or "UNKNOWN_ATTEMPT"))
     )
     audit_root.mkdir(parents=True, exist_ok=True)
     zip_path = audit_root / "RUN_AUDIT_BUNDLE.zip"
@@ -169,7 +202,7 @@ def build_run_audit_bundle(
     included: dict[str, Path] = {}
     omitted: list[dict[str, Any]] = []
 
-    def add(path: Path, *, required: bool = False, reason: str = "DISCOVERED"):
+    def add(path: Path, *, required: bool = False):
         path = path.expanduser().resolve()
         if path == zip_path or path == manifest_path:
             return
@@ -182,15 +215,14 @@ def build_run_audit_bundle(
         arc = _archive_name(path, attempt_root, p9_run_dir)
         included.setdefault(arc, path)
 
-    # Hard requirements. The Gate 6 runtime manifest is the primary numerical
-    # reconstruction audit requested by the project owner.
-    add(gate6_runtime, required=True, reason="REQUIRED_GATE6_RUNTIME")
-    add(gate7_path, required=True, reason="REQUIRED_GATE7_RUNTIME")
+    add(gate6_runtime, required=True)
+    if gate7_path is not None:
+        add(gate7_path, required=True)
     if visual_pack_path is not None:
-        add(visual_pack_path, required=True, reason="REQUIRED_GATE7_VISUAL_PACK")
+        add(visual_pack_path, required=True)
+    if failure_manifest_path is not None:
+        add(failure_manifest_path, required=True)
 
-    # Future-growing P10 evidence policy: every safe manifest/log/preview under
-    # the immutable attempt is included automatically.
     for path, ok, skip_reason in _walk_safe(attempt_root, max_file_bytes=max_file_bytes):
         if _is_within(path, audit_root):
             continue
@@ -199,7 +231,6 @@ def build_run_audit_bundle(
         else:
             omitted.append({"path": str(path), "reason": skip_reason})
 
-    # Preserve the accepted P9 authority audit without duplicating heavy assets.
     for name in _P9_ROOT_FILES:
         candidate = p9_run_dir / name
         if candidate.is_file():
@@ -214,11 +245,10 @@ def build_run_audit_bundle(
             else:
                 omitted.append({"path": str(path), "reason": skip_reason})
 
-    # Follow explicit file references from the main manifests, but only if they
-    # resolve inside the immutable P10 attempt or the accepted P9 run.
-    reference_sources = [gate6_runtime, gate7_path]
-    if visual_pack_path is not None:
-        reference_sources.append(visual_pack_path)
+    reference_sources = [gate6_runtime]
+    for candidate in (gate7_path, visual_pack_path, failure_manifest_path):
+        if candidate is not None:
+            reference_sources.append(candidate)
     for source in reference_sources:
         payload = _read_json(source, source.name)
         for referenced in _extract_referenced_paths(payload):
@@ -243,27 +273,32 @@ def build_run_audit_bundle(
         })
 
     gate6_arc = _archive_name(gate6_runtime, attempt_root, p9_run_dir)
-    reconstruction_included = any(arc == gate6_arc for arc, _ in final_included)
-    if not reconstruction_included:
+    if not any(arc == gate6_arc for arc, _ in final_included):
         raise ContractError("RUN_AUDIT_BUNDLE would omit reconstruction_runtime_manifest.json")
 
     created = datetime.now(timezone.utc).isoformat()
     internal_index = {
         "schema": _SCHEMA,
         "created_at_utc": created,
-        "status": "PASS",
-        "scene_contract_id": gate7.get("scene_contract_id"),
-        "p9_run_id": gate7.get("p9_run_id"),
-        "p10_attempt_id": gate7.get("p10_attempt_id"),
+        "status": status,
+        "scene_contract_id": scene_contract_id,
+        "p9_run_id": p9_run_id,
+        "p10_attempt_id": p10_attempt_id,
         "p9_run_dir": str(p9_run_dir),
         "p10_attempt_root": str(attempt_root),
+        "project_audit_root": str(audit_root),
         "reconstruction_runtime_manifest_path": str(gate6_runtime),
         "reconstruction_runtime_manifest_included": True,
-        "gate7_runtime_manifest_path": str(gate7_path),
+        "gate7_runtime_manifest_path": str(gate7_path) if gate7_path else None,
         "visual_pack_manifest_path": str(visual_pack_path) if visual_pack_path else None,
+        "failure_manifest_path": str(failure_manifest_path) if failure_manifest_path else None,
         "growth_policy": (
-            "TERMINAL_AUDIT_NODE; AUTO_INCLUDE_SAFE_JSON_LOG_TEXT_AND_PREVIEW_EVIDENCE_"
-            "UNDER_IMMUTABLE_P10_ATTEMPT; ADD_FUTURE_GATE_EVIDENCE_AS_PIPELINE_GROWS"
+            "AUTO_AT_GATE7_SUCCESS_OR_FAILURE; TERMINAL_NODE_REBUILDS_WITH_LATER_VISUAL_EVIDENCE; "
+            "AUTO_INCLUDE_SAFE_JSON_LOG_TEXT_AND_PREVIEW_EVIDENCE_UNDER_IMMUTABLE_P10_ATTEMPT"
+        ),
+        "storage_policy": (
+            "DRIVE_VISIBLE_PROJECT_SIDECAR_AT_CONCEPT_SCENE/P10_AUDITS/"
+            "<P9_RUN>/<P10_ATTEMPT>; ACCEPTED_P9_RUN_REMAINS_UNMODIFIED"
         ),
         "heavy_payload_policy": "EXCLUDE_PLY_NPZ_FBX_MA_USDA_AND_OTHER_HEAVY_GEOMETRY",
         "limits": {
@@ -278,13 +313,11 @@ def build_run_audit_bundle(
     readme = (
         "ConceptGhost RUN_AUDIT_BUNDLE\n"
         "===============================\n"
-        "Purpose: compact evidence bundle for remote audit of one immutable P10 attempt.\n\n"
+        f"Status: {status}\n"
         "Required core: reconstruction_runtime_manifest.json.\n"
-        "Also included: Gate 7 runtime, gate-specific manifests, logs, previews, "
-        "selected accepted P9 authority diagnostics and future safe gate evidence.\n\n"
+        "This bundle is generated automatically by Gate 7 even when Gate 7 fails.\n"
+        "The terminal audit node rebuilds it with richer visual evidence after a successful run.\n"
         "Heavy geometry/DCC payloads are intentionally excluded.\n"
-        "The audit node must remain the terminal diagnostic node as later gates are added; "
-        "that makes this ZIP grow automatically with the pipeline.\n"
     )
 
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
@@ -307,4 +340,98 @@ def build_run_audit_bundle(
         json.dumps(result, indent=2, sort_keys=True),
         encoding="utf-8",
     )
+    _write_latest_pointers(
+        audit_root,
+        zip_path,
+        manifest_path,
+        status=status,
+        p9_run_id=p9_run_id,
+        p10_attempt_id=p10_attempt_id,
+    )
     return result
+
+
+def build_run_audit_bundle(
+    gate7_runtime_manifest_path: str | Path,
+    visual_pack_manifest_path: str | Path | None = None,
+    *,
+    output_root: str | Path | None = None,
+    max_file_bytes: int = 50 * 1024 * 1024,
+    max_total_bytes: int = 250 * 1024 * 1024,
+) -> dict[str, Any]:
+    """Build/rebuild the canonical project-side audit ZIP for a successful Gate 7 run."""
+
+    gate7_path = Path(gate7_runtime_manifest_path).expanduser().resolve()
+    gate7 = _read_json(gate7_path, "Gate 7 runtime manifest")
+    if gate7.get("schema") != "ConceptGhost.P10Gate7Runtime.v0.1":
+        raise ContractError("RUN_AUDIT_BUNDLE requires ConceptGhost.P10Gate7Runtime.v0.1")
+    if gate7.get("status") != "PASS":
+        raise ContractError("RUN_AUDIT_BUNDLE success path requires Gate 7 runtime status PASS")
+
+    attempt_root_raw = gate7.get("p10_attempt_root")
+    p9_run_dir_raw = gate7.get("p9_run_dir")
+    gate6_runtime_raw = gate7.get("gate6_runtime_manifest_path")
+    if not attempt_root_raw or not p9_run_dir_raw or not gate6_runtime_raw:
+        raise ContractError("Gate 7 runtime is missing p10_attempt_root / p9_run_dir / Gate 6 runtime")
+
+    visual_pack_path = None
+    if visual_pack_manifest_path is not None and str(visual_pack_manifest_path).strip():
+        visual_pack_path = Path(str(visual_pack_manifest_path)).expanduser().resolve()
+        if not visual_pack_path.is_file():
+            raise ContractError(f"Visual evidence pack manifest is missing: {visual_pack_path}")
+
+    return _build_core(
+        gate6_runtime=Path(str(gate6_runtime_raw)).expanduser().resolve(),
+        p9_run_dir=Path(str(p9_run_dir_raw)).expanduser().resolve(),
+        attempt_root=Path(str(attempt_root_raw)).expanduser().resolve(),
+        p9_run_id=str(gate7.get("p9_run_id") or "") or None,
+        p10_attempt_id=str(gate7.get("p10_attempt_id") or "") or None,
+        scene_contract_id=str(gate7.get("scene_contract_id") or "") or None,
+        gate7_path=gate7_path,
+        visual_pack_path=visual_pack_path,
+        failure_manifest_path=None,
+        status="PASS",
+        output_root=output_root,
+        max_file_bytes=max_file_bytes,
+        max_total_bytes=max_total_bytes,
+    )
+
+
+def build_partial_run_audit_bundle(
+    p9_run_dir: str | Path,
+    reconstruction_runtime_manifest_path: str | Path,
+    *,
+    gate7_failure_manifest_path: str | Path | None = None,
+    output_root: str | Path | None = None,
+    max_file_bytes: int = 50 * 1024 * 1024,
+    max_total_bytes: int = 250 * 1024 * 1024,
+) -> dict[str, Any]:
+    """Create an audit bundle after Gate 6 even if Gate 7 fails."""
+
+    gate6_runtime = Path(reconstruction_runtime_manifest_path).expanduser().resolve()
+    gate6 = _read_json(gate6_runtime, "Gate 6 reconstruction runtime manifest")
+    attempt_root_raw = gate6.get("p10_attempt_root")
+    if not attempt_root_raw:
+        raise ContractError("Partial RUN_AUDIT_BUNDLE cannot resolve p10_attempt_root from Gate 6")
+    p9 = Path(p9_run_dir).expanduser().resolve()
+    failure_path = None
+    if gate7_failure_manifest_path is not None and str(gate7_failure_manifest_path).strip():
+        failure_path = Path(gate7_failure_manifest_path).expanduser().resolve()
+        if not failure_path.is_file():
+            raise ContractError(f"Gate 7 failure manifest is missing: {failure_path}")
+
+    return _build_core(
+        gate6_runtime=gate6_runtime,
+        p9_run_dir=p9,
+        attempt_root=Path(str(attempt_root_raw)).expanduser().resolve(),
+        p9_run_id=str(gate6.get("run_id") or p9.name),
+        p10_attempt_id=str(gate6.get("p10_attempt_id") or "") or None,
+        scene_contract_id=None,
+        gate7_path=None,
+        visual_pack_path=None,
+        failure_manifest_path=failure_path,
+        status="PARTIAL_FAILURE",
+        output_root=output_root,
+        max_file_bytes=max_file_bytes,
+        max_total_bytes=max_total_bytes,
+    )
