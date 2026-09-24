@@ -749,3 +749,38 @@ Static package validation:
 - workflow JSON parses successfully.
 
 Next acceptance: run the r8 repair installer, restart ComfyUI, load only the r8 workflow, confirm no red UNKNOWN nodes / Missing Models warnings, then execute the source image.
+
+## r9 ComfyUI IPAdapter shared-path repair — 2026-09-24
+
+r8 UI validation confirmed that:
+- IPAdapter custom nodes now load correctly;
+- CLIP Vision model is resolved;
+- ControlNet model is resolved;
+- the only remaining setup issue is `ip-adapter_sdxl_vit-h.safetensors` missing from the IPAdapter loader.
+
+Root cause:
+`ComfyUI_IPAdapter_plus` registers `folder_paths.models_dir/ipadapter`. On ComfyUI Desktop, `folder_paths.models_dir` may resolve to `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Shared\models`, while core nodes can also see the per-install model paths. This explains why CLIP Vision and ControlNet were fixed by r8 but IPAdapter alone remained unresolved.
+
+r9 repair:
+- expose the validated adapter in both:
+  - per-install `ComfyUI\models\ipadapter`;
+  - shared `ComfyUI-Shared\models\ipadapter`;
+- use NTFS hardlink first to avoid duplicate ~700 MB storage, copy fallback only if hardlink cannot be created;
+- add a verifier that checks source + both destination locations;
+- workflow remains r8; no JSON change is required for this repair.
+
+GitHub:
+- repair installer commit: `9f99d296604915d298aecd89d80676702cf91f00`;
+- verifier commit: `8288d18190c8c4407e3f67b84f7b07142884e3ac`.
+
+Canonical repair package:
+- `ConceptGhost_Geometry_Assist_ComfyUI_IPAdapter_Repair_r9.zip`
+- SHA-256: `2a537a62a091d5de555a51471e9381cd1497e63cbbd9964ef5b75d10021168bd`
+- Google Drive Evaluation_Builds file ID: `1ZiAonqG2wYMopbxWGYjvbqaFb4HarHSP`.
+
+Next acceptance:
+- run r9 repair;
+- fully restart ComfyUI Desktop;
+- reload the existing r8 workflow;
+- node C1 must no longer be red and Workflow Overview must show zero missing models;
+- then run the image.
