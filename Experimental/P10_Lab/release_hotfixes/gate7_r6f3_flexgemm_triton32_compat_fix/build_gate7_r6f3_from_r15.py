@@ -612,7 +612,7 @@ R6F3 MoGe-3 Turing runtime compatibility:
 - user runtime acceptance: PENDING
 """)
 
-    test=root/"Installer/test_r6f2_moge3_turing_runtime_fix.py"
+    test=root/"Installer/test_r6f3_flexgemm_triton32_compat_fix.py"
     wt(test,r'''from pathlib import Path
 import json,sys
 
@@ -929,7 +929,7 @@ def main():
             "test_gate7_r3_route_ux_colmap_fix.py",
             "test_gate7_r5_geometric_evidence_audit_fix.py",
             "test_gate7_r6f_route_editor_final.py",
-            "test_r6f2_moge3_turing_runtime_fix.py",
+            "test_r6f3_flexgemm_triton32_compat_fix.py",
         )
         for name in tests:
             result=subprocess.run([sys.executable,str(root/"Installer"/name),str(root)],capture_output=True,text=True)
