@@ -298,7 +298,7 @@ def build_route_preview_geometry(
             # through those cells.  This creates one coherent coarse surface
             # instead of disconnected every-Nth triangles.
             min_mesh_cells=16
-        target_cells=max(min_mesh_cells,int(max_mesh_faces//2))
+            target_cells=max(min_mesh_cells,int(max_mesh_faces//2))
             for _ in range(8):
                 partition=_image_grid_partition(target_cells)
                 if partition is None:
