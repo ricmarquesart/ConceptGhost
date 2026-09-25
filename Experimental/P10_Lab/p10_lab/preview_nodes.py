@@ -627,7 +627,7 @@ class ConceptGhostP10Gate7Runtime:
             output_root=output_root or None,
             resume_existing=bool(resume_existing),
             run_delaunay=bool(run_delaunay),
-            colmap_executable=str(colmap_executable or "colmap"),
+            colmap_executable=str(colmap_executable or ""),
         )
         artifacts = result["artifacts"]
         registration_payload = json.loads(
