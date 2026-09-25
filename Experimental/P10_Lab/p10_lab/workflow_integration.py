@@ -578,7 +578,7 @@ def integrate_gate6_refined_preview(workflow: dict) -> dict:
         ],
         "properties": {"Node name for S&R": "ConceptGhostP10ReconstructionRuntime"},
         "widgets_values": [True, ""],
-        "title": "REFINED/P10 · 10 · KNOWN-CAMERA RECONSTRUCTION · SPARSE + DENSE + MESH",
+        "title": "GATE 6 · 3D RECONSTRUCTION · SPARSE + DENSE + RAW P10 MESH OUTPUT",
     }
 
     preview = {
@@ -593,7 +593,7 @@ def integrate_gate6_refined_preview(workflow: dict) -> dict:
         "outputs": [],
         "properties": {"Node name for S&R": "PreviewImage"},
         "widgets_values": [],
-        "title": "P10 LIVE · RECONSTRUCTED PRE-FUSION MESH",
+        "title": "GATE 6 OUTPUT · RAW P10 GEOMETRY · BEFORE GATE 7",
     }
 
     nodes.extend((reconstruction, preview))
@@ -1131,13 +1131,46 @@ def integrate_p10_production_from_entry(workflow: dict) -> dict:
     full["groups"]=[]
     for item in kept_nodes:
         if item.get("id")==_EVIDENCE_NODE_ID:
-            item["title"]="02 · STEP 2 · P10 EVIDENCE · COMMITTED ROUTE + P9 RUN"
+            item["title"]="GATE 4 OUTPUT · DRONE EVIDENCE · CONTROL + CAMERA MANIFESTS"
         elif item.get("id")==2207:
-            item["title"]="02 · STEP 3 · WAN + SOURCE-PRESERVING COMPOSITE"
+            item["title"]="GATE 5 OUTPUT · GENERATED MULTIVIEW IMAGES + WAN MANIFEST"
+        elif item.get("id")==2208:
+            item["title"]="GATE 5 OUTPUT PREVIEW · WAN FILLED + P9 PRESERVED"
         elif item.get("id")==2300:
-            item["title"]="02 · STEP 4 · KNOWN-CAMERA RECONSTRUCTION + GEOMETRY QUALITY"
+            item["title"]="GATE 6 · RECONSTRUCT 3D FROM DRONE VIEWS · RAW P10 GEOMETRY"
         elif item.get("id")==2301:
-            item["title"]="02 · RESULT · RECONSTRUCTED PRE-FUSION MESH"
+            item["title"]="GATE 6 OUTPUT · RAW P10 GEOMETRY PREVIEW · BEFORE GATE 7"
+
+    full["groups"]=[
+        {
+            "title":"HANDOFF · EXISTING P9 + COMMITTED DRONE ROUTE",
+            "bounding":[8580,9200,2350,830],
+            "color":"#455a64",
+            "font_size":26,
+            "flags":{},
+        },
+        {
+            "title":"GATE 4 · DRONE/CAMERA EVIDENCE · OUTPUT = CONTROL + CAMERA MANIFESTS",
+            "bounding":[10040,9430,2060,1110],
+            "color":"#3f51b5",
+            "font_size":28,
+            "flags":{},
+        },
+        {
+            "title":"GATE 5 · NEW VIEW GENERATION · OUTPUT = WAN MULTIVIEW IMAGES",
+            "bounding":[12380,9400,2360,1510],
+            "color":"#6a1b9a",
+            "font_size":28,
+            "flags":{},
+        },
+        {
+            "title":"GATE 6 · 3D RECONSTRUCTION · OUTPUT = RAW P10 GEOMETRY (.PLY/.OBJ)",
+            "bounding":[14720,9400,1680,1080],
+            "color":"#2e7d32",
+            "font_size":28,
+            "flags":{},
+        },
+    ]
 
     full["extra"]={
         "conceptghost":{
