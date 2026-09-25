@@ -333,6 +333,12 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _write_report(path: Path, report: dict) -> int:
+    path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(json.dumps(report, indent=2))
+    return 0 if report.get("status") == "PASS" else 1
+
+
 def main() -> int:
     runtime_root = Path(os.environ.get("CONCEPTGHOST_MOGE_RUNTIME") or Path(__file__).resolve().parents[1]).resolve()
     report_path = runtime_root / REPORT_NAME
@@ -344,131 +350,106 @@ def main() -> int:
         "upstream_flexgemm_commit": UPSTREAM_COMMIT,
         "policy": "PRESERVE_HOST_INT32_PACKING_CONTRACT",
         "reason": (
-            "MoGe-3's pinned FlexGEMM source introspects Triton JIT dtype.itemsize. "
-            "Triton 3.2 on Turing does not expose that newer JIT dtype API. "
-            "FlexGEMM's Python host wrappers already flatten, byte-pad and view keys/queries "
-            "as torch.int32 and pass D as the number of int32 words, so the kernel can consume "
-            "that existing contract directly without JIT dtype introspection."
+            "FlexGEMM host wrappers already pack keys/queries into torch.int32 and pass D as "
+            "the number of int32 words. Triton 3.2 therefore does not need JIT dtype-width "
+            "introspection in the hashmap kernels."
         ),
     }
 
     spec = importlib.util.find_spec("flex_gemm")
     if spec is None or not spec.submodule_search_locations:
         report["error"] = "flex_gemm package not found"
-        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        print(json.dumps(report, indent=2))
-        return 2
+        return _write_report(report_path, report) or 2
 
     package_root = Path(next(iter(spec.submodule_search_locations))).resolve()
     target = package_root / "kernels" / "triton" / "hashmap.py"
     report["target"] = str(target)
     if not target.is_file():
         report["error"] = "FlexGEMM Triton hashmap.py not found"
-        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        print(json.dumps(report, indent=2))
+        _write_report(report_path, report)
         return 3
 
     original_bytes = target.read_bytes()
     original = original_bytes.decode("utf-8")
     report["sha256_before"] = sha256_bytes(original_bytes)
-
-    legacy_vec = '''@triton.jit
-def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
-    """Pack a little-endian integer vector into int32 words."""
-    tl.static_assert(
-        vec.dtype.itemsize == 1 or vec.dtype.itemsize == 2 or vec.dtype.itemsize == 4,
-        "Unsupported query_vec element width",
-    )
-    if vec.dtype.itemsize == 4:
-        return vec.to(tl.int32)
-
-    if vec.dtype.itemsize == 2:
-        vec_u16 = tl.reshape(tl.cast(vec, tl.uint16, bitcast=True), *vec.shape[:-1], vec.shape[-1] // 2, 2)
-        return tl.sum(vec_u16.to(tl.uint32) << (tl.arange(0, 2) << 4), axis=-1).to(tl.int32)
-
-    if vec.dtype.itemsize == 1:
-        vec_u8 = tl.reshape(tl.cast(vec, tl.uint8, bitcast=True), *vec.shape[:-1], vec.shape[-1] // 4, 4)
-        return tl.sum(vec_u8.to(tl.uint32) << (tl.arange(0, 4) << 3), axis=-1).to(tl.int32)
-'''
-    prior_vec = '''@triton.jit
-def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
-    """Pack a little-endian integer vector into int32 words."""
-    tl.static_assert(
-        (vec.dtype.primitive_bitwidth // 8) == 1 or (vec.dtype.primitive_bitwidth // 8) == 2 or (vec.dtype.primitive_bitwidth // 8) == 4,
-        "Unsupported query_vec element width",
-    )
-    if (vec.dtype.primitive_bitwidth // 8) == 4:
-        return vec.to(tl.int32)
-
-    if (vec.dtype.primitive_bitwidth // 8) == 2:
-        vec_u16 = tl.reshape(tl.cast(vec, tl.uint16, bitcast=True), *vec.shape[:-1], vec.shape[-1] // 2, 2)
-        return tl.sum(vec_u16.to(tl.uint32) << (tl.arange(0, 2) << 4), axis=-1).to(tl.int32)
-
-    if (vec.dtype.primitive_bitwidth // 8) == 1:
-        vec_u8 = tl.reshape(tl.cast(vec, tl.uint8, bitcast=True), *vec.shape[:-1], vec.shape[-1] // 4, 4)
-        return tl.sum(vec_u8.to(tl.uint32) << (tl.arange(0, 4) << 3), axis=-1).to(tl.int32)
-'''
-    safe_vec = '''@triton.jit
-def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
-    """R6F4: caller already passes an int32-packed vector."""
-    return vec.to(tl.int32)
-'''
-
-    legacy_kernel = '''    tl.static_assert(D * keys_ptr.dtype.element_ty.itemsize % 4 == 0, "keys byte width must be divisible by 4")
-    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
-    D_32: tl.constexpr = D * keys_ptr.dtype.element_ty.itemsize // 4
-'''
-    prior_kernel = '''    tl.static_assert(D * (keys_ptr.dtype.element_ty.primitive_bitwidth // 8) % 4 == 0, "keys byte width must be divisible by 4")
-    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
-    D_32: tl.constexpr = D * (keys_ptr.dtype.element_ty.primitive_bitwidth // 8) // 4
-'''
-    safe_kernel = '''    # R6F4: Python host wrapper already passes torch.int32-packed keys and D in int32 words.
-    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
-    D_32: tl.constexpr = D
-'''
-
-    legacy_lookup = '''    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
-    query_vec_32 = _vec_pack_little_endian_to_int32(query_vec)
-    D_32: tl.constexpr = D * query_vec.dtype.itemsize // 4
-'''
-    prior_lookup = '''    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
-    query_vec_32 = _vec_pack_little_endian_to_int32(query_vec)
-    D_32: tl.constexpr = D * (query_vec.dtype.primitive_bitwidth // 8) // 4
-'''
-    safe_lookup = '''    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
-    query_vec_32 = query_vec.to(tl.int32)
-    D_32: tl.constexpr = D
-'''
-
     patched = original
     transitions = []
 
-    def replace_variant(label: str, variants: tuple[str, ...], replacement: str, expected: int) -> None:
-        nonlocal patched
-        present = [(v, patched.count(v)) for v in variants if patched.count(v)]
-        if not present:
-            if patched.count(replacement) >= expected:
-                transitions.append({"label": label, "state": "ALREADY_PATCHED"})
-                return
-            raise RuntimeError(f"{label}: neither known source variant nor safe replacement found")
-        total = sum(count for _v, count in present)
-        if total != expected:
-            raise RuntimeError(f"{label}: unexpected known-variant count {total} != {expected}")
-        for variant, count in present:
-            if count:
-                patched = patched.replace(variant, replacement)
-        transitions.append({"label": label, "state": "PATCHED", "count": total})
-
-    try:
-        replace_variant("vec_pack", (legacy_vec, prior_vec), safe_vec, 1)
-        replace_variant("build_and_unique_kernel", (legacy_kernel, prior_kernel), safe_kernel, 2)
-        replace_variant("lookup_inline", (legacy_lookup, prior_lookup), safe_lookup, 1)
-    except RuntimeError as exc:
-        report["error"] = str(exc)
-        report["transitions"] = transitions
-        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        print(json.dumps(report, indent=2))
+    safe_vec = (
+        "@triton.jit\\n"
+        "def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:\\n"
+        "    # R6F4: caller already passes an int32-packed vector.\\n"
+        "    return vec.to(tl.int32)\\n"
+    )
+    vec_start = patched.find("@triton.jit\\ndef _vec_pack_little_endian_to_int32")
+    vec_end = patched.find("\\n\\n# NOTE:", vec_start)
+    if vec_start >= 0 and vec_end > vec_start:
+        current_vec = patched[vec_start:vec_end]
+        if current_vec != safe_vec.rstrip("\\n"):
+            patched = patched[:vec_start] + safe_vec.rstrip("\\n") + patched[vec_end:]
+            transitions.append({"label": "vec_pack", "state": "PATCHED"})
+        else:
+            transitions.append({"label": "vec_pack", "state": "ALREADY_PATCHED"})
+    else:
+        report["error"] = "FlexGEMM vec-pack function boundary not found"
+        _write_report(report_path, report)
         return 4
+
+    legacy_kernel = (
+        "    tl.static_assert(D * keys_ptr.dtype.element_ty.itemsize % 4 == 0, \\\"keys byte width must be divisible by 4\\\")\\n"
+        "    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))\\n"
+        "    D_32: tl.constexpr = D * keys_ptr.dtype.element_ty.itemsize // 4\\n"
+    )
+    prior_kernel = (
+        "    tl.static_assert(D * (keys_ptr.dtype.element_ty.primitive_bitwidth // 8) % 4 == 0, \\\"keys byte width must be divisible by 4\\\")\\n"
+        "    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))\\n"
+        "    D_32: tl.constexpr = D * (keys_ptr.dtype.element_ty.primitive_bitwidth // 8) // 4\\n"
+    )
+    safe_kernel = (
+        "    # R6F4: host wrapper already passes torch.int32-packed keys and D in int32 words.\\n"
+        "    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))\\n"
+        "    D_32: tl.constexpr = D\\n"
+    )
+    safe_kernel_count = patched.count(safe_kernel)
+    legacy_count = patched.count(legacy_kernel)
+    prior_count = patched.count(prior_kernel)
+    if safe_kernel_count == 2:
+        transitions.append({"label": "build_unique_kernel", "state": "ALREADY_PATCHED", "count": 2})
+    elif safe_kernel_count == 0 and (legacy_count + prior_count) == 2:
+        patched = patched.replace(legacy_kernel, safe_kernel).replace(prior_kernel, safe_kernel)
+        transitions.append({"label": "build_unique_kernel", "state": "PATCHED", "count": 2})
+    else:
+        report["error"] = (
+            "Unexpected build/unique kernel source shape: "
+            f"safe={safe_kernel_count} legacy={legacy_count} prior={prior_count}"
+        )
+        _write_report(report_path, report)
+        return 5
+
+    legacy_lookup = (
+        "    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))\\n"
+        "    query_vec_32 = _vec_pack_little_endian_to_int32(query_vec)\\n"
+        "    D_32: tl.constexpr = D * query_vec.dtype.itemsize // 4\\n"
+    )
+    prior_lookup = (
+        "    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))\\n"
+        "    query_vec_32 = _vec_pack_little_endian_to_int32(query_vec)\\n"
+        "    D_32: tl.constexpr = D * (query_vec.dtype.primitive_bitwidth // 8) // 4\\n"
+    )
+    safe_lookup = (
+        "    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))\\n"
+        "    query_vec_32 = query_vec.to(tl.int32)\\n"
+        "    D_32: tl.constexpr = D\\n"
+    )
+    if patched.count(safe_lookup) == 1:
+        transitions.append({"label": "lookup_inline", "state": "ALREADY_PATCHED"})
+    elif patched.count(safe_lookup) == 0 and patched.count(legacy_lookup) + patched.count(prior_lookup) == 1:
+        patched = patched.replace(legacy_lookup, safe_lookup).replace(prior_lookup, safe_lookup)
+        transitions.append({"label": "lookup_inline", "state": "PATCHED"})
+    else:
+        report["error"] = "Unexpected lookup-inline source shape"
+        _write_report(report_path, report)
+        return 6
 
     forbidden = (
         "keys_ptr.dtype.element_ty.itemsize",
@@ -482,24 +463,16 @@ def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
     if remaining:
         report["error"] = "Unsupported Triton JIT dtype introspection remains"
         report["remaining_tokens"] = remaining
-        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        print(json.dumps(report, indent=2))
-        return 5
+        _write_report(report_path, report)
+        return 7
 
-    # Prove the host-side packing contract that justifies D_32 = D.
-    required_host_contract = (
-        ".view(torch.int32)",
-        "D=D_32",
-        "keys_i32",
-        "queries_i32",
-    )
-    missing_host = [token for token in required_host_contract if token not in patched]
+    required_host = (".view(torch.int32)", "D=D_32", "keys_i32", "queries_i32")
+    missing_host = [token for token in required_host if token not in patched]
     if missing_host:
-        report["error"] = "FlexGEMM host int32 packing contract not found"
+        report["error"] = "Host int32 packing contract not found"
         report["missing_host_contract"] = missing_host
-        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-        print(json.dumps(report, indent=2))
-        return 6
+        _write_report(report_path, report)
+        return 8
 
     if patched != original:
         backup = target.with_suffix(target.suffix + ".conceptghost_pre_triton32_patch")
@@ -512,8 +485,7 @@ def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
         report["patch_state"] = "ALREADY_APPLIED"
 
     py_compile.compile(str(target), doraise=True)
-    after_bytes = target.read_bytes()
-    report["sha256_after"] = sha256_bytes(after_bytes)
+    report["sha256_after"] = sha256_bytes(target.read_bytes())
     report["transitions"] = transitions
     report["host_contract"] = {
         "keys_and_queries_prepacked_as_torch_int32": True,
@@ -523,8 +495,7 @@ def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
     report["geometry_contract_changed"] = False
     report["model_weights_changed"] = False
     report["status"] = "PASS"
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(json.dumps(report, indent=2))
+    _write_report(report_path, report)
     return 0
 
 
@@ -730,7 +701,7 @@ def main(root):
     for token in ("cu124","torch==2.6.0","torchvision==0.21.0","triton-windows>=3.2,<3.3","verify_vitg_runtime.py","patch_flexgemm_triton32.py","TRITON_CACHE_DIR"):
         if token not in install: errors.append("installer missing "+token)
     patch=(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py").read_text(encoding="utf-8-sig")
-    for token in ("PRESERVE_HOST_INT32_PACKING_CONTRACT","D_32: tl.constexpr = D","keys_and_queries_prepacked_as_torch_int32","FLEXGEMM_TRITON32_PATCH.json","geometry_contract_changed"):
+    for token in ("PRESERVE_HOST_INT32_PACKING_CONTRACT","D_32: tl.constexpr = D","keys_and_queries_prepacked_as_torch_int32","FLEXGEMM_TRITON32_PATCH.json","geometry_contract_changed","safe_kernel","safe_lookup","safe_vec"):
         if token not in patch: errors.append("FlexGEMM bridge missing "+token)
     try:
         compile(patch, str(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py"), "exec")
