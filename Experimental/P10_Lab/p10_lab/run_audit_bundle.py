@@ -115,10 +115,14 @@ def default_project_audit_root(
     p9_run_dir: str | Path,
     p10_attempt_id: str,
 ) -> Path:
-    """Store each P10 audit inside its source run folder without touching P9 authority files."""
-    p9 = Path(p9_run_dir).expanduser().resolve()
-    attempt = str(p10_attempt_id or "").strip() or "UNKNOWN_ATTEMPT"
-    return p9 / "P10_AUDIT" / attempt
+    """Store the audit bundle directly in the dynamically-created P9 run folder.
+
+    The P9 run folder is already derived from the artist-selected output_root +
+    scene_name + run_id, so this path is never hard-coded to a particular project.
+    Later Gate 7 rebuilds replace the run-local audit ZIP with richer evidence.
+    Immutable P10 attempt data remains under the P10 attempt root.
+    """
+    return Path(p9_run_dir).expanduser().resolve()
 
 
 def _write_latest_pointers(
@@ -130,27 +134,25 @@ def _write_latest_pointers(
     p9_run_id: str | None,
     p10_attempt_id: str | None,
 ) -> None:
-    project_audit_root = audit_root
-    while project_audit_root.name != "P10_AUDIT" and project_audit_root.parent != project_audit_root:
-        project_audit_root = project_audit_root.parent
-    if project_audit_root.name != "P10_AUDIT":
-        return
-    project_audit_root.mkdir(parents=True, exist_ok=True)
-    (project_audit_root / "LATEST_AUDIT.txt").write_text(
+    """Write latest-audit pointers directly beside the P9 run outputs."""
+    project_run_root = audit_root.resolve()
+    project_run_root.mkdir(parents=True, exist_ok=True)
+    (project_run_root / "LATEST_AUDIT.txt").write_text(
         str(bundle_path) + "\n", encoding="utf-8"
     )
-    (project_audit_root / "LATEST_AUDIT_MANIFEST.txt").write_text(
+    (project_run_root / "LATEST_AUDIT_MANIFEST.txt").write_text(
         str(manifest_path) + "\n", encoding="utf-8"
     )
-    (project_audit_root / "LATEST_AUDIT_INDEX.json").write_text(
+    (project_run_root / "LATEST_AUDIT_INDEX.json").write_text(
         json.dumps(
             {
-                "schema": "ConceptGhost.P10LatestAuditPointer.v0.1",
+                "schema": "ConceptGhost.P10LatestAuditPointer.v0.2",
                 "status": status,
                 "p9_run_id": p9_run_id,
                 "p10_attempt_id": p10_attempt_id,
                 "bundle_path": str(bundle_path),
                 "manifest_path": str(manifest_path),
+                "storage": "P9_RUN_ROOT_DYNAMIC_FROM_MASTER_OUTPUT_ROOT",
                 "updated_at_utc": datetime.now(timezone.utc).isoformat(),
             },
             indent=2,
@@ -158,15 +160,6 @@ def _write_latest_pointers(
         ),
         encoding="utf-8",
     )
-    readme = project_audit_root / "README_P10_AUDITS.txt"
-    if not readme.exists():
-        readme.write_text(
-            "ConceptGhost P10 audit mirror.\n"
-            "For the newest execution of this P9 run, read LATEST_AUDIT_INDEX.json.\n"
-            "Each P10 attempt gets its own RUN_AUDIT_BUNDLE.zip and manifest.\n"
-            "This P10_AUDIT folder is diagnostic sidecar storage; existing P9 authority files are untouched.\n",
-            encoding="utf-8",
-        )
 
 
 def _build_core(
@@ -323,8 +316,9 @@ def _build_core(
             "AUTO_INCLUDE_SAFE_JSON_LOG_TEXT_AND_PREVIEW_EVIDENCE_UNDER_IMMUTABLE_P10_ATTEMPT"
         ),
         "storage_policy": (
-            "DRIVE_VISIBLE_RUN_LOCAL_SIDECAR_AT_<P9_RUN>/P10_AUDIT/"
-            "<P10_ATTEMPT>; EXISTING_P9_AUTHORITY_FILES_REMAIN_UNMODIFIED"
+            "DRIVE_VISIBLE_RUN_LOCAL_BUNDLE_DIRECTLY_AT_<P9_RUN>/RUN_AUDIT_BUNDLE.zip; "
+            "P9_RUN_IS_DYNAMIC_FROM_MASTER_OUTPUT_ROOT_PLUS_SCENE_PLUS_RUN_ID; "
+            "EXISTING_P9_AUTHORITY_FILES_REMAIN_UNMODIFIED"
         ),
         "heavy_payload_policy": "EXCLUDE_PLY_NPZ_FBX_MA_USDA_AND_OTHER_HEAVY_GEOMETRY",
         "limits": {
