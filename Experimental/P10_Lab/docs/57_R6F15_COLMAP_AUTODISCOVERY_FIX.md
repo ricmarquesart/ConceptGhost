@@ -57,13 +57,13 @@ GitHub Actions run 36178840498 — SUCCESS.
 ## Target-PC recovery package
 
 Google Drive Evaluation_Builds:
-ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX.zip
+ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX_r2.zip
 
 Drive file ID:
-13TjHbiYvn4RTaNWVzeR3kk17aVPj-wfN
+1RZt1syL_0h1Zz84mHL_gnrDmT2f0drsy
 
 Drive package SHA-256:
-ad51bff76696309d27bed6404d07a034fb52a560ead5b7c85a8e9525206241af
+9cb015fb23c3be7097b5077dee88058331d7e7566fb1a860b6c0e13d4bd1d1a0
 
 The package deliberately does not reinstall ConceptGhost or COLMAP. It applies
 the bounded source patch and includes 03_RESUME_LAST_GATE7.bat, which finds the
@@ -77,3 +77,5 @@ remaining Gate 7 stages and artist visual review.
 
 Gate 8 remains blocked from runtime promotion. Gate 8.1 source/CI work remains
 valid and unchanged.
+
+Package r1 was renamed OBSOLETE after the resume helper was hardened to add the ComfyUI root to sys.path before importing the custom-node package. Use r2 only.
