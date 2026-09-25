@@ -16,8 +16,8 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f9_triton32_annotation_sanitizer_fix/**'
-      - 'Experimental/P10_Lab/docs/48_R6F9_TRITON32_POINTER_ANNOTATION_FIX.md'
-      - '.github/workflows/p10-gate7-r6f9-triton32-pointer-annotation-fix.yml'
+      - 'Experimental/P10_Lab/docs/49_R6F9_TRITON32_ANNOTATION_SANITIZER_FIX.md'
+      - '.github/workflows/p10-gate7-r6f9-triton32-annotation-sanitizer-fix.yml'
   workflow_dispatch:
 
 permissions:
