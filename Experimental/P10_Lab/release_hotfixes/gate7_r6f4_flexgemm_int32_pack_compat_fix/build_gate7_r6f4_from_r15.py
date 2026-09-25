@@ -394,17 +394,17 @@ def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
 def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
     """Pack a little-endian integer vector into int32 words."""
     tl.static_assert(
-        (vec.dtype.D_32: tl.constexpr = D) == 1 or (vec.dtype.D_32: tl.constexpr = D) == 2 or (vec.dtype.D_32: tl.constexpr = D) == 4,
+        (vec.dtype.primitive_bitwidth // 8) == 1 or (vec.dtype.primitive_bitwidth // 8) == 2 or (vec.dtype.primitive_bitwidth // 8) == 4,
         "Unsupported query_vec element width",
     )
-    if (vec.dtype.D_32: tl.constexpr = D) == 4:
+    if (vec.dtype.primitive_bitwidth // 8) == 4:
         return vec.to(tl.int32)
 
-    if (vec.dtype.D_32: tl.constexpr = D) == 2:
+    if (vec.dtype.primitive_bitwidth // 8) == 2:
         vec_u16 = tl.reshape(tl.cast(vec, tl.uint16, bitcast=True), *vec.shape[:-1], vec.shape[-1] // 2, 2)
         return tl.sum(vec_u16.to(tl.uint32) << (tl.arange(0, 2) << 4), axis=-1).to(tl.int32)
 
-    if (vec.dtype.D_32: tl.constexpr = D) == 1:
+    if (vec.dtype.primitive_bitwidth // 8) == 1:
         vec_u8 = tl.reshape(tl.cast(vec, tl.uint8, bitcast=True), *vec.shape[:-1], vec.shape[-1] // 4, 4)
         return tl.sum(vec_u8.to(tl.uint32) << (tl.arange(0, 4) << 3), axis=-1).to(tl.int32)
 '''
@@ -418,9 +418,9 @@ def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
     keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
     D_32: tl.constexpr = D * keys_ptr.dtype.element_ty.itemsize // 4
 '''
-    prior_kernel = '''    tl.static_assert(D * (keys_ptr.dtype.element_ty.D_32: tl.constexpr = D) % 4 == 0, "keys byte width must be divisible by 4")
+    prior_kernel = '''    tl.static_assert(D * (keys_ptr.dtype.element_ty.primitive_bitwidth // 8) % 4 == 0, "keys byte width must be divisible by 4")
     keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
-    D_32: tl.constexpr = D * (keys_ptr.dtype.element_ty.D_32: tl.constexpr = D) // 4
+    D_32: tl.constexpr = D * (keys_ptr.dtype.element_ty.primitive_bitwidth // 8) // 4
 '''
     safe_kernel = '''    # R6F4: Python host wrapper already passes torch.int32-packed keys and D in int32 words.
     keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
@@ -433,7 +433,7 @@ def _vec_pack_little_endian_to_int32(vec: tl.tensor) -> tl.tensor:
 '''
     prior_lookup = '''    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
     query_vec_32 = _vec_pack_little_endian_to_int32(query_vec)
-    D_32: tl.constexpr = D * (query_vec.dtype.D_32: tl.constexpr = D) // 4
+    D_32: tl.constexpr = D * (query_vec.dtype.primitive_bitwidth // 8) // 4
 '''
     safe_lookup = '''    keys_ptr_32 = tl.cast(keys_ptr, tl.pointer_type(tl.int32))
     query_vec_32 = query_vec.to(tl.int32)
@@ -702,7 +702,7 @@ This package repairs only the isolated ConceptGhost MoGe runtime compatibility p
 It pins the private runtime to PyTorch 2.6 / CUDA 12.4 wheels and Triton Windows 3.2.x, preserving ViT-G, resolution_level=9 and refine_steps=7.
 No P9 geometry algorithm/profile parameter was reduced or silently downgraded. Existing accepted P9 outputs are not rewritten.
 The worker reports GPU compute capability, Torch/CUDA/Triton versions before inference and fails fast on an incompatible Turing matrix instead of waiting for the 1500-second hard timeout.
-R6F4 also applies a bounded compatibility bridge to the ConceptGhost-private FlexGEMM hashmap kernels: Triton 3.2 exposes primitive_bitwidth rather than the newer dtype.itemsize property used by MoGe-3's pinned FlexGEMM commit. The bridge changes only compile-time dtype-width introspection; model weights, resolution, refine steps and geometry authority are unchanged.
+R6F4 applies a bounded compatibility bridge to the ConceptGhost-private FlexGEMM hashmap kernels. FlexGEMM's Python wrappers already serialize keys and queries into padded torch.int32 tensors and pass D as the number of int32 words, so R6F4 removes Triton-JIT dtype-width introspection from those kernels and consumes that existing host-side packing contract directly. Model weights, resolution, refine steps and geometry authority are unchanged.
 """)
 
     validation=root/"P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX_VALIDATION.txt"
@@ -732,8 +732,12 @@ def main(root):
     patch=(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py").read_text(encoding="utf-8-sig")
     for token in ("PRESERVE_HOST_INT32_PACKING_CONTRACT","D_32: tl.constexpr = D","keys_and_queries_prepacked_as_torch_int32","FLEXGEMM_TRITON32_PATCH.json","geometry_contract_changed"):
         if token not in patch: errors.append("FlexGEMM bridge missing "+token)
-    for forbidden in ("keys_ptr.dtype.element_ty.itemsize","query_vec.dtype.itemsize","primitive_bitwidth // 8"):
-        if forbidden in patch: errors.append("FlexGEMM bridge still depends on JIT dtype introspection "+forbidden)
+    try:
+        compile(patch, str(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py"), "exec")
+    except SyntaxError as exc:
+        errors.append("FlexGEMM bridge syntax error "+repr(exc))
+    for token in ("safe_kernel =","safe_lookup =","safe_vec =","D_32: tl.constexpr = D","query_vec_32 = query_vec.to(tl.int32)"):
+        if token not in patch: errors.append("FlexGEMM safe replacement missing "+token)
     worker=(root/"Runtime/MoGeRuntime/worker/moge_worker.py").read_text(encoding="utf-8-sig")
     for token in ("RUNTIME_CAPABILITY","torch 2.6.x + Triton 3.2.x","TRITON_CACHE_DIR"):
         if token not in worker: errors.append("worker missing "+token)
