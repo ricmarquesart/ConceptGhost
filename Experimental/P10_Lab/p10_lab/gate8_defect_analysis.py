@@ -201,6 +201,7 @@ def _face_components(face_indices, face_vertices, vertices, class_name: str, np)
                 "source_face_index_max": int(max(members)),
                 "source_face_indices": members if len(members) <= 512 else None,
                 "source_face_indices_truncated": len(members) > 512,
+                "_member_indices": members,
                 "bounds_min": [float(v) for v in np.min(points, axis=0)],
                 "bounds_max": [float(v) for v in np.max(points, axis=0)],
                 "centroid": [float(v) for v in np.mean(points, axis=0)],
@@ -359,14 +360,8 @@ def analyze_gate8_defects(
             else:
                 component["gate8_2_candidate_action"] = "HOLD_CONFLICT_REQUIRE_STRONGER_EVIDENCE"
                 component["repair_candidate"] = False
-            member_indices = component.get("source_face_indices")
-            if member_indices is None:
-                # Recompute membership by spatial component root would be costly here.
-                # Large components keep class-level evidence in NPZ; region assignment
-                # remains -1 for truncated JSON membership.
-                pass
-            else:
-                face_region_id[np.asarray(member_indices, dtype=np.int64)] = next_region
+            member_indices = component.pop("_member_indices")
+            face_region_id[np.asarray(member_indices, dtype=np.int64)] = next_region
             regions.append(component)
             if defect_class == Gate8DefectClass.FALSE_SURFACE_IN_CONFIRMED_FREE:
                 opening = {
