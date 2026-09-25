@@ -85,7 +85,12 @@ def read_colmap_consistency_graph(
 ) -> tuple[tuple[int, int, int], dict[tuple[int, int], tuple[int, ...]]]:
     """Read selected records from a COLMAP consistency graph.
 
-    The binary records are <row><col><N><image_idx...>, int32 little-endian.
+    COLMAP's writer/reader implementation serializes each int32 record as
+    <col><row><N><image_idx...>.  Public documentation has historically
+    described the first two fields as row/col, so keep this implementation
+    ordering explicit here.  Returned dictionary keys remain conventional
+    (row, col) tuples for NumPy image indexing.
+
     image_idx values are zero-based positions in dense sparse/images.txt.
     """
 
@@ -105,10 +110,15 @@ def read_colmap_consistency_graph(
     while offset < count:
         if offset + 3 > count:
             raise ContractError(f"{path.name} truncated consistency record")
-        row, col, n = values[offset : offset + 3]
+        record_offset = offset
+        col, row, n = values[offset : offset + 3]
         offset += 3
         if row < 0 or row >= height or col < 0 or col >= width or n < 0:
-            raise ContractError(f"{path.name} contains invalid consistency record")
+            raise ContractError(
+                f"{path.name} contains invalid consistency record at int32 offset "
+                f"{record_offset}: col={col}, row={row}, n={n}, "
+                f"header={width}x{height}x{channels}"
+            )
         if offset + n > count:
             raise ContractError(f"{path.name} truncated source-image list")
         sources = tuple(int(v) for v in values[offset : offset + n])
