@@ -69,13 +69,13 @@ def main() -> int:
     ],check=True)
 
     (node_root/"CONCEPTGHOST_P10_VERSION.txt").write_text(
-        "ConceptGhost R6J r2 Gate Output Contract + Legacy Gate 6 Backfill\n",encoding="utf-8"
+        "ConceptGhost R6J r3 Gate Output Contract + Verifier Fix\n",encoding="utf-8"
     )
     marker=install_root/"R6J_GATE_OUTPUT_CONTRACT.json"
     marker.write_text(json.dumps({
         "schema":"ConceptGhost.R6JGateOutputContract.v0.1",
         "status":"APPLIED",
-        "release":"ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2",
+        "release":"ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r3",
         "applied_at_utc":datetime.now(timezone.utc).isoformat(),
         "comfy_root":str(comfy_root),
         "backup_root":str(backup),
@@ -85,7 +85,7 @@ def main() -> int:
         "moge_runtime_mutated":False,
         "shared_comfy_python_mutated":False,
     },indent=2,sort_keys=True),encoding="utf-8")
-    print("[PASS] R6J r2 Gate Output Contract installed.")
+    print("[PASS] R6J r3 Gate Output Contract installed.")
     print("[PASS] Gate 4/5/6/7 outputs are published beside the P9 run.")
     print("[PASS] Gate 6 requires a non-empty inspectable reconstruction + diagnostic Maya.")
     print("[PASS] Pre-R6I completed Gate 6 workspaces can be backfilled without reconstruction reruns.")
