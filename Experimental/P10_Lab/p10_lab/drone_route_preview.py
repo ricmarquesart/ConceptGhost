@@ -167,15 +167,79 @@ def build_route_preview_geometry(
         except Exception:
             vertex_colors=np.full((local.shape[0],3),150,dtype=np.uint8)
 
+    grid_is_usable=bool(
+        grid is not None
+        and getattr(grid,"shape",None)==(local.shape[0],2)
+        and local.shape[0]>0
+    )
+
+    def _image_grid_partition(target_cells: int):
+        """Map every PrimaryMesh vertex to a deterministic image-space cell.
+
+        PrimaryMesh is one depth sample per source pixel.  Partitioning in source
+        image space preserves thin/distant structures far better than flattened
+        vertex/face strides, while remaining display-only.
+        """
+        target_cells=max(1,min(int(target_cells),int(local.shape[0])))
+        if not grid_is_usable:
+            return None
+        gx=np.asarray(grid[:,0],dtype=np.float64)
+        gy=np.asarray(grid[:,1],dtype=np.float64)
+        xmin,xmax=float(gx.min()),float(gx.max())
+        ymin,ymax=float(gy.min()),float(gy.max())
+        span_x=max(xmax-xmin+1.0,1.0)
+        span_y=max(ymax-ymin+1.0,1.0)
+        aspect=max(span_x/span_y,1.0e-6)
+        cells_x=max(1,int(round((target_cells*aspect)**0.5)))
+        cells_y=max(1,int(np.ceil(target_cells/cells_x)))
+        bx=np.clip(((gx-xmin)*cells_x/span_x).astype(np.int64),0,cells_x-1)
+        by=np.clip(((gy-ymin)*cells_y/span_y).astype(np.int64),0,cells_y-1)
+        cell=by*cells_x+bx
+        center_x=xmin+(bx.astype(np.float64)+0.5)*span_x/cells_x
+        center_y=ymin+(by.astype(np.float64)+0.5)*span_y/cells_y
+        score=(gx-center_x)**2+(gy-center_y)**2
+        order=np.lexsort((score,cell))
+        sorted_cells=cell[order]
+        first=np.empty(order.shape[0],dtype=bool)
+        first[0]=True
+        first[1:]=sorted_cells[1:]!=sorted_cells[:-1]
+        representatives=order[first]
+        unique_cells=cell[representatives]
+        cell_to_cluster=np.full(cells_x*cells_y,-1,dtype=np.int64)
+        cell_to_cluster[unique_cells]=np.arange(representatives.shape[0],dtype=np.int64)
+        cluster_ids=cell_to_cluster[cell]
+        return cluster_ids,representatives
+
+    def _image_stratified_indices(budget: int):
+        budget=max(500,min(int(budget),int(max_points),int(local.shape[0])))
+        partition=_image_grid_partition(budget)
+        if partition is None:
+            stride=max(1,(int(local.shape[0])+budget-1)//budget)
+            return np.arange(0,int(local.shape[0]),stride,dtype=np.int64)[:budget],stride,"FLAT_STRIDE_FALLBACK"
+        _,representatives=partition
+        indices=np.asarray(representatives,dtype=np.int64)
+        if indices.shape[0]>budget:
+            positions=np.rint(np.linspace(0,indices.shape[0]-1,budget)).astype(np.int64)
+            indices=indices[positions]
+        elif indices.shape[0]<budget:
+            selected=np.zeros(local.shape[0],dtype=bool)
+            selected[indices]=True
+            remaining=np.flatnonzero(~selected)
+            need=min(budget-indices.shape[0],remaining.shape[0])
+            if need:
+                positions=np.rint(np.linspace(0,remaining.shape[0]-1,need)).astype(np.int64)
+                indices=np.concatenate((indices,remaining[positions]))
+        return indices,0,"IMAGE_SPACE_STRATIFIED"
+
     def point_lod(budget: int) -> dict[str,object]:
         budget=max(500,min(int(budget),int(max_points),int(local.shape[0])))
-        stride=max(1,(int(local.shape[0])+budget-1)//budget)
-        indices=np.arange(0,int(local.shape[0]),stride,dtype=np.int64)[:budget]
+        indices,stride,policy=_image_stratified_indices(budget)
         sampled=local[indices]
         colors=vertex_colors[indices]
         return {
             "budget":int(budget),
             "sample_stride":int(stride),
+            "sampling_policy":policy,
             "point_count":int(sampled.shape[0]),
             "points":[
                 [float(p[0]),float(p[1]),float(p[2]),int(c[0]),int(c[1]),int(c[2])]
@@ -199,21 +263,69 @@ def build_route_preview_geometry(
         "vertex_count":0,
         "vertices":[],
         "faces":[],
+        "lod_policy":"UNAVAILABLE",
         "authority":"DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
     }
     if faces is not None and len(faces):
         source_face_count=int(len(faces))
-        face_stride=max(1,(source_face_count+max_mesh_faces-1)//max_mesh_faces)
-        selected=np.asarray(faces[::face_stride][:max_mesh_faces],dtype=np.int64)
-        valid=((selected>=0).all(axis=1)&(selected<local.shape[0]).all(axis=1))
-        selected=selected[valid]
-        if len(selected):
+        source_faces=np.asarray(faces,dtype=np.int64)
+        valid=((source_faces>=0).all(axis=1)&(source_faces<local.shape[0]).all(axis=1))
+        source_faces=source_faces[valid]
+        remapped=None
+        used=None
+        representatives=None
+        lod_policy="FLAT_FACE_STRIDE_FALLBACK"
+        face_stride=0
+
+        if grid_is_usable and len(source_faces):
+            # Cluster the dense image-grid mesh, then remap ALL source faces
+            # through those cells.  This creates one coherent coarse surface
+            # instead of disconnected every-Nth triangles.
+            target_cells=max(500,int(max_mesh_faces//2))
+            for _ in range(8):
+                partition=_image_grid_partition(target_cells)
+                if partition is None:
+                    break
+                cluster_ids,representatives=partition
+                candidate=cluster_ids[source_faces]
+                keep=(
+                    (candidate[:,0]!=candidate[:,1])
+                    &(candidate[:,1]!=candidate[:,2])
+                    &(candidate[:,0]!=candidate[:,2])
+                )
+                candidate=candidate[keep]
+                if not len(candidate):
+                    target_cells=max(500,int(target_cells*0.6))
+                    continue
+                canonical=np.sort(candidate,axis=1)
+                _,first_indices=np.unique(canonical,axis=0,return_index=True)
+                candidate=candidate[np.sort(first_indices)]
+                if len(candidate)<=max_mesh_faces or target_cells<=500:
+                    remapped=candidate
+                    lod_policy="IMAGE_GRID_CLUSTERED_CONNECTED_LOD"
+                    break
+                scale=max(0.25,min(0.90,float(max_mesh_faces)/float(len(candidate))*0.90))
+                target_cells=max(500,int(target_cells*scale))
+
+            if remapped is not None and len(remapped):
+                used=np.unique(remapped.reshape(-1))
+                compact=np.full(representatives.shape[0],-1,dtype=np.int64)
+                compact[used]=np.arange(used.shape[0],dtype=np.int64)
+                remapped=compact[remapped]
+                representatives=representatives[used]
+
+        if remapped is None and len(source_faces):
+            face_stride=max(1,(len(source_faces)+max_mesh_faces-1)//max_mesh_faces)
+            selected=np.asarray(source_faces[::face_stride][:max_mesh_faces],dtype=np.int64)
             used=np.unique(selected.reshape(-1))
-            remap=np.full(local.shape[0],-1,dtype=np.int64)
-            remap[used]=np.arange(len(used),dtype=np.int64)
-            remapped=remap[selected]
-            mv=local[used]
-            mc=vertex_colors[used]
+            compact=np.full(local.shape[0],-1,dtype=np.int64)
+            compact[used]=np.arange(used.shape[0],dtype=np.int64)
+            remapped=compact[selected]
+            representatives=used
+
+        if remapped is not None and len(remapped):
+            mv=local[representatives]
+            mc=vertex_colors[representatives]
             mesh_lod={
                 "available":True,
                 "source_face_count":source_face_count,
@@ -226,6 +338,7 @@ def build_route_preview_geometry(
                     for p,c in zip(mv,mc)
                 ],
                 "faces":[[int(face[0]),int(face[1]),int(face[2])] for face in remapped],
+                "lod_policy":lod_policy,
                 "authority":"DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
             }
 
