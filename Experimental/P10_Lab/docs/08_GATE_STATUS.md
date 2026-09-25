@@ -1,5 +1,18 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F6 FlexGEMM line-patch fix
+
+- R6F5 preserved the correct Turing-safe private runtime but its own generated patcher failed before MoGe smoke inference. Root cause: the generated source matcher compared escaped literal `\\n` sequences against real newlines in FlexGEMM `hashmap.py`, so the expected active callsites were not found and the patcher failed closed with exit code 4.
+- **R6F6 source/package fix: COMPLETE / CI PASS.**
+- R6F6 removes brittle multi-line matching and patches only individual active FlexGEMM lines with anchored regex + exact occurrence-count validation.
+- Runtime matrix is unchanged: Python 3.11.9, PyTorch 2.6.0, torchvision 0.21.0, cu124, Triton Windows 3.2.x.
+- High Fidelity geometry contract remains unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7; accepted P9 outputs remain immutable.
+- R6F6 build run `36084117584`: SUCCESS. General ConceptGhost Tests `36084117589`: SUCCESS. Source snapshot `36084117583`: SUCCESS.
+- R6F6 package SHA-256: `688d0c66e920f14a61095d19e5a8a5f3827ffdeb42d1b43318a2860b2aec4e7d`.
+- Evaluation_Builds Drive file id: `1e8gJOAUNalgdFCMMCJ-95QsxGXI0iNxD`.
+- R6F6 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel. G8.1 is source/CI complete; Gate 8 promotion remains blocked until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F5 FlexGEMM active-callsite compatibility fix
 
 - R6F4 correctly preserved the Turing-safe private runtime but its compatibility patch stopped with exit code 4 before MoGe smoke inference because the patcher depended on a brittle whole-helper source boundary.
