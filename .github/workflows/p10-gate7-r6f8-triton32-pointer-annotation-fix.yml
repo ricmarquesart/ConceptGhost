@@ -16,8 +16,8 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f8_triton32_pointer_annotation_fix/**'
-      - 'Experimental/P10_Lab/docs/47_R6F8_FLEXGEMM_TOKENPATCH_FIX.md'
-      - '.github/workflows/p10-gate7-r6f8-flexgemm-tokenpatch-fix.yml'
+      - 'Experimental/P10_Lab/docs/48_R6F8_TRITON32_POINTER_ANNOTATION_FIX.md'
+      - '.github/workflows/p10-gate7-r6f8-triton32-pointer-annotation-fix.yml'
   workflow_dispatch:
 
 permissions:
