@@ -221,6 +221,20 @@ def build_gate7_visual_review(
     np, Image, ImageDraw, ImageFont = _lazy_runtime()
     fusion_path = Path(protected_fusion_manifest_path).resolve()
     fusion = _read_json(fusion_path, "Gate 7.4 protected fusion manifest")
+    counts = fusion.get("counts") if isinstance(fusion.get("counts"), dict) else {}
+    p10_input_faces = int(counts.get("p10_input_faces") or 0)
+    p10_accepted_faces = int(counts.get("p10_accepted_faces") or 0)
+    p10_accept_fraction = (
+        p10_accepted_faces / p10_input_faces if p10_input_faces > 0 else None
+    )
+    if p10_input_faces > 0 and p10_accepted_faces == 0:
+        completion_effectiveness_status = "FAIL"
+    elif p10_accept_fraction is not None and p10_accept_fraction < 0.01:
+        completion_effectiveness_status = "WARN"
+    elif p10_input_faces > 0:
+        completion_effectiveness_status = "PASS"
+    else:
+        completion_effectiveness_status = "NOT_APPLICABLE"
     if fusion.get("schema") != "ConceptGhost.P10Gate7ProtectedFusionCandidate.v0.1":
         raise ContractError("Gate 7.5 requires Gate 7.4 protected fusion schema v0.1")
     if fusion.get("status") != "PASS":
@@ -395,6 +409,21 @@ def build_gate7_visual_review(
         )
 
     draw.text((margin, 12), "ConceptGhost · Gate 7.5 Registration / Provenance Visual Review", fill=TEXT, font=font)
+    effectiveness_text = (
+        f"P10 accepted: {p10_accepted_faces:,} / {p10_input_faces:,} faces"
+        + (
+            f" ({100.0 * p10_accept_fraction:.3f}%)"
+            if p10_accept_fraction is not None
+            else ""
+        )
+        + f" · completion effectiveness: {completion_effectiveness_status}"
+    )
+    effectiveness_color = (
+        REJECTED
+        if completion_effectiveness_status == "FAIL"
+        else CAMERA if completion_effectiveness_status == "WARN" else TEXT
+    )
+    draw.text((margin, 28), effectiveness_text, fill=effectiveness_color, font=font)
     legend_y = canvas_h - 34
     legend = [
         ("P9", P9),
@@ -416,7 +445,13 @@ def build_gate7_visual_review(
     preview_path = output_root / "gate7_registration_provenance_review.png"
     image.save(preview_path)
 
-    counts = fusion.get("counts") if isinstance(fusion.get("counts"), dict) else {}
+    promotion_blockers = [
+        "ARTIST_VISUAL_REVIEW_PENDING",
+        "DR9R_R15_RUNTIME_UX_ACCEPTANCE_PENDING",
+    ]
+    if completion_effectiveness_status == "FAIL":
+        promotion_blockers.append("NO_P10_GEOMETRIC_CONTRIBUTION")
+
     result = {
         "schema": _SCHEMA,
         "status": "PASS",
@@ -437,6 +472,13 @@ def build_gate7_visual_review(
             "confirmed_free": True,
             "conflict": True,
             "camera_context": True,
+        },
+        "completion_effectiveness": {
+            "status": completion_effectiveness_status,
+            "p10_input_faces": p10_input_faces,
+            "p10_accepted_faces": p10_accepted_faces,
+            "accepted_face_fraction": p10_accept_fraction,
+            "runtime_pass_is_not_quality_pass": True,
         },
         "render_counts": {
             "candidate_vertices": int(len(candidate_vertices)),
@@ -463,10 +505,7 @@ def build_gate7_visual_review(
         "artist_review_status": "PENDING",
         "ready_for_gate7_6_source_closeout": True,
         "ready_for_gate8": False,
-        "promotion_blockers": [
-            "ARTIST_VISUAL_REVIEW_PENDING",
-            "DR9R_R15_RUNTIME_UX_ACCEPTANCE_PENDING",
-        ],
+        "promotion_blockers": promotion_blockers,
     }
     manifest_path = output_root / "gate7_visual_review_manifest.json"
     manifest_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
