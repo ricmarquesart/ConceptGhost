@@ -1,0 +1,41 @@
+name: Gate 8.2 Local Remesh Cleanup Safety Contract
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-gate8-source
+    paths:
+      - 'Experimental/P10_Lab/p10_lab/gate8_local_remesh.py'
+      - 'Experimental/P10_Lab/p10_lab/gate8_defect_analysis.py'
+      - 'Experimental/P10_Lab/tests/test_gate8_local_remesh.py'
+      - '.github/workflows/p10-g8-2-local-remesh-cleanup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate8-2:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install focused dependency
+        run: python -m pip install numpy
+
+      - name: Compile Gate 8.1 and Gate 8.2
+        run: python -m py_compile Experimental/P10_Lab/p10_lab/gate8_defect_analysis.py Experimental/P10_Lab/p10_lab/gate8_local_remesh.py
+
+      - name: Run Gate 8.2 focused tests
+        working-directory: Experimental/P10_Lab
+        run: python -m unittest -v tests.test_gate8_local_remesh
