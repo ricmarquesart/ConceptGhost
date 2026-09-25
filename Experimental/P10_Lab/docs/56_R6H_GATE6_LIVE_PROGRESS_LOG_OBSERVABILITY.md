@@ -100,8 +100,8 @@ Current official runtime-validation boundary remains Gate 7 / R6F.
 
 Latest independent source work:
 - Gate 8.1 defect analysis: SOURCE/CI COMPLETE, promotion blocked by Gate 7;
-- R6G Route Editor visual quality/layout: SOURCE implementation completed,
-  CI/runtime acceptance still pending.
+- R6G Route Editor visual quality/layout: SOURCE/CI COMPLETE;
+  target-PC visual acceptance still pending.
 
 R6H is inserted immediately after R6G as the next bounded observability
 refinement before further user-facing Gate 8 promotion. It does not retroactively
