@@ -1,0 +1,108 @@
+name: Build Gate 7 R6F4 FlexGEMM Int32 Pack Compat Fix
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - 'Experimental/P10_Lab/p10_lab/**'
+      - 'Experimental/P10_Lab/tests/test_drone_route_plan.py'
+      - 'Experimental/P10_Lab/tests/test_drone_route_frontend_contract.py'
+      - 'Experimental/P10_Lab/tests/test_selected_camera_preview.py'
+      - 'Experimental/P10_Lab/docs/39_ROUTE_EDITOR_CAMERA_AIM_MESH_PREVIEW_PLAN.md'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r1/**'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r2_audit/**'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f4_flexgemm_int32_pack_compat_fix/**'
+      - 'Experimental/P10_Lab/docs/42_R6F4_FLEXGEMM_TRITON32_COMPAT_FIX.md'
+      - '.github/workflows/p10-gate7-r6f4-flexgemm-triton32-compat-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download frozen r15 base
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $b = Join-Path $env:RUNNER_TEMP 'cg-r6f4'
+          New-Item -ItemType Directory -Force -Path $b | Out-Null
+          gh release download p10-dr9r-r15 --repo ${{ github.repository }} --pattern 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15.zip' --dir $b
+          $s = Join-Path $b 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15.zip'
+          if (-not (Test-Path $s)) { throw 'r15 base missing' }
+          $hash=(Get-FileHash $s -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne 'cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd') { throw "bad r15 digest $hash" }
+
+      - name: Build r6f4 candidate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $b = Join-Path $env:RUNNER_TEMP 'cg-r6f4'
+          $s = Join-Path $b 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15.zip'
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $zip = Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX.zip'
+          $root = Join-Path $b 'ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX'
+          python Experimental/P10_Lab/release_hotfixes/gate7_r6f4_flexgemm_int32_pack_compat_fix/build_gate7_r6f4_from_r15.py --source $s --output $zip --p10-source-root Experimental/P10_Lab/p10_lab --source-commit $env:GITHUB_SHA --package-commit $env:GITHUB_SHA --keep-extracted $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate extracted r6f4
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $b=Join-Path $env:RUNNER_TEMP 'cg-r6f4'
+          $root=Join-Path $b 'ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX'
+          foreach($p in @(
+            'Installer/install_gate7_r6f4_flexgemm_int32_pack_compat_fix.ps1',
+            'Installer/verify_gate7_r6f4_flexgemm_int32_pack_compat_fix.ps1',
+            'Installer/test_r6f4_flexgemm_int32_pack_compat_fix.py'
+          )){
+            if (-not (Test-Path (Join-Path $root $p) -PathType Leaf)) { throw "missing $p" }
+          }
+          foreach($ps1 in Get-ChildItem (Join-Path $root 'Installer') -Filter '*.ps1' -File){
+            $t=$null;$e=$null
+            [System.Management.Automation.Language.Parser]::ParseFile($ps1.FullName,[ref]$t,[ref]$e)|Out-Null
+            if($e.Count -gt 0){throw "PowerShell parse failed: $($ps1.Name)"}
+          }
+          foreach($bat in @('03_INSTALL_ALL.bat','04_VERIFY_INSTALL.bat')){
+            $bytes=[IO.File]::ReadAllBytes((Join-Path $root $bat))
+            for($i=0;$i -lt $bytes.Length;$i++){
+              if($bytes[$i] -eq 10 -and ($i -eq 0 -or $bytes[$i-1] -ne 13)){throw "CRLF failed $bat"}
+            }
+          }
+          python (Join-Path $root 'Installer/test_r6f4_flexgemm_int32_pack_compat_fix.py') $root
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+          node --check (Join-Path $root 'Payload/custom_nodes/ConceptGhost_P10_Lab/web/js/drone_route_editor.js')
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+
+      - name: Write sidecars
+        shell: pwsh
+        run: |
+          $zip=Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX.zip'
+          $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX.zip" | Set-Content -Encoding ascii release/ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX_SHA256.txt
+          $root=Join-Path (Join-Path $env:RUNNER_TEMP 'cg-r6f4') 'ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX'
+          Copy-Item (Join-Path $root 'P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX_VALIDATION.txt') release/P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX_VALIDATION.txt -Force
+          Write-Host "r6f4 SHA256: $hash"
+          Write-Host "r6f4 bytes: $((Get-Item $zip).Length)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ConceptGhost_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX_CANDIDATE
+          path: |
+            release/ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX.zip
+            release/ConceptGhost_v1.54_P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX_SHA256.txt
+            release/P10_GATE7_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX_VALIDATION.txt
+          if-no-files-found: error
+          retention-days: 30
