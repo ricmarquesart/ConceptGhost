@@ -449,7 +449,13 @@ Full specification: `docs/12_FREE_SPACE_VISIBILITY_CARVING_POLICY.md`.
 
 ## Gate 8 — 5 subgates
 
-8.1 Defect analysis and bounded repair regions.
+8.1 Defect analysis and bounded repair regions. **SOURCE/CI COMPLETE; TARGET-RUNTIME PROMOTION BLOCKED BY GATE 7 ACCEPTANCE.**
+   - Implemented `p10_lab/gate8_defect_analysis.py` with the frozen taxonomy: `VALID_OPENING`, `FALSE_SURFACE_IN_CONFIRMED_FREE`, `MISSING_SURFACE_UNKNOWN`, `LOW_CONFIDENCE_SURFACE`, `CONFLICT_REGION`, `SUPPORTED_SURFACE`.
+   - Consumes Gate 7.4 protected-fusion reasons, Gate 7.3 FREE/UNKNOWN/CONFLICT and Gate 7.2C virtual-hole confidence evidence.
+   - Produces bounded face/voxel regions and NPZ evidence without moving/removing faces; `automatic_geometry_edit_allowed=false`.
+   - CONFIRMED_FREE remains no-fill authority; UNKNOWN is never reinterpreted as FREE; CONFLICT never authorizes automatic edits.
+   - Unit/regression coverage: `tests/test_gate8_defect_analysis.py`.
+   - Next source-only work: G8.2 local remesh/cleanup safety contract + structural-analysis preview (analysis ON, apply OFF).
 8.2 Local remesh / cleanup / optional hard-surface structural regularization.
    - **Structural Analysis + Preview is ON by default; geometry application is OFF by default.** The pipeline detects planar/sharp/parallel/orthogonal/coplanar/repeated-offset and soft-symmetry candidates, shows an always-available ComfyUI 3D impact map, and may build a regularized candidate without changing official geometry.
    - Artist switch: `Apply Structural Regularization = OFF / ON`. OFF passes the standard Gate 8 mesh downstream unchanged; ON promotes only safety-approved local edits.
