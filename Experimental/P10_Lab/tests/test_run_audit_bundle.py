@@ -115,7 +115,77 @@ class RunAuditBundleTests(unittest.TestCase):
             self.assertNotIn("p10_attempt/gate8/future_mesh.ply", names)
             self.assertNotIn("p9_authority/maya/scene.ma", names)
             self.assertIn("RUN_AUDIT_BUNDLE_index.json", names)
+            self.assertIn("RUN_TECHNICAL_SUMMARY.json", names)
+            self.assertIn("RUN_TECHNICAL_SUMMARY.txt", names)
+            self.assertTrue((p9/"RUN_TECHNICAL_SUMMARY.json").is_file())
+            self.assertTrue((p9/"RUN_TECHNICAL_SUMMARY.txt").is_file())
 
+
+
+    def test_technical_summary_exposes_zero_p10_contribution_as_fail(self):
+        from p10_lab.run_audit_bundle import build_run_audit_bundle
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            p9=root/"p9"
+            attempt=root/"attempt"
+            p9.mkdir()
+            attempt.mkdir()
+
+            gate6=attempt/"gate6"/"reconstruction_runtime_manifest.json"
+            gate6.parent.mkdir(parents=True)
+            gate6.write_text(json.dumps({
+                "schema":"ConceptGhost.P10ReconstructionRuntime.v0.2",
+                "status":"PASS",
+                "p10_attempt_root":str(attempt),
+            }),encoding="utf-8")
+
+            quality=attempt/"gate6"/"gate6_geometry_quality.json"
+            quality.write_text(json.dumps({
+                "status":"WARN",
+                "sparse":{"point_count":64,"verified_component_count":12,"quality_status":"PASS"},
+                "prefusion_mesh":{"vertex_count":12184,"face_count":21089,"mesh_health_status":"PASS"},
+            }),encoding="utf-8")
+
+            fusion=attempt/"gate7"/"g7_4"/"protected_fusion_candidate_manifest.json"
+            fusion.parent.mkdir(parents=True)
+            fusion.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7ProtectedFusionCandidate.v0.1",
+                "status":"PASS",
+                "counts":{
+                    "p10_input_faces":21089,
+                    "p10_accepted_faces":0,
+                    "p10_rejected_faces":21089,
+                    "p10_candidate_vertices":0,
+                },
+                "reason_counts":{
+                    "P9_SOURCE_PROTECTED_OVERLAP":16090,
+                    "FREE_SPACE_CONFLICT":4379,
+                    "CONFIRMED_FREE_VETO":620,
+                },
+            }),encoding="utf-8")
+
+            gate7=attempt/"gate7"/"gate7_runtime_manifest.json"
+            gate7.write_text(json.dumps({
+                "schema":"ConceptGhost.P10Gate7Runtime.v0.1",
+                "status":"PASS",
+                "p9_run_id":"p9run",
+                "p10_attempt_id":"attempt1",
+                "p9_run_dir":str(p9),
+                "p10_attempt_root":str(attempt),
+                "gate6_runtime_manifest_path":str(gate6),
+            }),encoding="utf-8")
+
+            result=build_run_audit_bundle(gate7)
+            summary=json.loads((p9/"RUN_TECHNICAL_SUMMARY.json").read_text(encoding="utf-8"))
+            comp=summary["completion_effectiveness"]
+            self.assertEqual(comp["status"],"FAIL")
+            self.assertEqual(comp["p10_input_faces"],21089)
+            self.assertEqual(comp["p10_accepted_faces"],0)
+            self.assertEqual(comp["rejection_reason_counts"]["P9_SOURCE_PROTECTED_OVERLAP"],16090)
+            self.assertTrue(summary["interpretation"]["runtime_pass_is_not_quality_pass"])
+            self.assertTrue(summary["interpretation"]["gate8_should_not_promote_when_completion_effectiveness_fail"])
+            self.assertEqual(result["completion_effectiveness"]["status"],"FAIL")
 
 
     def test_bulk_generated_frames_are_omitted_but_diagnostic_previews_remain(self):
