@@ -39,7 +39,8 @@ def main() -> int:
         '"FINAL_SOURCE_PRESERVED_VIEWS"',
         '"CONTROL_FRAMES"',
         '"GATE_STATUS.json"',
-        '"next_gate_authorized"',\n        '"Legacy pre-R6I attempt detected"',
+        '"next_gate_authorized"',
+        '"Legacy pre-R6I attempt detected"',
     ):
         if token not in contract:
             raise RuntimeError("Gate output contract token missing: "+token)
@@ -53,7 +54,8 @@ def main() -> int:
 
     print("[PASS] R6J r2 Gate Output Contract source verified.")
     print("[PASS] Gate 6 diagnostic Maya + raw new geometry are mandatory outputs.")
-    print("[PASS] Gate 7 functional status is separate from runtime status.")\n    print("[PASS] Legacy Gate 6 PLY fallback can be represented as OBJ without rerunning geometry.")
+    print("[PASS] Gate 7 functional status is separate from runtime status.")
+    print("[PASS] Legacy Gate 6 PLY fallback can be represented as OBJ without rerunning geometry.")
     return 0
 
 
