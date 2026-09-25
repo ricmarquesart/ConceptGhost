@@ -77,7 +77,17 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             with patch("p10_lab.reconstruction_runtime.prepare_known_camera_colmap_dataset") as a, \
                  patch("p10_lab.reconstruction_runtime.run_sparse_triangulation") as b, \
                  patch("p10_lab.reconstruction_runtime.run_dense_reconstruction") as c, \
-                 patch("p10_lab.reconstruction_runtime.run_prefusion_meshing") as d:
+                 patch("p10_lab.reconstruction_runtime.run_prefusion_meshing") as d, \
+                 patch("p10_lab.reconstruction_runtime.publish_gate6_geometry_output") as publish:
+                publish.return_value={
+                    "status":"PASS",
+                    "geometry_generated":True,
+                    "vertex_count":3,
+                    "face_count":1,
+                    "raw_p10_geometry_ply":str(mesh),
+                    "raw_p10_geometry_obj":str(dataset/"dense"/"mesh.obj"),
+                    "manifest_path":str(out/"gate6_output"/"GATE6_OUTPUT_MANIFEST.json"),
+                }
                 result=run_reconstruction_pipeline(wan,cam,out,colmap_executable="colmap",resume=True)
             self.assertFalse(a.called)
             self.assertFalse(b.called)
@@ -85,6 +95,8 @@ class ReconstructionRuntimeTests(unittest.TestCase):
             self.assertFalse(d.called)
             self.assertEqual(result["stages"]["dataset"]["state"],"REUSED")
             self.assertEqual(result["stages"]["mesh"]["state"],"REUSED")
+            self.assertTrue(result["gate6_geometry_generated"])
+            self.assertEqual(result["stages"]["geometry_output"]["state"],"PUBLISHED")
 
     def test_resume_rebuilds_when_source_composite_bytes_change(self):
         from p10_lab.reconstruction_runtime import run_reconstruction_pipeline
