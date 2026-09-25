@@ -16,8 +16,8 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f7_flexgemm_tokenpatch_fix/**'
-      - 'Experimental/P10_Lab/docs/46_R6F7_FLEXGEMM_LINEPATCH_FIX.md'
-      - '.github/workflows/p10-gate7-r6f7-flexgemm-linepatch-fix.yml'
+      - 'Experimental/P10_Lab/docs/47_R6F7_FLEXGEMM_TOKENPATCH_FIX.md'
+      - '.github/workflows/p10-gate7-r6f7-flexgemm-tokenpatch-fix.yml'
   workflow_dispatch:
 
 permissions:
