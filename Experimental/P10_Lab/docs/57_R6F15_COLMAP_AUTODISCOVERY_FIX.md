@@ -70,12 +70,48 @@ the bounded source patch and includes 03_RESUME_LAST_GATE7.bat, which finds the
 latest Gate 7 failure manifest and resumes the existing P10 attempt directly.
 This avoids creating a new Production attempt and avoids rerunning WAN/Gate 6.
 
+## Target-PC recovery result
+
+The R6F15 in-place recovery was executed successfully on the target PC.
+
+Recovered P10 attempt:
+`20260925T182415_329568Z_a99e3910_7d5df9fe`
+
+Recovered P9 run:
+`20260925T170319_730339Z_8806dd74`
+
+The resume helper reported:
+- Gate 7 runtime status: PASS;
+- failed stage recovered: G7_3_DELAUNAY_COMPARISON;
+- G7.1 registration manifest: produced;
+- G7.2 provenance manifest: produced;
+- G7.2c geometry-confidence manifest: produced;
+- G7.3 free-space evidence/constraints: produced;
+- Delaunay comparison: produced;
+- confidence/free-space overlay: produced;
+- G7.4 protected fusion candidate PLY + manifest: produced;
+- G7.5 visual-review PNG + manifest: produced;
+- automatic run-local audit: PASS;
+- WAN/Gate 6 reused from the existing attempt;
+- no new Production attempt created.
+
+Run-local audit:
+`<P9_RUN>/RUN_AUDIT_BUNDLE.zip`
+
+Observed concrete path:
+`G:\My Drive\ConceptGhost\Outputs\ConceptGhost\concept_scene_test36\20260925T170319_730339Z_8806dd74\RUN_AUDIT_BUNDLE.zip`
+
+This closes the R6F15 runtime blocker itself.
+
 ## Gate state
 
-Gate 7 target-PC acceptance remains OPEN until the resumed attempt passes the
-remaining Gate 7 stages and artist visual review.
+Gate 7 target-PC **runtime acceptance: PASS**.
 
-Gate 8 remains blocked from runtime promotion. Gate 8.1 source/CI work remains
-valid and unchanged.
+Gate 7 remains **OPEN only for artist visual acceptance** of the generated
+G7.5 review image / protected-fusion result. No technical rerun of WAN/Gate 6
+is required for this acceptance step.
+
+Gate 8 remains blocked from runtime promotion until that visual acceptance is
+recorded. Gate 8.1 source/CI work remains valid and unchanged.
 
 Package r1 was renamed OBSOLETE after the resume helper was hardened to add the ComfyUI root to sys.path before importing the custom-node package. Use r2 only.
