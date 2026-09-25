@@ -198,16 +198,32 @@ def build_route_preview_geometry(
         center_x=xmin+(bx.astype(np.float64)+0.5)*span_x/cells_x
         center_y=ymin+(by.astype(np.float64)+0.5)*span_y/cells_y
         score=(gx-center_x)**2+(gy-center_y)**2
-        order=np.lexsort((score,cell))
+
+        # Never collapse visibly different depth layers merely because they
+        # occupy the same image-space LOD cell.  The PrimaryMesh already split
+        # discontinuities at roughly the 4% depth-edge policy; mirror that
+        # separation in the display-only clustering so thin silhouettes and
+        # foreground/background cuts do not become stretched bridge triangles.
+        forward=np.asarray(local[:,2],dtype=np.float64)
+        abs_forward=np.maximum(np.abs(forward),1.0e-6)
+        depth_bin=np.floor(np.log(abs_forward)/np.log(1.04)).astype(np.int64)
+        depth_sign=(forward>=0.0).astype(np.int8)
+
+        order=np.lexsort((score,depth_bin,depth_sign,cell))
         sorted_cells=cell[order]
+        sorted_depth=depth_bin[order]
+        sorted_sign=depth_sign[order]
         first=np.empty(order.shape[0],dtype=bool)
         first[0]=True
-        first[1:]=sorted_cells[1:]!=sorted_cells[:-1]
+        first[1:]=(
+            (sorted_cells[1:]!=sorted_cells[:-1])
+            |(sorted_depth[1:]!=sorted_depth[:-1])
+            |(sorted_sign[1:]!=sorted_sign[:-1])
+        )
         representatives=order[first]
-        unique_cells=cell[representatives]
-        cell_to_cluster=np.full(cells_x*cells_y,-1,dtype=np.int64)
-        cell_to_cluster[unique_cells]=np.arange(representatives.shape[0],dtype=np.int64)
-        cluster_ids=cell_to_cluster[cell]
+        cluster_sorted=np.cumsum(first,dtype=np.int64)-1
+        cluster_ids=np.empty(order.shape[0],dtype=np.int64)
+        cluster_ids[order]=cluster_sorted
         return cluster_ids,representatives
 
     def _image_stratified_indices(budget: int):
@@ -339,6 +355,7 @@ def build_route_preview_geometry(
                 ],
                 "faces":[[int(face[0]),int(face[1]),int(face[2])] for face in remapped],
                 "lod_policy":lod_policy,
+                "depth_layer_policy":"RELATIVE_4PCT_CAMERA_FORWARD_BINS" if lod_policy=="IMAGE_GRID_CLUSTERED_CONNECTED_LOD" else "SOURCE_FACE_STRIDE",
                 "authority":"DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
             }
 
