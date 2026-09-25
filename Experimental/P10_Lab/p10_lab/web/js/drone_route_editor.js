@@ -339,6 +339,7 @@ function setupEditor(node) {
         targetDragging: false,
         previewMode: "POINTS_MEDIUM",
         pointSize: 1.25,
+        cameraPreviewKey: null,
     };
 
     function pushHistory() {
@@ -1261,6 +1262,9 @@ function setupEditor(node) {
         const selectedCamera = selectedCameraState();
         const geometry = state.metadata?.preview_geometry;
         if (!selectedCamera || !geometry) {
+            const emptyKey = ["EMPTY",state.sceneKey,width,height,state.previewMode].join("|");
+            if (state.cameraPreviewKey === emptyKey) return;
+            state.cameraPreviewKey = emptyKey;
             cameraCtx.fillStyle = "#777";
             cameraCtx.font = "14px sans-serif";
             cameraCtx.textAlign = "center";
@@ -1273,6 +1277,22 @@ function setupEditor(node) {
         const liveMode = String(state.previewMode).startsWith("POINTS_") ? "POINTS_HIGH" : state.previewMode;
         const activePointCount = state.metadata?.preview_geometry?.point_lods?.[liveMode]?.point_count || 0;
         const meshMeta = state.metadata?.preview_geometry?.mesh_lod || {};
+        const previewKey = [
+            state.sceneKey || "",
+            width,height,
+            state.activeMission,state.selectedPoint,
+            liveMode,Number(state.pointSize).toFixed(2),
+            Number(selectedCamera.point.right).toFixed(6),
+            Number(selectedCamera.point.up).toFixed(6),
+            Number(selectedCamera.point.forward).toFixed(6),
+            Number(selectedCamera.look.right).toFixed(6),
+            Number(selectedCamera.look.up).toFixed(6),
+            Number(selectedCamera.look.forward).toFixed(6),
+            Number(meshMeta.face_count || 0),
+            Number(state.metadata?.preview_geometry?.point_lods?.POINTS_HIGH?.point_count || 0),
+        ].join("|");
+        if (state.cameraPreviewKey === previewKey) return;
+        state.cameraPreviewKey = previewKey;
         const detailLabel = String(liveMode).startsWith("MESH_")
             ? `${Number(meshMeta.face_count || 0).toLocaleString()} display faces / ${Number(meshMeta.source_face_count || 0).toLocaleString()} source`
             : `${Number(activePointCount).toLocaleString()} display points`;
