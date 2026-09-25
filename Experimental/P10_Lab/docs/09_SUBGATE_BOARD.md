@@ -1102,3 +1102,39 @@ Future run-side audit outputs must place RUN_TECHNICAL_SUMMARY.json,
 RUN_TECHNICAL_SUMMARY.txt and RUN_GATE7_VISUAL_REVIEW.png beside
 RUN_AUDIT_BUNDLE.zip when available.
 
+
+
+### R6I — Gate 6 reopened for functional geometry proof — 2026-09-25
+
+User acceptance decision: Gate 6 is **REOPENED**.
+
+The Gate contract is authoritative: Gate 6 must produce a new 3D reconstruction
+from the Gate 5 drone/WAN images and expose that geometry directly before Gate 7
+filters or combines it with P9.
+
+The 20260925 target run did create a pre-fusion P10 mesh (12,184 vertices /
+21,089 faces), but Gate 6 did not expose it clearly enough as its own immutable
+deliverable and Gate 7 later accepted zero P10 faces. Therefore runtime success
+does not constitute Gate 6 functional acceptance.
+
+R6I implements:
+- explicit `GATE6_RAW_P10_GEOMETRY.ply`;
+- explicit `GATE6_RAW_P10_GEOMETRY.obj`;
+- explicit `GATE6_DENSE_POINTS.ply`;
+- `GATE6_OUTPUT_MANIFEST.json` + README;
+- compact `<P9_RUN>/P10_GATE6_OUTPUT/<attempt_id>/` sidecar near the run audit bundle;
+- Gate 6 fail-closed contract when the new raw mesh is missing/empty;
+- Workflow 02 visual groups identifying Gate 4 / Gate 5 / Gate 6 and each gate output;
+- resume helper that reuses the already-generated Gate 4 camera manifest and Gate 5 WAN images.
+
+Current acceptance state:
+- Gate 5: runtime output exists / remains upstream evidence;
+- Gate 6 runtime path: implemented;
+- Gate 6 **functional acceptance: OPEN / target-PC raw-geometry inspection required**;
+- Gate 7 runtime: PASS, but functional/artist acceptance cannot close while Gate 6 remains open;
+- Gate 8.1 source work remains valid but runtime promotion is BLOCKED;
+- Gate 8.2 is NOT promoted.
+
+Gate 6 is considered functionally accepted only after the artist can inspect a
+non-empty raw P10 reconstruction independently of Gate 7 and we verify whether
+it actually contributes useful geometry in the intended occluded regions.
