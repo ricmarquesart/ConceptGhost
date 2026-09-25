@@ -22,7 +22,7 @@ class Gate7ColmapResolutionTests(unittest.TestCase):
             )
 
             resolved = _resolve_gate7_repair_colmap(dataset, "colmap")
-            self.assertEqual(Path(resolved), executable.resolve())
+            self.assertTrue(os.path.samefile(Path(resolved), executable.resolve()))
 
     def test_default_colmap_token_reuses_conceptghost_private_runtime(self):
         from p10_lab.gate7_runtime import _resolve_gate7_repair_colmap
@@ -46,7 +46,7 @@ class Gate7ColmapResolutionTests(unittest.TestCase):
                 with patch("p10_lab.reconstruction_runtime.shutil.which", return_value=None):
                     resolved = _resolve_gate7_repair_colmap(dataset, "colmap")
 
-            self.assertEqual(Path(resolved), executable.resolve())
+            self.assertTrue(os.path.samefile(Path(resolved), executable.resolve()))
 
     def test_blank_colmap_input_uses_same_auto_discovery_contract(self):
         from p10_lab.gate7_runtime import _resolve_gate7_repair_colmap
@@ -71,7 +71,7 @@ class Gate7ColmapResolutionTests(unittest.TestCase):
                 with patch("p10_lab.reconstruction_runtime.shutil.which", return_value=None):
                     resolved = _resolve_gate7_repair_colmap(dataset, "")
 
-            self.assertEqual(Path(resolved), executable.resolve())
+            self.assertTrue(os.path.samefile(Path(resolved), executable.resolve()))
 
     def test_gate7_delaunay_resolves_before_native_runner(self):
         import inspect
