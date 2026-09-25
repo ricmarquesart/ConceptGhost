@@ -16,8 +16,8 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f11_atlas_depth_cache_fix/**'
-      - 'Experimental/P10_Lab/docs/50_R6F11_TRITON32_REDUCE_OR_FIX.md'
-      - '.github/workflows/p10-gate7-r6f11-triton32-reduce-or-fix.yml'
+      - 'Experimental/P10_Lab/docs/51_R6F11_ATLAS_DEPTH_CACHE_FIX.md'
+      - '.github/workflows/p10-gate7-r6f11-atlas-depth-cache-fix.yml'
   workflow_dispatch:
 
 permissions:
