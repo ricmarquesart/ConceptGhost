@@ -276,8 +276,42 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             self.assertIn(token,frontend+backend+preview_source)
         self.assertIn('"mesh_preview_is_display_only":True',backend)
         self.assertIn('"authority":"DISPLAY_ONLY_NEVER_GEOMETRY_AUTHORITY"',preview_source)
-        self.assertIn("max_mesh_faces=24000",backend)
-        self.assertIn("MESH_DRAW_BUDGET = 24000",frontend)
+        self.assertIn("max_mesh_faces=60000",backend)
+        self.assertIn("MESH_DRAW_BUDGET = 60000",frontend)
+
+    def test_route_editor_r6g_layout_and_local_controls(self):
+        import p10_lab
+
+        source=(Path(p10_lab.__file__).resolve().parent/"web"/"js"/"drone_route_editor.js").read_text(encoding="utf-8")
+        for token in (
+            'grid-template-columns:minmax(0,1fr) minmax(0,1fr)',
+            'workspaceRow.append(cameraPreviewWrap, canvasWrap)',
+            'cameraPreviewCanvas.width = 960',
+            'function viewActionControlRects(panel)',
+            'function hitViewActionControl(x, y)',
+            'function drawViewActionControls(panel)',
+            '"MOVE_LEFT","←"',
+            '"MOVE_UP","↑"',
+            '"MOVE_DOWN","↓"',
+            '"MOVE_RIGHT","→"',
+            '"YAW_MINUS","Y−"',
+            '"YAW_PLUS","Y+"',
+            '"PITCH_MINUS","P−"',
+            '"PITCH_PLUS","P+"',
+            '"DELETE","DEL"',
+            '"PIVOT_RESET",label:"Reset Pivot"',
+            '"PIVOT_SCENE",label:"Pivot Scene"',
+            '"PIVOT_SELECTED",label:"Pivot Cam"',
+            'function moveSelectedWaypoint(panel, action)',
+            'function adjustSelectedAim(action)',
+            'function deleteSelectedWaypoint()',
+        ):
+            self.assertIn(token,source)
+        toolbar=source.split("toolbar.append(",1)[1].split(");",1)[0]
+        self.assertNotIn("resetPivot",toolbar)
+        self.assertNotIn("pivotToSelected",toolbar)
+        self.assertNotIn("pivotToScene",toolbar)
+
 
     def test_frontend_javascript_parses_when_node_is_available(self):
         import p10_lab
