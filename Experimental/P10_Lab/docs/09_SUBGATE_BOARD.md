@@ -1053,11 +1053,18 @@ ConceptGhost Tests run `36178840378`: SUCCESS.
 R6F15 hotfix package build run `36178840498`: SUCCESS.
 
 Target-PC recovery is intentionally in-place: the Evaluation_Builds hotfix
-`ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX.zip` patches only the two
+`ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX_r2.zip` patches only the two
 installed P10 Lab source files and includes `03_RESUME_LAST_GATE7.bat` to
 resume the latest existing failed Gate 7 attempt without creating a new
 Production attempt or regenerating WAN/Gate 6.
 
-Gate 7 remains OPEN pending resumed target-PC PASS and visual acceptance.
-Gate 8 runtime promotion remains blocked.
+Target-PC resume result: **PASS** on existing attempt
+`20260925T182415_329568Z_a99e3910_7d5df9fe`.
+The recovery completed G7.3 Delaunay comparison, G7.4 protected fusion,
+G7.5 visual-review artifact generation, and automatic run-local audit without
+regenerating WAN/Gate 6 and without creating a new Production attempt.
+
+Gate 7 runtime acceptance is now **PASS**. Gate 7 remains OPEN only for
+artist visual acceptance of the G7.5 review/protected-fusion result.
+Gate 8 runtime promotion remains blocked until that visual acceptance is recorded.
 
