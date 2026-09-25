@@ -730,8 +730,8 @@ function setupEditor(node) {
     function zoomControlRects(panel) {
         const plot = panel?.plot_rect_px;
         if (!plot) return [];
-        const size = 24;
-        const gap = 4;
+        const size = 32;
+        const gap = 5;
         const y = plot.y + 8;
         const plus = {
             action: "in",
@@ -1289,7 +1289,7 @@ function setupEditor(node) {
                 cameraCtx.lineTo(tri.c.x,tri.c.y);
                 cameraCtx.closePath();
                 if(state.previewMode==="MESH_SURFACE"){
-                    cameraCtx.fillStyle="rgba("+tri.color[0]+","+tri.color[1]+","+tri.color[2]+",0.48)";
+                    cameraCtx.fillStyle="rgba("+tri.color[0]+","+tri.color[1]+","+tri.color[2]+",0.96)";
                     cameraCtx.fill();
                     cameraCtx.strokeStyle="rgba(20,20,20,0.18)";
                     cameraCtx.lineWidth=0.5;
@@ -1383,9 +1383,9 @@ function setupEditor(node) {
             ctx.lineTo(tri.c.x,tri.c.y);
             ctx.closePath();
             if (mode === "MESH_SURFACE") {
-                ctx.fillStyle = "rgba(" + tri.color[0] + "," + tri.color[1] + "," + tri.color[2] + ",0.42)";
+                ctx.fillStyle = "rgba(" + tri.color[0] + "," + tri.color[1] + "," + tri.color[2] + ",0.96)";
                 ctx.fill();
-                ctx.strokeStyle = "rgba(15,15,15,0.16)";
+                ctx.strokeStyle = "rgba(15,15,15,0.28)";
                 ctx.lineWidth = 0.5;
                 ctx.stroke();
             } else {
@@ -1434,7 +1434,7 @@ function setupEditor(node) {
             if (mode === "MESH_SURFACE") {
                 ctx.fillStyle = "rgba(" + tri.color[0] + "," + tri.color[1] + "," + tri.color[2] + ",0.42)";
                 ctx.fill();
-                ctx.strokeStyle = "rgba(15,15,15,0.14)";
+                ctx.strokeStyle = "rgba(15,15,15,0.28)";
                 ctx.lineWidth = 0.5;
                 ctx.stroke();
             } else {
