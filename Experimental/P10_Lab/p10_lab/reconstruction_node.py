@@ -169,7 +169,12 @@ class ConceptGhostP10ReconstructionRuntime:
             colmap_executable=colmap_executable or None,
             resume=bool(resume_existing),
         )
-        mesh_path=Path(diagnostics["pre_fusion_mesh_path"])
+        mesh_path=Path(
+            str(
+                diagnostics.get("gate6_raw_p10_geometry_path")
+                or diagnostics["pre_fusion_mesh_path"]
+            )
+        )
         overlay_value=str(diagnostics.get("metric_overlay_preview_png_path") or "").strip()
         overlay_path=Path(overlay_value) if overlay_value else None
         if overlay_path is not None and overlay_path.is_file():
