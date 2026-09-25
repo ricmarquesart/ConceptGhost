@@ -15,8 +15,8 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f3_flexgemm_triton32_compat_fix/**'
-      - 'Experimental/P10_Lab/docs/41_R6F3_MOGE3_TURING_RUNTIME_FIX.md'
-      - '.github/workflows/p10-gate7-r6f3-moge3-turing-runtime-fix.yml'
+      - 'Experimental/P10_Lab/docs/42_R6F3_FLEXGEMM_TRITON32_COMPAT_FIX.md'
+      - '.github/workflows/p10-gate7-r6f3-flexgemm-triton32-compat-fix.yml'
   workflow_dispatch:
 
 permissions:
@@ -45,7 +45,7 @@ jobs:
           $hash=(Get-FileHash $s -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($hash -ne 'cab56065d612e7e038bcb526307047d57134262471098e56d0225b74defee3dd') { throw "bad r15 digest $hash" }
 
-      - name: Build r6f candidate
+      - name: Build r6f3 candidate
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -57,7 +57,7 @@ jobs:
           python Experimental/P10_Lab/release_hotfixes/gate7_r6f3_flexgemm_triton32_compat_fix/build_gate7_r6f3_from_r15.py --source $s --output $zip --p10-source-root Experimental/P10_Lab/p10_lab --source-commit $env:GITHUB_SHA --package-commit $env:GITHUB_SHA --keep-extracted $root
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Validate extracted r6f
+      - name: Validate extracted r6f3
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
