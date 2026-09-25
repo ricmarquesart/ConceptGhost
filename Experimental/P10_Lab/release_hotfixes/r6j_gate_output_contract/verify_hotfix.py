@@ -40,7 +40,9 @@ def main() -> int:
         '"CONTROL_FRAMES"',
         '"GATE_STATUS.json"',
         '"next_gate_authorized"',
-        '"Legacy pre-R6I attempt detected"',
+        'legacy_raw_ply = dataset / "dense" / "pre_fusion_mesh.ply"',
+        'legacy_dense_ply = dataset / "dense" / "fused.ply"',
+        'generated_obj_counts = _write_obj_from_ply',
     ):
         if token not in contract:
             raise RuntimeError("Gate output contract token missing: "+token)
@@ -52,10 +54,10 @@ def main() -> int:
     if "publish_gate7_output_tree(" not in gate7:
         raise RuntimeError("Gate 7 output publication is not wired into runtime")
 
-    print("[PASS] R6J r2 Gate Output Contract source verified.")
+    print("[PASS] R6J r3 Gate Output Contract source verified.")
     print("[PASS] Gate 6 diagnostic Maya + raw new geometry are mandatory outputs.")
     print("[PASS] Gate 7 functional status is separate from runtime status.")
-    print("[PASS] Legacy Gate 6 PLY fallback can be represented as OBJ without rerunning geometry.")
+    print("[PASS] Legacy Gate 6 fallback is verified structurally (pre_fusion_mesh.ply + fused.ply + OBJ representation).")
     return 0
 
 
