@@ -1,5 +1,17 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F4 FlexGEMM int32-pack compatibility fix
+
+- R6F3 correctly applied the Turing-safe private runtime and reached the FlexGEMM smoke test, but Triton 3.2 rejected the intermediate `primitive_bitwidth` pointer/JIT dtype introspection with `NotImplementedType`.
+- **R6F4 source/package fix: COMPLETE / CI PASS.**
+- R6F4 uses FlexGEMM's existing host-side contract directly: keys/queries are already padded and viewed as `torch.int32`, and `D` is already the int32-word count. The private Triton kernels therefore use `D_32=D` and no longer introspect JIT dtype width.
+- High Fidelity geometry contract remains unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7; accepted P9 outputs remain immutable.
+- R6F4 build run `36079076954`: SUCCESS. General ConceptGhost Tests `36079076931`: SUCCESS. Source snapshot `36079076996`: SUCCESS.
+- R6F4 package SHA-256: `30a61d8033af7e682124f084b4fa62bc91b5435137a272a8bbb4bbbd65fbb2a9`.
+- Evaluation_Builds Drive file id: `1dfc4_AEf8xjBZJ382Ae0pSfGeZKhfes2`.
+- R6F4 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel and cannot be promoted until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F3 FlexGEMM/Triton 3.2 compatibility fix
 
 - R6F2 correctly repaired the private RTX 2080 Ti runtime to Torch 2.6.0 + cu124 + Triton Windows 3.2.x, then exposed a second compatibility failure inside MoGe-3's pinned FlexGEMM source: Triton 3.2 does not provide the newer `dtype.itemsize` API used by `flex_gemm/kernels/triton/hashmap.py`.
