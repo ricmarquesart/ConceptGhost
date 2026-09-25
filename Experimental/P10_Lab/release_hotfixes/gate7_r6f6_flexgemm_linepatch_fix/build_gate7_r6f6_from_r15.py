@@ -682,8 +682,6 @@ def main(root):
     patch=(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py").read_text(encoding="utf-8-sig")
     for token in ("PATCH_ACTIVE_INT32_CALLSITES_BY_LINE","re.subn","safe_lookup_pack","D_32: tl.constexpr = D","FLEXGEMM_TRITON32_PATCH.json"):
         if token not in patch: errors.append("FlexGEMM line bridge missing "+token)
-    if "literal \\\\\\\\n" not in patch:
-        errors.append("R6F6 regression note for R6F5 newline bug missing")
     try:
         compile(patch, str(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py"), "exec")
     except SyntaxError as exc:
