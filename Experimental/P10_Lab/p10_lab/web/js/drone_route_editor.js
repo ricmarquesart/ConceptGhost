@@ -730,8 +730,8 @@ function setupEditor(node) {
     function zoomControlRects(panel) {
         const plot = panel?.plot_rect_px;
         if (!plot) return [];
-        const size = 32;
-        const gap = 5;
+        const size = 38;
+        const gap = 6;
         const y = plot.y + 8;
         const plus = {
             action: "in",
@@ -822,8 +822,8 @@ function setupEditor(node) {
     function viewActionControlRects(panel) {
         const plot = panel?.plot_rect_px;
         if (!plot) return [];
-        const size = 32;
-        const gap = 5;
+        const size = 42;
+        const gap = 6;
         const x0 = plot.x + 8;
         const y0 = plot.y + 8;
         const specs = [
@@ -1262,9 +1262,19 @@ function setupEditor(node) {
             return;
         }
         const mission = selectedCamera.mission;
-        cameraPreviewTitle.textContent = "Selected Camera View · " + mission.name + " · P" + (selectedCamera.pointIndex + 1);
+        const aimAngles = yawPitchFromDirection(selectedCamera.look);
+        const liveMode = String(state.previewMode).startsWith("POINTS_") ? "POINTS_HIGH" : state.previewMode;
+        const activePointCount = state.metadata?.preview_geometry?.point_lods?.[liveMode]?.point_count || 0;
+        const meshMeta = state.metadata?.preview_geometry?.mesh_lod || {};
+        const detailLabel = String(liveMode).startsWith("MESH_")
+            ? `${Number(meshMeta.face_count || 0).toLocaleString()} display faces / ${Number(meshMeta.source_face_count || 0).toLocaleString()} source`
+            : `${Number(activePointCount).toLocaleString()} display points`;
+        cameraPreviewTitle.textContent =
+            "Selected Camera View · " + mission.name + " · P" + (selectedCamera.pointIndex + 1) +
+            " · yaw " + aimAngles.yaw.toFixed(1) + "° · pitch " + aimAngles.pitch.toFixed(1) + "°" +
+            " · " + detailLabel;
 
-        if (String(state.previewMode).startsWith("MESH_") && activeMeshLod()) {
+        if (String(liveMode).startsWith("MESH_") && activeMeshLod()) {
             const mesh = activeMeshLod();
             const vertices = mesh.vertices || [];
             const faces = mesh.faces || [];
@@ -1281,14 +1291,14 @@ function setupEditor(node) {
                 if(maxX<0||minX>width||maxY<0||minY>height) continue;
                 triangles.push({a,b,c,depth:(a.depth+b.depth+c.depth)/3,color:averageTriangleColor(vertices,face)});
             }
-            if(state.previewMode==="MESH_SURFACE") triangles.sort((left,right)=>right.depth-left.depth);
+            if(liveMode==="MESH_SURFACE") triangles.sort((left,right)=>right.depth-left.depth);
             for(const tri of triangles){
                 cameraCtx.beginPath();
                 cameraCtx.moveTo(tri.a.x,tri.a.y);
                 cameraCtx.lineTo(tri.b.x,tri.b.y);
                 cameraCtx.lineTo(tri.c.x,tri.c.y);
                 cameraCtx.closePath();
-                if(state.previewMode==="MESH_SURFACE"){
+                if(liveMode==="MESH_SURFACE"){
                     cameraCtx.fillStyle="rgba("+tri.color[0]+","+tri.color[1]+","+tri.color[2]+",0.96)";
                     cameraCtx.fill();
                     cameraCtx.strokeStyle="rgba(20,20,20,0.18)";
@@ -1301,7 +1311,8 @@ function setupEditor(node) {
                 }
             }
         } else {
-            const points=activePointLod().points || [];
+            const geometry=state.metadata?.preview_geometry;
+            const points=(geometry?.point_lods?.[liveMode]?.points || activePointLod().points || []);
             const stride=Math.max(1,Math.ceil(points.length/GEOMETRY_DRAW_BUDGET));
             const size=Math.max(0.5,Math.min(4.0,Number(state.pointSize)||1.25));
             for(let index=0;index<points.length;index+=stride){
@@ -1324,7 +1335,7 @@ function setupEditor(node) {
         cameraCtx.fillStyle="#aaa";
         cameraCtx.font="11px sans-serif";
         cameraCtx.textAlign="left";
-        cameraCtx.fillText(state.previewMode+" · live P9 preview",8,height-9);
+        cameraCtx.fillText(liveMode+" · live HQ P9 preview",8,height-9);
     }
 
     function activePointLod() {
