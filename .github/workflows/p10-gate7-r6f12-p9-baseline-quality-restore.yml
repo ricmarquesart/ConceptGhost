@@ -15,9 +15,9 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r2_audit/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
-      - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f12_atlas_depth_cache_fix/**'
-      - 'Experimental/P10_Lab/docs/51_R6F12_ATLAS_DEPTH_CACHE_FIX.md'
-      - '.github/workflows/p10-gate7-r6f12-atlas-depth-cache-fix.yml'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f12_p9_baseline_quality_restore/**'
+      - 'Experimental/P10_Lab/docs/52_R6F12_P9_BASELINE_QUALITY_RESTORE.md'
+      - '.github/workflows/p10-gate7-r6f12-p9-baseline-quality-restore.yml'
   workflow_dispatch:
 
 permissions:
@@ -53,9 +53,9 @@ jobs:
           $b = Join-Path $env:RUNNER_TEMP 'cg-r6f12'
           $s = Join-Path $b 'ConceptGhost_v1.54_P10_DR9R_MOGE_DIAGNOSTICS_TWO_STAGE_INSTALLER_r15.zip'
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          $zip = Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX.zip'
-          $root = Join-Path $b 'ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX'
-          python Experimental/P10_Lab/release_hotfixes/gate7_r6f12_atlas_depth_cache_fix/build_gate7_r6f12_from_r15.py --source $s --output $zip --p10-source-root Experimental/P10_Lab/p10_lab --source-commit $env:GITHUB_SHA --package-commit $env:GITHUB_SHA --keep-extracted $root
+          $zip = Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE.zip'
+          $root = Join-Path $b 'ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE'
+          python Experimental/P10_Lab/release_hotfixes/gate7_r6f12_p9_baseline_quality_restore/build_gate7_r6f12_from_r15.py --source $s --output $zip --p10-source-root Experimental/P10_Lab/p10_lab --source-commit $env:GITHUB_SHA --package-commit $env:GITHUB_SHA --keep-extracted $root
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Validate extracted r6f12
@@ -63,11 +63,11 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $b=Join-Path $env:RUNNER_TEMP 'cg-r6f12'
-          $root=Join-Path $b 'ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX'
+          $root=Join-Path $b 'ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE'
           foreach($p in @(
-            'Installer/install_gate7_r6f12_atlas_depth_cache_fix.ps1',
-            'Installer/verify_gate7_r6f12_atlas_depth_cache_fix.ps1',
-            'Installer/test_r6f12_atlas_depth_cache_fix.py'
+            'Installer/install_gate7_r6f12_p9_baseline_quality_restore.ps1',
+            'Installer/verify_gate7_r6f12_p9_baseline_quality_restore.ps1',
+            'Installer/test_r6f12_p9_baseline_quality_restore.py'
           )){
             if (-not (Test-Path (Join-Path $root $p) -PathType Leaf)) { throw "missing $p" }
           }
@@ -82,7 +82,7 @@ jobs:
               if($bytes[$i] -eq 10 -and ($i -eq 0 -or $bytes[$i-1] -ne 13)){throw "CRLF failed $bat"}
             }
           }
-          python (Join-Path $root 'Installer/test_r6f12_atlas_depth_cache_fix.py') $root
+          python (Join-Path $root 'Installer/test_r6f12_p9_baseline_quality_restore.py') $root
           if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
           node --check (Join-Path $root 'Payload/custom_nodes/ConceptGhost_P10_Lab/web/js/drone_route_editor.js')
           if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
@@ -90,20 +90,20 @@ jobs:
       - name: Write sidecars
         shell: pwsh
         run: |
-          $zip=Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX.zip'
+          $zip=Join-Path (Resolve-Path release).Path 'ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE.zip'
           $hash=(Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX.zip" | Set-Content -Encoding ascii release/ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX_SHA256.txt
-          $root=Join-Path (Join-Path $env:RUNNER_TEMP 'cg-r6f12') 'ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX'
-          Copy-Item (Join-Path $root 'P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX_VALIDATION.txt') release/P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX_VALIDATION.txt -Force
+          "$hash  ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE.zip" | Set-Content -Encoding ascii release/ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE_SHA256.txt
+          $root=Join-Path (Join-Path $env:RUNNER_TEMP 'cg-r6f12') 'ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE'
+          Copy-Item (Join-Path $root 'P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE_VALIDATION.txt') release/P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE_VALIDATION.txt -Force
           Write-Host "r6f12 SHA256: $hash"
           Write-Host "r6f12 bytes: $((Get-Item $zip).Length)"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ConceptGhost_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX_CANDIDATE
+          name: ConceptGhost_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE_CANDIDATE
           path: |
-            release/ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX.zip
-            release/ConceptGhost_v1.54_P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX_SHA256.txt
-            release/P10_GATE7_R6F12_ATLAS_DEPTH_CACHE_FIX_VALIDATION.txt
+            release/ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE.zip
+            release/ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE_SHA256.txt
+            release/P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE_VALIDATION.txt
           if-no-files-found: error
           retention-days: 30
