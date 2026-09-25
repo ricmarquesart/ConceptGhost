@@ -952,6 +952,7 @@ def main(root):
     v=(root/"Installer/verify_runtime.py").read_text(encoding="utf-8-sig")
     for t in ("snapshot_download","preprocessor_config.json","snapshot_path","offline_processor_load","offline_model_load"):
         if t not in p: errors.append("precache missing "+t)
+    for t in ("ATLAS_MODELS_READY.json","preprocessor_config.json","snapshot_path","offline_processor_load","offline_model_load"):
         if t not in v: errors.append("verify missing "+t)
     if "from_pretrained(model_id, local_files_only=True)" in v: errors.append("legacy repo-id offline verification remains")
     m=(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py").read_text(encoding="utf-8-sig")
