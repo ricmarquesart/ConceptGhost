@@ -1068,3 +1068,37 @@ Gate 7 runtime acceptance is now **PASS**. Gate 7 remains OPEN only for
 artist visual acceptance of the G7.5 review/protected-fusion result.
 Gate 8 runtime promotion remains blocked until that visual acceptance is recorded.
 
+### Gate 7 target-PC quality finding — zero P10 contribution
+
+R6F15 runtime recovery completed successfully, but artist-quality acceptance is
+**NOT accepted** for the target scene.
+
+The protected-fusion candidate contains:
+- P9 faces: 2,665,370
+- P10 input faces: 21,089
+- P10 accepted faces: **0**
+- P10 rejected faces: 21,089
+- P10 candidate vertices added: **0**
+
+Rejections:
+- P9_SOURCE_PROTECTED_OVERLAP: 16,090
+- FREE_SPACE_CONFLICT: 4,379
+- CONFIRMED_FREE_VETO: 620
+
+Gate 7.2 sampled 6,092 P10 vertices and classified 100% as P9_RETAINED;
+P10_MULTIVIEW_SUPPORTED = 0.
+
+Therefore:
+- Gate 7 runtime = PASS;
+- Gate 7 completion effectiveness = FAIL;
+- Gate 7 artist quality acceptance = NOT ACCEPTED;
+- Gate 8 runtime promotion remains BLOCKED.
+
+Mainline priority changes from immediate Gate 8 promotion to proving a
+measurable, spatially meaningful P10 novel-surface contribution first.
+R6H remains safe parallel observability work.
+
+Future run-side audit outputs must place RUN_TECHNICAL_SUMMARY.json,
+RUN_TECHNICAL_SUMMARY.txt and RUN_GATE7_VISUAL_REVIEW.png beside
+RUN_AUDIT_BUNDLE.zip when available.
+
