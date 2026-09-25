@@ -226,7 +226,7 @@ def render_selected_camera_preview(
         camera,
         source_image=boundary.source_image,
         max_points=100000,
-        max_mesh_faces=30000,
+        max_mesh_faces=60000,
     )
     image=Image.new("RGB",(width,height),(15,15,15))
     draw=ImageDraw.Draw(image,"RGBA")
@@ -332,7 +332,7 @@ class ConceptGhostP10SelectedDroneCameraPreview:
                     ["POINTS_HIGH","POINTS_MEDIUM","MESH_SURFACE","MESH_WIREFRAME"],
                     {"default":"POINTS_HIGH"},
                 ),
-                "preview_width":("INT",{"default":720,"min":320,"max":1600,"step":16}),
+                "preview_width":("INT",{"default":960,"min":320,"max":1600,"step":16}),
             }
         }
 
