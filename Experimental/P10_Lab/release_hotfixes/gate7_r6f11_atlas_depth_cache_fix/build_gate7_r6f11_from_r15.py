@@ -880,6 +880,92 @@ if __name__=="__main__":
     raise SystemExit(main(sys.argv[1]))
 ''')
 
+
+def patch_atlas_depth_cache(root):
+    root=Path(root)
+    precache=root/"Installer/precache_atlas_models.py"
+    verify=root/"Installer/verify_runtime.py"
+    wt(precache,r'''import argparse
+import json
+from pathlib import Path
+from huggingface_hub import snapshot_download
+
+MODEL_ID="depth-anything/Depth-Anything-V2-Metric-Outdoor-Large-hf"
+REQUIRED=("config.json","preprocessor_config.json","model.safetensors")
+
+def main():
+    ap=argparse.ArgumentParser(); ap.add_argument("--report",required=True); args=ap.parse_args()
+    report={"schema":"ConceptGhost.AtlasModelCache.v1.54-r6f11","status":"STARTED","components":{}}
+    from geocalib import GeoCalib
+    GeoCalib(weights="pinhole")
+    report["components"]["geocalib_pinhole"]="CACHED"
+    from transformers import AutoImageProcessor,AutoModelForDepthEstimation
+    snapshot=Path(snapshot_download(repo_id=MODEL_ID,allow_patterns=list(REQUIRED))).resolve()
+    missing=[x for x in REQUIRED if not (snapshot/x).is_file()]
+    if missing: raise RuntimeError("Depth Anything snapshot incomplete: "+", ".join(missing))
+    AutoImageProcessor.from_pretrained(str(snapshot),local_files_only=True)
+    AutoModelForDepthEstimation.from_pretrained(str(snapshot),local_files_only=True)
+    report["components"]["depth_anything_v2_metric_outdoor_large"]={
+        "status":"CACHED","repo_id":MODEL_ID,"snapshot_path":str(snapshot),
+        "required_files":list(REQUIRED),"offline_processor_load":"PASS","offline_model_load":"PASS"}
+    report["status"]="PASS"
+    Path(args.report).write_text(json.dumps(report,indent=2),encoding="utf-8")
+    print("CONCEPTGHOST_ATLAS_MODELS_READY")
+
+if __name__=="__main__": main()
+''')
+    text=rt(verify)
+    old='''from transformers import AutoImageProcessor, AutoModelForDepthEstimation
+model_id = "depth-anything/Depth-Anything-V2-Metric-Outdoor-Large-hf"
+AutoImageProcessor.from_pretrained(model_id, local_files_only=True)
+AutoModelForDepthEstimation.from_pretrained(model_id, local_files_only=True)
+report["checks"]["atlas_depth_model_cache"] = "PASS"
+'''
+    new='''from transformers import AutoImageProcessor, AutoModelForDepthEstimation
+model_id = "depth-anything/Depth-Anything-V2-Metric-Outdoor-Large-hf"
+cache_report = Path(args.report).resolve().parent / "ATLAS_MODELS_READY.json"
+if not cache_report.is_file():
+    raise RuntimeError("Atlas model cache report missing: " + str(cache_report))
+cache = json.loads(cache_report.read_text(encoding="utf-8"))
+depth_cache = (cache.get("components") or {}).get("depth_anything_v2_metric_outdoor_large")
+if not isinstance(depth_cache, dict) or depth_cache.get("status") != "CACHED":
+    raise RuntimeError("Atlas Depth Anything cache report incomplete")
+snapshot = Path(str(depth_cache.get("snapshot_path") or "")).resolve()
+required_depth_files=("config.json","preprocessor_config.json","model.safetensors")
+missing_depth_files=[x for x in required_depth_files if not (snapshot/x).is_file()]
+if missing_depth_files:
+    raise RuntimeError("Atlas Depth Anything snapshot incomplete at "+str(snapshot)+": "+", ".join(missing_depth_files))
+AutoImageProcessor.from_pretrained(str(snapshot), local_files_only=True)
+AutoModelForDepthEstimation.from_pretrained(str(snapshot), local_files_only=True)
+report["checks"]["atlas_depth_model_cache"]={
+    "status":"PASS","repo_id":model_id,"snapshot_path":str(snapshot),
+    "required_files":list(required_depth_files),"offline_processor_load":"PASS","offline_model_load":"PASS"}
+'''
+    if old not in text: raise RuntimeError("legacy Depth Anything verifier block missing")
+    wt(verify,text.replace(old,new))
+
+    wt(root/"Installer/test_r6f11_atlas_depth_cache_fix.py",r'''from pathlib import Path
+import json,sys
+def main(root):
+    root=Path(root); errors=[]
+    p=(root/"Installer/precache_atlas_models.py").read_text(encoding="utf-8-sig")
+    v=(root/"Installer/verify_runtime.py").read_text(encoding="utf-8-sig")
+    for t in ("snapshot_download","preprocessor_config.json","snapshot_path","offline_processor_load","offline_model_load"):
+        if t not in p: errors.append("precache missing "+t)
+        if t not in v: errors.append("verify missing "+t)
+    if "from_pretrained(model_id, local_files_only=True)" in v: errors.append("legacy repo-id offline verification remains")
+    m=(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py").read_text(encoding="utf-8-sig")
+    for t in ("patch_reduce_or_compat","_conceptghost_or_combine","sanitize_triton32_annotations"):
+        if t not in m: errors.append("R6F10 MoGe bridge regression "+t)
+    lock=json.loads((root/"Runtime/MoGeRuntime/SOURCE_LOCK.json").read_text(encoding="utf-8-sig"))
+    if lock.get("high_fidelity_refine_steps")!=7 or lock.get("high_fidelity_resolution_level")!=9:
+        errors.append("High Fidelity contract changed")
+    if errors:
+        print("\\n".join("[FAIL] "+x for x in errors)); return 1
+    print("CONCEPTGHOST_R6F11_ATLAS_DEPTH_CACHE_FIX_PASS"); return 0
+if __name__=="__main__": raise SystemExit(main(sys.argv[1]))
+''')
+
 def patch_contracts(root,source_commit,package_commit):
     root=Path(root)
     p=root/"Installer/verify_p10_dr9.py"
@@ -1154,6 +1240,7 @@ def main():
         patch_production_workflow(root)
         patch_contracts(root,args.source_commit,args.package_commit)
         patch_moge_turing_runtime(root)
+        patch_atlas_depth_cache(root)
 
         tests=(
             "test_dr9_bundle.py",
