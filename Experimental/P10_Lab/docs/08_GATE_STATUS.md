@@ -1,5 +1,17 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F3 FlexGEMM/Triton 3.2 compatibility fix
+
+- R6F2 correctly repaired the private RTX 2080 Ti runtime to Torch 2.6.0 + cu124 + Triton Windows 3.2.x, then exposed a second compatibility failure inside MoGe-3's pinned FlexGEMM source: Triton 3.2 does not provide the newer `dtype.itemsize` API used by `flex_gemm/kernels/triton/hashmap.py`.
+- **R6F3 source/package fix: COMPLETE / CI PASS.**
+- A ConceptGhost-private, idempotent FlexGEMM bridge converts only compile-time dtype byte-width introspection to `primitive_bitwidth // 8`; model weights, P9 authority, ViT-G, resolution 9 and refine 7 are unchanged.
+- The private Triton cache is now isolated under the ConceptGhost runtime and cleared before smoke verification.
+- R6F3 workflow run `36077852523`: SUCCESS. General tests `36077852457`: SUCCESS. Source snapshot `36077852317`: SUCCESS.
+- R6F3 package SHA-256: `94a1a49e4c5641acd0a1fa680ab751c15801968389ae2f6c9fc58b11f80ef36c`.
+- Evaluation_Builds Drive file id: `11OFZbk-cM1Z1mOnYI5NQzqMkjlY4ppCp`.
+- R6F3 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel and cannot be promoted until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-24 R6F2 MoGe-3 Turing runtime fix
 
 - The first R6F target-PC run failed before Gate 7 inside P9/Stage68 `ConceptGhostMoGe3Inference`: ViT-G loaded, then production `resolution_level=9 / refine_steps=7` remained in `INFERENCE_START` until the 1500-second hard timeout.
