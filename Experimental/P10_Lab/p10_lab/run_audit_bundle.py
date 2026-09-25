@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -154,6 +155,212 @@ def default_project_audit_root(
     Immutable P10 attempt data remains under the P10 attempt root.
     """
     return Path(p9_run_dir).expanduser().resolve()
+
+
+def _optional_json(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.is_file():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _first_named_json(root: Path, name: str) -> tuple[Path | None, dict[str, Any]]:
+    if not root.exists():
+        return None, {}
+    matches = sorted(root.rglob(name))
+    if not matches:
+        return None, {}
+    path = matches[-1].resolve()
+    return path, _optional_json(path)
+
+
+def _completion_effectiveness(fusion: dict[str, Any]) -> dict[str, Any]:
+    counts = fusion.get("counts") if isinstance(fusion.get("counts"), dict) else {}
+    input_faces = int(counts.get("p10_input_faces") or 0)
+    accepted_faces = int(counts.get("p10_accepted_faces") or 0)
+    rejected_faces = int(counts.get("p10_rejected_faces") or 0)
+    accepted_vertices = int(counts.get("p10_candidate_vertices") or 0)
+    ratio = (accepted_faces / input_faces) if input_faces > 0 else None
+    if input_faces <= 0:
+        status = "NOT_APPLICABLE"
+        summary = "No P10 pre-fusion faces were available for protected fusion."
+    elif accepted_faces == 0:
+        status = "FAIL"
+        summary = "P10 reconstructed geometry existed, but Gate 7 accepted zero P10 faces."
+    elif ratio is not None and ratio < 0.01:
+        status = "WARN"
+        summary = "P10 contribution is non-zero but below 1% of pre-fusion faces."
+    else:
+        status = "PASS"
+        summary = "Gate 7 accepted a non-trivial P10 geometric contribution."
+    reasons = fusion.get("reason_counts") if isinstance(fusion.get("reason_counts"), dict) else {}
+    reasons = {
+        str(key): int(value)
+        for key, value in reasons.items()
+        if isinstance(value, (int, float)) and int(value) > 0
+    }
+    return {
+        "status": status,
+        "summary": summary,
+        "p10_input_faces": input_faces,
+        "p10_accepted_faces": accepted_faces,
+        "p10_rejected_faces": rejected_faces,
+        "p10_candidate_vertices": accepted_vertices,
+        "accepted_face_fraction": ratio,
+        "rejection_reason_counts": dict(
+            sorted(reasons.items(), key=lambda item: (-item[1], item[0]))
+        ),
+    }
+
+
+def _write_run_technical_summary(
+    audit_root: Path,
+    *,
+    gate6_runtime: Path,
+    gate7_path: Path | None,
+    attempt_root: Path,
+    p9_run_dir: Path,
+    status: str,
+    p9_run_id: str | None,
+    p10_attempt_id: str | None,
+) -> dict[str, Any]:
+    gate6 = _optional_json(gate6_runtime)
+    gate7 = _optional_json(gate7_path)
+    quality_path, quality = _first_named_json(attempt_root, "gate6_geometry_quality.json")
+    provenance_path, provenance = _first_named_json(attempt_root, "gate7_provenance.json")
+    confidence_path, confidence = _first_named_json(attempt_root, "geometry_confidence_manifest.json")
+    fusion_path, fusion = _first_named_json(attempt_root, "protected_fusion_candidate_manifest.json")
+    review_path, review = _first_named_json(attempt_root, "gate7_visual_review_manifest.json")
+    delaunay_path, delaunay = _first_named_json(attempt_root, "free_space_meshing_comparison.json")
+
+    completion = _completion_effectiveness(fusion)
+    gate6_quality = (
+        quality.get("status")
+        or gate6.get("geometry_quality_status")
+        or gate6.get("quality_status")
+        or "UNKNOWN"
+    )
+    sparse = quality.get("sparse") if isinstance(quality.get("sparse"), dict) else {}
+    prefusion = quality.get("prefusion_mesh") if isinstance(quality.get("prefusion_mesh"), dict) else {}
+    p10_summary = provenance.get("p10_summary") if isinstance(provenance.get("p10_summary"), dict) else {}
+    visual_counts = review.get("render_counts") if isinstance(review.get("render_counts"), dict) else {}
+
+    summary = {
+        "schema": "ConceptGhost.RunTechnicalSummary.v0.1",
+        "status": status,
+        "p9_run_id": p9_run_id,
+        "p10_attempt_id": p10_attempt_id,
+        "p9_run_dir": str(p9_run_dir),
+        "p10_attempt_root": str(attempt_root),
+        "gate6_runtime_status": gate6.get("runtime_status") or gate6.get("status"),
+        "gate6_geometry_quality_status": gate6_quality,
+        "gate6_quality_alerts": quality.get("alerts") or quality.get("warnings") or [],
+        "sparse": {
+            "point_count": sparse.get("point_count"),
+            "verified_component_count": sparse.get("verified_component_count"),
+            "quality_status": sparse.get("quality_status"),
+        },
+        "prefusion_mesh": {
+            "vertex_count": prefusion.get("vertex_count"),
+            "face_count": prefusion.get("face_count"),
+            "mesh_health_status": prefusion.get("mesh_health_status"),
+            "sampled_connected_component_count": prefusion.get("sampled_connected_component_count"),
+        },
+        "p10_provenance_summary": p10_summary,
+        "p10_confidence_histogram": confidence.get("p10_histogram") or {},
+        "completion_effectiveness": completion,
+        "visual_review_counts": visual_counts,
+        "delaunay_comparison_status": delaunay.get("status") or delaunay.get("comparison_status"),
+        "gate7_runtime_status": gate7.get("status") if gate7 else None,
+        "artifact_paths": {
+            "gate6_geometry_quality": str(quality_path) if quality_path else None,
+            "gate7_provenance": str(provenance_path) if provenance_path else None,
+            "geometry_confidence": str(confidence_path) if confidence_path else None,
+            "protected_fusion_manifest": str(fusion_path) if fusion_path else None,
+            "visual_review_manifest": str(review_path) if review_path else None,
+            "visual_review_png": review.get("preview_png_path") if review else None,
+            "protected_fusion_candidate_ply": fusion.get("candidate_ply_path") if fusion else None,
+            "delaunay_comparison": str(delaunay_path) if delaunay_path else None,
+        },
+        "interpretation": {
+            "runtime_pass_is_not_quality_pass": True,
+            "gate8_should_not_promote_when_completion_effectiveness_fail": (
+                completion.get("status") == "FAIL"
+            ),
+        },
+    }
+
+    json_path = audit_root / "RUN_TECHNICAL_SUMMARY.json"
+    txt_path = audit_root / "RUN_TECHNICAL_SUMMARY.txt"
+    json_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    comp = completion
+    lines = [
+        "CONCEPTGHOST RUN TECHNICAL SUMMARY",
+        "=" * 78,
+        f"Pipeline/audit status: {status}",
+        f"P9 run: {p9_run_id or 'UNKNOWN'}",
+        f"P10 attempt: {p10_attempt_id or 'UNKNOWN'}",
+        f"Gate 6 geometry quality: {gate6_quality}",
+        f"Gate 7 runtime: {summary['gate7_runtime_status'] or 'NOT_AVAILABLE'}",
+        "",
+        "COMPLETION EFFECTIVENESS",
+        "-" * 78,
+        f"Status: {comp['status']}",
+        str(comp["summary"]),
+        f"P10 input faces: {comp['p10_input_faces']}",
+        f"P10 accepted faces: {comp['p10_accepted_faces']}",
+        f"P10 rejected faces: {comp['p10_rejected_faces']}",
+        f"P10 candidate vertices: {comp['p10_candidate_vertices']}",
+        (
+            "Accepted face fraction: "
+            + (f"{100.0 * comp['accepted_face_fraction']:.4f}%" if comp["accepted_face_fraction"] is not None else "N/A")
+        ),
+        "",
+        "TOP REJECTION REASONS",
+        "-" * 78,
+    ]
+    reasons = comp["rejection_reason_counts"]
+    if reasons:
+        lines.extend(f"{name}: {value}" for name, value in reasons.items())
+    else:
+        lines.append("None recorded.")
+    lines += [
+        "",
+        "GATE 6 / RECONSTRUCTION",
+        "-" * 78,
+        f"Sparse points: {summary['sparse']['point_count']}",
+        f"Sparse verified components: {summary['sparse']['verified_component_count']}",
+        f"Pre-fusion vertices: {summary['prefusion_mesh']['vertex_count']}",
+        f"Pre-fusion faces: {summary['prefusion_mesh']['face_count']}",
+        f"Pre-fusion mesh health: {summary['prefusion_mesh']['mesh_health_status']}",
+        "",
+        "IMPORTANT",
+        "-" * 78,
+        "A runtime PASS means the stages executed successfully.",
+        "It does NOT mean P10 improved the geometry.",
+        "If Completion Effectiveness is FAIL, Gate 8 must remain blocked.",
+        "",
+    ]
+    txt_path.write_text("\n".join(lines), encoding="utf-8")
+
+    review_png_raw = summary["artifact_paths"].get("visual_review_png")
+    sidecar_preview = None
+    if review_png_raw:
+        source_preview = Path(str(review_png_raw)).expanduser()
+        if source_preview.is_file():
+            sidecar_preview = audit_root / "RUN_GATE7_VISUAL_REVIEW.png"
+            if source_preview.resolve() != sidecar_preview.resolve():
+                shutil.copy2(source_preview, sidecar_preview)
+
+    summary["summary_json_path"] = str(json_path)
+    summary["summary_txt_path"] = str(txt_path)
+    summary["sidecar_visual_review_path"] = str(sidecar_preview) if sidecar_preview else None
+    json_path.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+    return summary
 
 
 def _write_latest_pointers(
@@ -334,6 +541,17 @@ def _build_core(
     if not any(arc == gate6_arc for arc, _ in final_included):
         raise ContractError("RUN_AUDIT_BUNDLE would omit reconstruction_runtime_manifest.json")
 
+    technical_summary = _write_run_technical_summary(
+        audit_root,
+        gate6_runtime=gate6_runtime,
+        gate7_path=gate7_path,
+        attempt_root=attempt_root,
+        p9_run_dir=p9_run_dir,
+        status=status,
+        p9_run_id=p9_run_id,
+        p10_attempt_id=p10_attempt_id,
+    )
+
     created = datetime.now(timezone.utc).isoformat()
     internal_index = {
         "schema": _SCHEMA,
@@ -369,6 +587,9 @@ def _build_core(
         },
         "included_file_count": len(rows),
         "included_bytes": total,
+        "technical_summary_path": technical_summary.get("summary_json_path"),
+        "technical_summary_txt_path": technical_summary.get("summary_txt_path"),
+        "completion_effectiveness": technical_summary.get("completion_effectiveness"),
         "files": rows,
         "omitted": omitted,
     }
@@ -388,6 +609,13 @@ def _build_core(
             json.dumps(internal_index, indent=2, sort_keys=True),
         )
         archive.writestr("README_RUN_AUDIT_BUNDLE.txt", readme)
+        archive.writestr(
+            "RUN_TECHNICAL_SUMMARY.json",
+            json.dumps(technical_summary, indent=2, sort_keys=True),
+        )
+        summary_txt = Path(str(technical_summary["summary_txt_path"]))
+        if summary_txt.is_file():
+            archive.write(summary_txt, arcname="RUN_TECHNICAL_SUMMARY.txt")
         for arc, path in final_included:
             archive.write(path, arcname=arc)
 
