@@ -87,7 +87,8 @@ def main() -> int:
     },indent=2,sort_keys=True),encoding="utf-8")
     print("[PASS] R6J r2 Gate Output Contract installed.")
     print("[PASS] Gate 4/5/6/7 outputs are published beside the P9 run.")
-    print("[PASS] Gate 6 requires a non-empty inspectable reconstruction + diagnostic Maya.")\n    print("[PASS] Pre-R6I completed Gate 6 workspaces can be backfilled without reconstruction reruns.")
+    print("[PASS] Gate 6 requires a non-empty inspectable reconstruction + diagnostic Maya.")
+    print("[PASS] Pre-R6I completed Gate 6 workspaces can be backfilled without reconstruction reruns.")
     print("[PASS] Gate 7 diagnostic Maya separates P9 / raw P10 / accepted / rejected P10.")
     print("[UNCHANGED] P9 authority, existing WAN images, MoGe runtime, shared pip packages.")
     return 0
