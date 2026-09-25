@@ -1,0 +1,79 @@
+# ConceptGhost Gate 7 R6F15 — COLMAP Auto-Discovery Fix
+
+Date: 2026-09-25
+
+## Target-PC failure
+
+The R6F14 target-PC run reached node 2400 (ConceptGhostP10Gate7Runtime) and
+failed in Gate 7.3 while launching the Delaunay visibility mesher. Windows
+raised FileNotFoundError / WinError 2 from subprocess creation.
+
+This is not a P9, MoGe, WAN, Gate 6 geometry, or COLMAP installation failure.
+The same attempt had already completed the expensive upstream stages.
+
+## Root cause
+
+The Gate 7 UI normalized an empty COLMAP field to the literal token "colmap".
+The Gate 7 dense-evidence repair path had a resolver that could reuse the exact
+COLMAP executable stored by Gate 6, but the Delaunay call bypassed that resolver
+and forwarded the bare token directly to prefusion_mesh.py.
+
+On the target Windows machine COLMAP is installed under ConceptGhost's private
+ThirdParty runtime and is not required to be globally available on PATH.
+prefusion_mesh.py therefore reached subprocess.run("colmap", ...) and Windows
+correctly returned WinError 2.
+
+## R6F15 correction
+
+- Gate 7 now imports and reuses reconstruction_runtime.resolve_colmap_executable.
+- The resolver first prefers the exact executable recorded in the Gate 6 dense
+  manifest.
+- Blank, "colmap", and "colmap.exe" are treated as AUTO and resolve through the
+  existing Gate 6 policy: environment override -> ConceptGhost private
+  ThirdParty COLMAP 4.2.0 -> PATH.
+- The Delaunay branch resolves the executable before native launch.
+- The preview node preserves a blank AUTO input instead of coercing it to the
+  bare "colmap" token.
+- P9 authority, geometry settings, WAN output, Gate 6 output and MoGe runtime
+  are unchanged.
+
+## Regression evidence
+
+New test:
+Experimental/P10_Lab/tests/test_gate7_colmap_resolution.py
+
+It verifies:
+- exact Gate 6 recorded executable reuse;
+- ConceptGhost private COLMAP auto-discovery for default "colmap";
+- blank UI auto-discovery;
+- Delaunay resolution before the native runner.
+
+Cross-platform ConceptGhost Tests:
+GitHub Actions run 36178840378 — SUCCESS.
+
+R6F15 hotfix package build:
+GitHub Actions run 36178840498 — SUCCESS.
+
+## Target-PC recovery package
+
+Google Drive Evaluation_Builds:
+ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX.zip
+
+Drive file ID:
+13TjHbiYvn4RTaNWVzeR3kk17aVPj-wfN
+
+Drive package SHA-256:
+ad51bff76696309d27bed6404d07a034fb52a560ead5b7c85a8e9525206241af
+
+The package deliberately does not reinstall ConceptGhost or COLMAP. It applies
+the bounded source patch and includes 03_RESUME_LAST_GATE7.bat, which finds the
+latest Gate 7 failure manifest and resumes the existing P10 attempt directly.
+This avoids creating a new Production attempt and avoids rerunning WAN/Gate 6.
+
+## Gate state
+
+Gate 7 target-PC acceptance remains OPEN until the resumed attempt passes the
+remaining Gate 7 stages and artist visual review.
+
+Gate 8 remains blocked from runtime promotion. Gate 8.1 source/CI work remains
+valid and unchanged.
