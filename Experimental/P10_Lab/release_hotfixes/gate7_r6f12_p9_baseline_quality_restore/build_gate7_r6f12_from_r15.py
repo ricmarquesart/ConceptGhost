@@ -1080,8 +1080,8 @@ import json,sys
 
 def _primary_mesh_function(source):
     start=source.index("def _build_primary_mesh_arrays_from_canonical(")
-    end=source.index("\\ndef _write_primary_mesh_payload(",start)
-    return source[start:end]
+    end=source.find("\\ndef ",start+1)
+    return source[start:] if end < 0 else source[start:end]
 
 def main(root):
     root=Path(root).resolve(); errors=[]
