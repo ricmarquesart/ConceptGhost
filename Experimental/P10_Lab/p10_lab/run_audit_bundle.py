@@ -236,6 +236,22 @@ def _write_run_technical_summary(
     review_path, review = _first_named_json(attempt_root, "gate7_visual_review_manifest.json")
     delaunay_path, delaunay = _first_named_json(attempt_root, "free_space_meshing_comparison.json")
 
+    gate_output_index_path = p9_run_dir / "GATE_OUTPUT_INDEX.json"
+    gate_output_index = _optional_json(gate_output_index_path)
+    gate_output_statuses = [
+        {
+            "gate": row.get("gate"),
+            "name": row.get("name"),
+            "status": row.get("status"),
+            "runtime_status": row.get("runtime_status"),
+            "functional_status": row.get("functional_status"),
+            "quality_status": row.get("quality_status"),
+            "gate_output_dir": row.get("gate_output_dir"),
+        }
+        for row in (gate_output_index.get("gates") or [])
+        if isinstance(row, dict)
+    ]
+
     completion = _completion_effectiveness(fusion)
     gate6_quality = (
         quality.get("status")
@@ -275,6 +291,9 @@ def _write_run_technical_summary(
         "visual_review_counts": visual_counts,
         "delaunay_comparison_status": delaunay.get("status") or delaunay.get("comparison_status"),
         "gate7_runtime_status": gate7.get("status") if gate7 else None,
+        "gate_output_index_path": str(gate_output_index_path) if gate_output_index_path.is_file() else None,
+        "gate_output_root": gate_output_index.get("gate_outputs_root"),
+        "gate_output_statuses": gate_output_statuses,
         "artifact_paths": {
             "gate6_geometry_quality": str(quality_path) if quality_path else None,
             "gate7_provenance": str(provenance_path) if provenance_path else None,
@@ -306,6 +325,19 @@ def _write_run_technical_summary(
         f"P10 attempt: {p10_attempt_id or 'UNKNOWN'}",
         f"Gate 6 geometry quality: {gate6_quality}",
         f"Gate 7 runtime: {summary['gate7_runtime_status'] or 'NOT_AVAILABLE'}",
+        f"Gate output index: {summary['gate_output_index_path'] or 'NOT_AVAILABLE'}",
+        "",
+        "GATE OUTPUT STATUS",
+        "-" * 78,
+        *(
+            [
+                f"Gate {int(row.get('gate') or 0):02d}: "
+                f"status={row.get('status')} functional={row.get('functional_status')} "
+                f"quality={row.get('quality_status')}"
+                for row in gate_output_statuses
+            ]
+            or ["No GATE_OUTPUT_INDEX.json published yet."]
+        ),
         "",
         "COMPLETION EFFECTIVENESS",
         "-" * 78,
