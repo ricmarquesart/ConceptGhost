@@ -82,11 +82,39 @@ def _archive_name(path: Path, attempt_root: Path, p9_run_dir: Path) -> str:
     return "referenced/" + path.name
 
 
+def _bulk_generated_frame_reason(path: Path, root: Path) -> str | None:
+    """Exclude regenerable frame sequences while retaining previews/manifests.
+
+    The audit ZIP is a diagnostic handoff, not a second copy of every generated
+    P10 frame.  Previous runs could spend almost the entire 250 MiB budget on
+    Gate 4/5/6 PNG sequences, leaving little headroom for later diagnostics.
+    """
+    try:
+        relative = path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return None
+    parts = tuple(part.lower() for part in relative.parts)
+    suffix = path.suffix.lower()
+    if suffix not in {".png", ".jpg", ".jpeg"}:
+        return None
+    if "dense" in parts and "images" in parts:
+        return "BULK_DENSE_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS"
+    if "dataset" in parts and "images" in parts:
+        return "BULK_DATASET_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS"
+    if "control_sequence" in parts and "frames" in parts:
+        return "BULK_CONTROL_FRAME_EXCLUDED_KEEP_GIF_CONTACT_SHEET"
+    return None
+
+
 def _walk_safe(root: Path, *, max_file_bytes: int):
     if not root.exists():
         return
     for path in sorted(root.rglob("*")):
         if not path.is_file():
+            continue
+        bulk_reason = _bulk_generated_frame_reason(path, root)
+        if bulk_reason is not None:
+            yield path, False, bulk_reason
             continue
         ok, reason = _safe_file(path, max_file_bytes=max_file_bytes)
         yield path, ok, reason
@@ -320,7 +348,10 @@ def _build_core(
             "P9_RUN_IS_DYNAMIC_FROM_MASTER_OUTPUT_ROOT_PLUS_SCENE_PLUS_RUN_ID; "
             "EXISTING_P9_AUTHORITY_FILES_REMAIN_UNMODIFIED"
         ),
-        "heavy_payload_policy": "EXCLUDE_PLY_NPZ_FBX_MA_USDA_AND_OTHER_HEAVY_GEOMETRY",
+        "heavy_payload_policy": (
+            "EXCLUDE_PLY_NPZ_FBX_MA_USDA_AND_OTHER_HEAVY_GEOMETRY; "
+            "EXCLUDE_REGENERABLE_BULK_FRAME_SEQUENCES; KEEP_LOGS_MANIFESTS_GIFS_CONTACT_SHEETS_AND_PREVIEWS"
+        ),
         "limits": {
             "max_file_bytes": int(max_file_bytes),
             "max_total_bytes": int(max_total_bytes),
