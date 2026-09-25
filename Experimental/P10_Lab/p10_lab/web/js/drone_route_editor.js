@@ -141,7 +141,11 @@ function setupEditor(node) {
     ].join(";");
 
     const toolbar = document.createElement("div");
-    toolbar.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;align-items:center;";
+    toolbar.style.cssText = "display:flex;flex-direction:column;gap:5px;";
+    const toolbarPrimary = document.createElement("div");
+    toolbarPrimary.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;align-items:center;";
+    const toolbarAim = document.createElement("div");
+    toolbarAim.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding-top:4px;border-top:1px solid #333;";
 
     const droneSelect = document.createElement("select");
     const modeSelect = document.createElement("select");
@@ -226,14 +230,17 @@ function setupEditor(node) {
     pointSizeValue.textContent = "1.25 px";
     pointSizeValue.style.cssText = "min-width:48px;color:#aaa;";
 
-    toolbar.append(
+    toolbarPrimary.append(
         "Display:", previewModeSelect, "Point size:", pointSizeInput, pointSizeValue,
         "Drone:", droneSelect, modeSelect,
-        "Aim:", orientationSelect, editTarget, pointAim, clearPointAim,
+        addDrone, removeDrone, undo, clearRoute, resetRoute, frameAll
+    );
+    toolbarAim.append(
+        "Aim preciso:", orientationSelect, editTarget, pointAim, clearPointAim,
         "Yaw:", yawInput, "Pitch:", pitchInput,
-        addDrone, removeDrone, deletePoint, undo, clearRoute, resetRoute, frameAll,
         exportRoute, importRoute, importInput
     );
+    toolbar.append(toolbarPrimary, toolbarAim);
 
     const help = document.createElement("div");
     help.textContent =
@@ -257,10 +264,10 @@ function setupEditor(node) {
     cameraPreviewCanvas.width = 960;
     cameraPreviewCanvas.height = 540;
     cameraPreviewCanvas.style.cssText =
-        "display:block;width:100%;height:auto;align-self:center;background:#0b0b0b;border:1px solid #2e2e2e;image-rendering:auto;";
+        "display:block;flex:1 1 auto;width:100%;height:100%;min-height:0;align-self:center;object-fit:contain;background:#0b0b0b;border:1px solid #2e2e2e;image-rendering:auto;";
     const cameraPreviewHint = document.createElement("div");
     cameraPreviewHint.textContent =
-        "Live preview rápido do P9. Para checagem de maior confiança, use P10 · Selected Drone Camera Preview.";
+        "Live HQ: Points usa sempre o LOD High; Mesh usa LOD coerente. Para render dedicado ainda mais denso, use P10 · Selected Drone Camera Preview.";
     cameraPreviewHint.style.cssText = "color:#888;font-size:10px;";
     cameraPreviewWrap.append(cameraPreviewTitle, cameraPreviewCanvas, cameraPreviewHint);
 
