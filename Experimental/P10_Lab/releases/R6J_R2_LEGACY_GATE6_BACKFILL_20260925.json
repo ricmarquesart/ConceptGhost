@@ -1,0 +1,53 @@
+{
+  "schema": "ConceptGhost.R6JLegacyGate6BackfillRelease.v0.1",
+  "release": "ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2",
+  "date_utc": "2026-09-25",
+  "source_branch": "work/v1.54-p10-multiview-completion",
+  "source_commit": "6c48f5b73da248fb5b1b9a152f15a81fa58c4470",
+  "purpose": "Fix false-negative Gate 6 functional status when backfilling completed pre-R6I attempts that contain valid legacy Gate 6 geometry under dataset/dense but do not yet contain the newer gate6_output sidecar.",
+  "target_pc_evidence": {
+    "p9_run_id": "20260925T170319_730339Z_8806dd74",
+    "p10_attempt_id": "20260925T194627_306289Z_a99e3910_7e0e5f78",
+    "gate6_runtime_status": "PASS",
+    "gate6_quality_status": "WARN",
+    "reconstructed_vertex_count": 10847,
+    "reconstructed_face_count": 19451,
+    "dense_point_count": 29198,
+    "sparse_point_count": 65,
+    "verified_sparse_component_count": 11,
+    "quality_alerts": [
+      "SPARSE_POINT_DENSITY_LOW",
+      "HIGH_SPARSE_COMPONENT_FRAGMENTATION"
+    ]
+  },
+  "correction": {
+    "prefer_native_r6i_sidecar": true,
+    "legacy_mesh_fallback": "gate6/dataset/dense/pre_fusion_mesh.ply",
+    "legacy_dense_cloud_fallback": "gate6/dataset/dense/fused.ply",
+    "generated_obj_is_representation_only": true,
+    "rerun_wan": false,
+    "rerun_colmap": false,
+    "rerun_moge": false,
+    "rerun_geometry": false,
+    "p9_authority_changed": false
+  },
+  "validation": {
+    "r6j_r2_workflow_run": 36198243836,
+    "conceptghost_tests_run": 36198243862,
+    "p10_dr9_source_snapshot_run": 36198243857,
+    "all_conclusion": "SUCCESS",
+    "github_actions_artifact_id": 10891265373
+  },
+  "delivery": {
+    "zip_name": "ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2.zip",
+    "sha256": "8b8a398eb59368e2bc0e94a1052d78554d7095c040251c8ed4365df8df1d2157",
+    "google_drive_file_id": "1546o5IN5Cb33SvoyVUPj40GiLeF7Eys9",
+    "google_drive_path": "ConceptGhost/Storage/Evaluation_Builds/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2.zip"
+  },
+  "acceptance_boundary": {
+    "gate3": "OPEN_FUNCTIONAL_DEBT_EXPLICIT_FREE_SPACE_AND_CONFLICT_MASKS_MISSING",
+    "gate6": "OPEN_TARGET_PC_BACKFILL_R2_AND_ARTIST_RAW_GEOMETRY_INSPECTION_REQUIRED",
+    "gate7": "DEFERRED_UNTIL_GATE6_ACCEPTANCE",
+    "gate8": "BLOCKED"
+  }
+}
