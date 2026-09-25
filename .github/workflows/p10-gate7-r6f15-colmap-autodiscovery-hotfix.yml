@@ -57,12 +57,6 @@ jobs:
             Copy-Item (Join-Path $src $file) (Join-Path $root $file) -Force
           }
 
-          foreach ($bat in Get-ChildItem $root -Filter '*.bat' -File) {
-            $text = [IO.File]::ReadAllText($bat.FullName).Replace([char]13 + [char]10, [char]10)
-            $text = $text.Replace([char]10, [char]13 + [char]10)
-            [IO.File]::WriteAllText($bat.FullName, $text, (New-Object Text.UTF8Encoding($false)))
-          }
-
           $manifest = [ordered]@{
             schema = 'ConceptGhost.R6F15ColmapAutodiscoveryHotfix.v0.1'
             release = $name
