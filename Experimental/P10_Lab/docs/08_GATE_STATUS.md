@@ -1,5 +1,20 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F7 FlexGEMM token-patch fix
+
+- R6F6 preserved the correct Turing-safe private runtime but the compatibility script still exited with code 4 before MoGe smoke inference. The line-based matcher was still too dependent on the installed FlexGEMM source shape.
+- **R6F7 source/package fix: COMPLETE / CI PASS.**
+- R6F7 removes source-line matching entirely. It patches only semantic FlexGEMM tokens and is therefore independent of LF/CRLF, indentation and surrounding formatting.
+- The package executes a deterministic patcher self-test against pristine and prior-patch forms with both LF and CRLF, and verifies idempotence before release.
+- If target patching still fails, `FLEXGEMM_TRITON32_PATCH.json` now includes a `source_probe` with exact target token counts.
+- Runtime matrix remains unchanged: Python 3.11.9, PyTorch 2.6.0, torchvision 0.21.0, cu124, Triton Windows 3.2.x.
+- High Fidelity geometry contract remains unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7; accepted P9 outputs remain immutable.
+- R6F7 build run `36085397042`: SUCCESS. General ConceptGhost Tests `36085397084`: SUCCESS. Source snapshot `36085397031`: SUCCESS.
+- R6F7 package SHA-256: `b0217a3700d4c4e9efe240f2d3a2cbb4aae4c34b6734eced0e14f76e7a3c6ab0`.
+- Evaluation_Builds Drive file id: `1B-sI2wLP8TUTUhZlRnmQCzFpxL0hvJTi`.
+- R6F7 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel. G8.1 is source/CI complete; Gate 8 promotion remains blocked until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F6 FlexGEMM line-patch fix
 
 - R6F5 preserved the correct Turing-safe private runtime but its own generated patcher failed before MoGe smoke inference. Root cause: the generated source matcher compared escaped literal `\\n` sequences against real newlines in FlexGEMM `hashmap.py`, so the expected active callsites were not found and the patcher failed closed with exit code 4.
