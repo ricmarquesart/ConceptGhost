@@ -11,7 +11,7 @@
 - R6F5 package SHA-256: `a110121efd5cac0325c3730fc984805629eebb51ba06a05b3be5854f9c2084a7`.
 - Evaluation_Builds Drive file id: `1w-c3aEfyMe74AnQBWEPU5fSBRlr77EiY`.
 - R6F5 target-PC acceptance remains PENDING.
-- Gate 8 remains source-only in parallel and cannot be promoted until Gate 7 runtime/artist acceptance.
+- Gate 8 remains source-only in parallel and cannot be promoted until Gate 7 runtime/artist acceptance. G8.1 defect analysis is now source/CI complete; G8.2 is next.
 
 ## Authoritative reconciliation — 2026-09-25 R6F4 FlexGEMM int32-pack compatibility fix
 
