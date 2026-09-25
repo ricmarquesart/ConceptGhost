@@ -813,15 +813,18 @@ def publish_gate7_output_tree(
             )
 
     ma_path = root / "OUTPUTS" / "Gate07_Fusion_Diagnostic.ma"
+    gate7_obj_imports = [
+        ("P10_RECONSTRUCTION", root / "OUTPUTS" / "P10_reconstructed_mesh.obj", (0.20, 0.45, 1.00)),
+    ]
+    if accepted_count > 0 and accepted_obj.is_file():
+        gate7_obj_imports.append(("P10_ACCEPTED", accepted_obj, (0.20, 0.90, 0.30)))
+    if rejected_count > 0 and rejected_obj.is_file():
+        gate7_obj_imports.append(("P10_REJECTED", rejected_obj, (0.95, 0.25, 0.20)))
     _write_diagnostic_maya(
         ma_path,
         gate=7,
         p9_maya_reference=p9_maya,
-        obj_imports=[
-            ("P10_RECONSTRUCTION", root / "OUTPUTS" / "P10_reconstructed_mesh.obj", (0.20, 0.45, 1.00)),
-            ("P10_ACCEPTED", accepted_obj, (0.20, 0.90, 0.30)),
-            ("P10_REJECTED", rejected_obj, (0.95, 0.25, 0.20)),
-        ],
+        obj_imports=gate7_obj_imports,
         camera_manifest_path=camera_manifest if camera_manifest.is_file() else None,
     )
 
