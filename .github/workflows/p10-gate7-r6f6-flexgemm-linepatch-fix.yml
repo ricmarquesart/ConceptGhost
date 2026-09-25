@@ -1,4 +1,5 @@
 name: Build Gate 7 R6F6 FlexGEMM LinePatch Fix
+# R6F6 self-trigger marker after package-test correction
 
 on:
   push:
