@@ -59,9 +59,15 @@ The failed run successfully proved run-local audit storage:
 The observed partial-failure bundle was ~258 MB and nearly consumed its 250 MiB
 admission budget because it duplicated regenerable PNG frame sequences.
 
-R6F14 excludes bulk control-sequence, dataset-image and dense-image frame
-sequences while preserving logs, JSON manifests, text diagnostics, GIFs,
-contact sheets and selected diagnostic previews.
+R6F14 excludes bulk control-sequence frames/masks, WAN raw frames, composite
+frames, dataset images and dense images while preserving logs, JSON manifests,
+text diagnostics, GIFs, contact sheets and selected diagnostic previews.
+
+The audit collector now explicitly includes the P9 `logs/` folder and prioritizes
+`p9_authority/` evidence ahead of optional P10 payload when the size budget is
+tight. Replaying the new policy against the captured failed-run audit reduced the
+ZIP from 257,810,720 bytes to 26,737,275 bytes while retaining the P9 manifest,
+P9 stage log, six GIF summaries and contact-sheet/diagnostic previews.
 
 ## R6G
 
