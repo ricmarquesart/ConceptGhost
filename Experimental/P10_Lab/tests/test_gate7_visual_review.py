@@ -165,7 +165,7 @@ class Gate7VisualReviewTests(unittest.TestCase):
             "p9_authority_changed":False,
             "destructive_cleanup_performed":False,
             "ready_for_gate7_5":True,
-            "counts":{"p9_faces":2,"p10_accepted_faces":1},
+            "counts":{"p9_faces":2,"p10_input_faces":2,"p10_accepted_faces":1},
             "inputs":{
                 "p10_prefusion_mesh_path":str(p10.resolve()),
                 "free_space_constraints_manifest_path":str(constraints.resolve()),
@@ -202,6 +202,8 @@ class Gate7VisualReviewTests(unittest.TestCase):
                 self.assertTrue(result["review_layers"][key])
             self.assertEqual(result["render_counts"]["p9_faces"], 2)
             self.assertEqual(result["render_counts"]["p10_accepted_faces"], 1)
+            self.assertEqual(result["completion_effectiveness"]["status"], "PASS")
+            self.assertAlmostEqual(result["completion_effectiveness"]["accepted_face_fraction"], 0.5)
             self.assertEqual(result["render_counts"]["p10_rejected_faces"], 1)
             self.assertEqual(result["render_counts"]["confirmed_free_voxels"], 1)
             self.assertEqual(result["render_counts"]["conflict_voxels"], 1)
@@ -217,6 +219,26 @@ class Gate7VisualReviewTests(unittest.TestCase):
             with Image.open(preview) as image:
                 self.assertGreater(image.width, 700)
                 self.assertGreater(image.height, 700)
+
+    @unittest.skipIf(np is None or Image is None, "NumPy/Pillow unavailable in minimal CI")
+    def test_zero_p10_contribution_is_explicit_quality_failure_and_blocker(self):
+        from p10_lab.gate7_visual_review import build_gate7_visual_review
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            fusion=self._fixture(root)
+            data=json.loads(fusion.read_text(encoding="utf-8"))
+            data["counts"]["p10_input_faces"]=2
+            data["counts"]["p10_accepted_faces"]=0
+            fusion.write_text(json.dumps(data),encoding="utf-8")
+
+            result=build_gate7_visual_review(fusion,root/"review",panel_size=360)
+            self.assertEqual(result["status"],"PASS")
+            self.assertEqual(result["completion_effectiveness"]["status"],"FAIL")
+            self.assertEqual(result["completion_effectiveness"]["p10_accepted_faces"],0)
+            self.assertIn("NO_P10_GEOMETRIC_CONTRIBUTION",result["promotion_blockers"])
+            self.assertFalse(result["ready_for_gate8"])
+
 
     @unittest.skipIf(np is None or Image is None, "NumPy/Pillow unavailable in minimal CI")
     def test_officialized_candidate_is_rejected(self):
