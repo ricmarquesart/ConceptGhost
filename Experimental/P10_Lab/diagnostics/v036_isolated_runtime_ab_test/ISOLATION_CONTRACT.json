@@ -1,0 +1,28 @@
+{
+  "schema": "ConceptGhost.V036IsolatedRuntimeABTest.v1",
+  "release": "ConceptGhost_v0.36_ISOLATED_RUNTIME_AB_TEST_r1",
+  "zip_sha256": "7e65718b99499bf1b5863baf976b02cb838339885d97dbf84dbd6d74b9014e08",
+  "moge_source_sha256": "b9a28e6a1aa86bd23399f995feb9d496a461405fe22b53b9878c21b48d46fe6d",
+  "source_release": "ConceptGhost v0.36",
+  "purpose": "Controlled A/B diagnostic: frozen v0.36 P9 code versus current Turing-compatible MoGe runtime stack.",
+  "normal_paths_preserved": {
+    "runtime": "%LOCALAPPDATA%\\ConceptGhost-MoGeRuntime-v1",
+    "custom_node": "ConceptGhost_Stage68"
+  },
+  "isolated_paths": {
+    "runtime": "%LOCALAPPDATA%\\ConceptGhost-MoGeRuntime-v036-ABTEST",
+    "custom_node": "ConceptGhost_Stage68_V036_Isolated",
+    "workflow_folder": "ConceptGhost_v036_AB_TEST",
+    "output_root": "%USERPROFILE%\\ConceptGhost_Output_v036_ABTEST"
+  },
+  "runtime_stack": {
+    "python": "3.11.9 embedded",
+    "torch": "2.6.0",
+    "torchvision": "0.21.0",
+    "cuda_wheel_index": "cu124",
+    "triton_windows": ">=3.2,<3.3",
+    "flexgemm_bridge": "R6F11 Triton 3.2 compatibility patch"
+  },
+  "production_worker": "frozen v0.36 moge_worker.py",
+  "target_pc_acceptance": "PENDING"
+}
