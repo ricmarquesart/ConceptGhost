@@ -16,6 +16,7 @@ from .gate7_registration import write_gate7_registration
 from .gate7_visual_review import build_gate7_visual_review
 from .geometry_confidence import build_geometry_confidence
 from .geometry_quality import write_gate6_geometry_quality
+from .gate_output_contract import publish_gate7_output_tree
 from .prefusion_mesh import run_delaunay_visibility_meshing, run_prefusion_meshing
 from .protected_fusion import build_protected_fusion_candidate
 from .reconstruction_runtime import resolve_colmap_executable
@@ -484,6 +485,18 @@ def run_gate7_pipeline(
             encoding="utf-8",
         )
         result["manifest_path"] = str(runtime_manifest_path)
+
+        current_stage = "G7_GATE_OUTPUT_CONTRACT"
+        gate_output_contract = publish_gate7_output_tree(
+            p9_run_dir,
+            attempt_root,
+            p10_attempt_id=str(registration.get("p10_attempt_id") or attempt_root.name),
+        )
+        result["gate_output_contract"] = gate_output_contract
+        runtime_manifest_path.write_text(
+            json.dumps(result, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
 
         current_stage = "AUTO_RUN_AUDIT_BUNDLE"
         try:
