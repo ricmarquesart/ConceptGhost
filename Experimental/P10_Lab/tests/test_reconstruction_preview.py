@@ -105,6 +105,19 @@ class Gate6WorkflowIntegrationTests(unittest.TestCase):
             for link in wf["links"]
         ))
 
+    def test_production_workflow_labels_gate4_gate5_gate6_groups_and_outputs(self):
+        from p10_lab.workflow_integration import integrate_p10_production_from_entry
+        wf=integrate_p10_production_from_entry(self._base())
+        titles=[str(group.get("title") or "") for group in wf.get("groups",[])]
+        self.assertTrue(any(title.startswith("GATE 4") for title in titles))
+        self.assertTrue(any(title.startswith("GATE 5") for title in titles))
+        self.assertTrue(any(title.startswith("GATE 6") for title in titles))
+        by_id={node["id"]:node for node in wf["nodes"]}
+        self.assertIn("GATE 4 OUTPUT",by_id[2100]["title"])
+        self.assertIn("GATE 5 OUTPUT",by_id[2207]["title"])
+        self.assertIn("GATE 6",by_id[2300]["title"])
+        self.assertIn("RAW P10 GEOMETRY",by_id[2301]["title"])
+
     def test_gate6_preview_is_connected_to_reconstruction_output(self):
         from p10_lab.workflow_integration import integrate_gate6_refined_preview
         wf=integrate_gate6_refined_preview(self._base())
