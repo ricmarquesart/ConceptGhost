@@ -300,7 +300,7 @@ def run_gate7_pipeline(
                     "status": "PASS",
                     "bundle_path": audit["bundle_path"],
                     "manifest_path": audit["manifest_path"],
-                    "storage": "CONCEPT_SCENE/P10_AUDITS/P9_RUN/P10_ATTEMPT",
+                    "storage": "P9_RUN_ROOT/RUN_AUDIT_BUNDLE.zip",
                 }
             except Exception as audit_error:
                 reused["auto_audit"] = {
@@ -472,7 +472,7 @@ def run_gate7_pipeline(
                 "status": "PASS",
                 "bundle_path": audit["bundle_path"],
                 "manifest_path": audit["manifest_path"],
-                "storage": "CONCEPT_SCENE/P10_AUDITS/P9_RUN/P10_ATTEMPT",
+                "storage": "P9_RUN_ROOT/RUN_AUDIT_BUNDLE.zip",
                 "terminal_node_will_rebuild_with_visual_pack": True,
             }
         except Exception as audit_error:
