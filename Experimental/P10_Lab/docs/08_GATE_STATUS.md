@@ -1,5 +1,20 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F8 Triton 3.2 pointer-annotation compatibility fix
+
+- R6F7 is the first package in the R6F2-R6F7 sequence that successfully applied the private FlexGEMM compatibility bridge and entered the real Low Resolution ViT-L CUDA/refiner smoke test.
+- The smoke test then failed in Triton 3.2 signature parsing with `KeyError: 'ier_type'` while compiling a FlexGEMM neighbor-map kernel whose runtime pointer parameters are explicitly annotated with `tl.pointer_type`.
+- **R6F8 source/package fix: COMPLETE / CI PASS.**
+- R6F8 preserves the R6F7 newline-agnostic hashmap token bridge and additionally removes explicit `: tl.pointer_type` and `: tl.pointer_type | None` annotations from every ConceptGhost-private FlexGEMM Triton kernel module while preserving `tl.constexpr`.
+- This targets the exact Triton 3.2 parser incompatibility represented by `KeyError('ier_type')`; runtime pointer types remain inferred from actual tensor arguments.
+- R6F8 build run `36085849762`: SUCCESS. General ConceptGhost Tests `36085849720`: SUCCESS. Source snapshot `36085849770`: SUCCESS.
+- R6F8 package SHA-256: `112d0f0f9c39b517127d7a9fd3d3c9ae02ddb905edad5d7303daf26e4afa58e8`.
+- Evaluation_Builds Drive file id: `1La8eFJOuPGg3ZUzqeVPmA43rhnWTd8sE`.
+- Runtime matrix remains unchanged: Python 3.11.9, PyTorch 2.6.0, torchvision 0.21.0, cu124, Triton Windows 3.2.x.
+- High Fidelity remains unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7; accepted P9 outputs remain immutable.
+- R6F8 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel. G8.1 is source/CI complete; Gate 8 promotion remains blocked until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F7 FlexGEMM token-patch fix
 
 - R6F6 preserved the correct Turing-safe private runtime but the compatibility script still exited with code 4 before MoGe smoke inference. The line-based matcher was still too dependent on the installed FlexGEMM source shape.
