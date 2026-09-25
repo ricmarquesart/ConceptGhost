@@ -6,7 +6,7 @@ const COLORS = ["#ffb040", "#4ebeff", "#86e276", "#de76ff", "#ff6868", "#ffdc5a"
 const MAX_ORTHO_ZOOM = 160.0;
 const MAX_PERSPECTIVE_ZOOM = 48.0;
 const GEOMETRY_DRAW_BUDGET = 100000;
-const MESH_DRAW_BUDGET = 24000;
+const MESH_DRAW_BUDGET = 60000;
 const PREVIEW_MODES = ["POINTS_LOW", "POINTS_MEDIUM", "POINTS_HIGH", "MESH_SURFACE", "MESH_WIREFRAME"];
 const ROUTE_PRESET_SCHEMA = "ConceptGhost.P10DroneRoutePreset.v0.2";
 const LEGACY_ROUTE_PRESET_SCHEMAS = new Set(["ConceptGhost.P10DroneRoutePreset.v0.1", ROUTE_PRESET_SCHEMA]);
@@ -182,7 +182,7 @@ function setupEditor(node) {
         element.textContent = label;
         element.title = title || label;
         element.style.cssText =
-            "background:#2d2d2d;color:#eee;border:1px solid #555;border-radius:4px;padding:4px 8px;cursor:pointer;";
+            "background:#2d2d2d;color:#eee;border:1px solid #666;border-radius:5px;padding:6px 10px;min-height:30px;font-weight:600;cursor:pointer;";
         return element;
     };
 
@@ -232,7 +232,6 @@ function setupEditor(node) {
         "Aim:", orientationSelect, editTarget, pointAim, clearPointAim,
         "Yaw:", yawInput, "Pitch:", pitchInput,
         addDrone, removeDrone, deletePoint, undo, clearRoute, resetRoute, frameAll,
-        resetPivot, pivotToSelected, pivotToScene,
         exportRoute, importRoute, importInput
     );
 
@@ -254,10 +253,10 @@ function setupEditor(node) {
     cameraPreviewTitle.textContent = "Selected Camera View · selecione P1/P2/P3…";
     cameraPreviewTitle.style.cssText = "color:#ddd;font-weight:600;";
     const cameraPreviewCanvas = document.createElement("canvas");
-    cameraPreviewCanvas.width = 640;
-    cameraPreviewCanvas.height = 360;
+    cameraPreviewCanvas.width = 960;
+    cameraPreviewCanvas.height = 540;
     cameraPreviewCanvas.style.cssText =
-        "display:block;width:min(100%,640px);height:auto;align-self:center;background:#0b0b0b;border:1px solid #2e2e2e;";
+        "display:block;width:100%;height:auto;align-self:center;background:#0b0b0b;border:1px solid #2e2e2e;image-rendering:auto;";
     const cameraPreviewHint = document.createElement("div");
     cameraPreviewHint.textContent =
         "Live preview rápido do P9. Para checagem de maior confiança, use P10 · Selected Drone Camera Preview.";
@@ -266,7 +265,14 @@ function setupEditor(node) {
 
     const canvasWrap = document.createElement("div");
     canvasWrap.style.cssText =
-        "position:relative;flex:1;min-height:0;overflow:auto;background:#111;border:1px solid #333;border-radius:4px;";
+        "position:relative;min-width:0;min-height:0;overflow:auto;background:#111;border:1px solid #333;border-radius:4px;";
+
+    const workspaceRow = document.createElement("div");
+    workspaceRow.style.cssText =
+        "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;flex:1;min-height:760px;overflow:hidden;";
+    cameraPreviewWrap.style.minWidth = "0";
+    cameraPreviewWrap.style.height = "100%";
+    canvasWrap.style.height = "100%";
 
     const canvas = document.createElement("canvas");
     canvas.style.cssText = "display:block;width:100%;height:auto;cursor:crosshair;user-select:none;touch-action:none;";
@@ -278,7 +284,8 @@ function setupEditor(node) {
     const selected = document.createElement("span");
     footer.append(status, selected);
 
-    root.append(toolbar, help, cameraPreviewWrap, canvasWrap, footer);
+    workspaceRow.append(cameraPreviewWrap, canvasWrap);
+    root.append(toolbar, help, workspaceRow, footer);
 
     node.addDOMWidget("cg_drone_route_editor", "route_editor", root, {
         serialize: false,
@@ -287,7 +294,7 @@ function setupEditor(node) {
         getHeight: () => 1320,
     });
 
-    node.setSize?.([Math.max(node.size?.[0] || 900, 1180), Math.max(node.size?.[1] || 900, 1490)]);
+    node.setSize?.([Math.max(node.size?.[0] || 900, 1880), Math.max(node.size?.[1] || 900, 1490)]);
 
     const ctx = canvas.getContext("2d");
     const cameraCtx = cameraPreviewCanvas.getContext("2d");
@@ -1615,8 +1622,8 @@ function setupEditor(node) {
         state.collisionStale = false;
         const cameraMeta = meta.camera_preview_contract;
         if (cameraMeta?.width && cameraMeta?.height) {
-            cameraPreviewCanvas.width = 640;
-            cameraPreviewCanvas.height = Math.max(180, Math.round(640 * Number(cameraMeta.height) / Number(cameraMeta.width)));
+            cameraPreviewCanvas.width = 960;
+            cameraPreviewCanvas.height = Math.max(270, Math.round(960 * Number(cameraMeta.height) / Number(cameraMeta.width)));
         }
 
         const size = canvasDimensionsFromProjection();
