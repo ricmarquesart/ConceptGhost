@@ -56,6 +56,7 @@ def main() -> int:
     if not (node_root / "__init__.py").is_file():
         raise RuntimeError("ConceptGhost_P10_Lab not found: " + str(node_root))
 
+    sys.path.insert(0, str(comfy_root))
     sys.path.insert(0, str(custom_nodes))
     from ConceptGhost_P10_Lab.gate7_runtime import run_gate7_pipeline
 
