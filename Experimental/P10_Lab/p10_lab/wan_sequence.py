@@ -9,6 +9,7 @@ import shutil
 
 from .contracts import ContractError
 from .drone_route_plan import parse_bound_route_plan
+from .gate_output_contract import publish_gate5_output
 from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
 from .wan_policy import WanRuntimeProfile
 
@@ -1074,6 +1075,20 @@ class ConceptGhostP10WanSequentialSampler:
             encoding="utf-8",
         )
 
+        gate_output_contract = None
+        source_p9_run_dir = str(control_payload.get("source_p9_run_dir") or "").strip()
+        if source_p9_run_dir and attempt_root_value:
+            gate_output_contract = publish_gate5_output(
+                source_p9_run_dir,
+                attempt_root_value,
+                p10_attempt_id=str(control_payload.get("p10_attempt_id") or Path(attempt_root_value).name),
+            )
+            if gate_output_contract.get("functional_status") != "PASS":
+                raise ContractError(
+                    "Gate 5 output contract is incomplete; Gate 6 is blocked. "
+                    f"Missing: {gate_output_contract.get('missing_required_outputs')}"
+                )
+
         if preview_frames:
             preview_batch = torch.cat(preview_frames, dim=0)
         else:
@@ -1116,6 +1131,7 @@ class ConceptGhostP10WanSequentialSampler:
             "drone_previews": drone_preview_index["previews"],
             "known_pixels_replaced_by_wan": False,
             "sequential_only": True,
+            "gate_output_contract": gate_output_contract,
         }
         gif_ui=[
             {
