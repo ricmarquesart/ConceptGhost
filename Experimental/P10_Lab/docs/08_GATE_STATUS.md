@@ -1,5 +1,18 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F11 Atlas Depth cache fix
+
+- R6F10 crossed the complete private MoGe-3 compatibility smoke chain on the target RTX 2080 Ti: Low Resolution ViT-L CUDA/refiner smoke PASS and High Fidelity ViT-G/Turing compatibility gate PASS. This closes the installer-level Triton/FlexGEMM compatibility blockers, but does not yet guarantee the full production resolution_level=9/refine_steps=7 workload.
+- The next failure moved outside MoGe into the legacy/base Atlas runtime verification: `AutoImageProcessor.from_pretrained(repo_id, local_files_only=True)` could not reconstruct the cached Depth-Anything V2 processor even though the preceding online precache reported PASS.
+- **R6F11 source/package fix: COMPLETE / CI PASS.**
+- R6F11 explicitly materializes one coherent Hugging Face snapshot containing `config.json`, `preprocessor_config.json` and `model.safetensors`; both precache and offline verification load from the resolved snapshot directory recorded in `ATLAS_MODELS_READY.json`.
+- No shared ComfyUI packages, model weights, P9 authority, or High Fidelity settings are changed.
+- R6F11 build run `36087513020`: SUCCESS. General ConceptGhost Tests `36087512912`: SUCCESS. Source snapshot `36087513024`: SUCCESS.
+- R6F11 package SHA-256: `105ba6d728b2e720a94ae7462959fd03b859d95ce4a869130ecb736ee4f1e02f`.
+- Evaluation_Builds Drive file id: `1pVaFmP15vWaWxvYfXXvz-eCGsh4D-t9k`.
+- R6F11 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel. G8.1 is source/CI complete; Gate 8 promotion remains blocked until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F10 Triton 3.2 reduce_or compatibility fix
 
 - R6F9 successfully passed the private annotation sanitizer and advanced farther through the real ViT-L CUDA/refiner smoke test.
