@@ -240,7 +240,8 @@ function setupEditor(node) {
         "PASSO 1/2 neste workflow: após o primeiro Run, edite os drones; depois clique Run novamente para COMMITAR a rota. " +
         "PERSPECTIVE: arraste para orbitar no sentido convencional de viewport, Shift+arraste para pan; roda ou botões −/+ = zoom profundo. " +
         "O gimbal X/Right · Y/Up · Z/Forward move o pivot; há atalhos para Scene e Selected Camera. " +
-        "TOP/SIDE/FRONT: roda ou botões −/+ = zoom profundo; Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
+        "TODAS AS VISTAS: controles locais maiores dão zoom, nudge ←↑↓→, yaw Y−/Y+, pitch P−/P+ e DEL no waypoint selecionado. " +
+        "TOP/SIDE/FRONT: Shift+arraste ou botão do meio = pan mantendo o eixo travado. " +
         "Adicionar/mover pontos preserva exatamente zoom e pan. Exportar/Importar trajeto reutiliza os drones em novos testes. " +
         "LOOK_AT_TARGET usa Editar alvo. Display alterna Points/visual Mesh LOD sem mudar a autoridade P9; Point size é apenas visual. " +
         "Resetar rota não apaga a cena; Enquadrar tudo só restaura a câmera das vistas.";
@@ -815,6 +816,185 @@ function setupEditor(node) {
             ctx.fillText(rect.action === "in" ? "+" : "−", rect.x + rect.width * 0.5, rect.y + rect.height * 0.5 + 0.5);
         }
         ctx.restore();
+    }
+
+
+    function viewActionControlRects(panel) {
+        const plot = panel?.plot_rect_px;
+        if (!plot) return [];
+        const size = 32;
+        const gap = 5;
+        const x0 = plot.x + 8;
+        const y0 = plot.y + 8;
+        const specs = [
+            ["MOVE_LEFT","←",x0,y0,size],
+            ["MOVE_UP","↑",x0+(size+gap),y0,size],
+            ["MOVE_DOWN","↓",x0+2*(size+gap),y0,size],
+            ["MOVE_RIGHT","→",x0+3*(size+gap),y0,size],
+            ["YAW_MINUS","Y−",x0,y0+size+gap,42],
+            ["YAW_PLUS","Y+",x0+47,y0+size+gap,42],
+            ["PITCH_MINUS","P−",x0+94,y0+size+gap,42],
+            ["PITCH_PLUS","P+",x0+141,y0+size+gap,42],
+            ["DELETE","DEL",x0+188,y0+size+gap,50],
+        ];
+        const rects = specs.map(([action,label,x,y,width]) => ({
+            action,label,x,y,width,height:size,panel,
+        }));
+        if (panel === perspectivePanel()) {
+            const py = y0 + 2*(size+gap);
+            rects.push(
+                {action:"PIVOT_RESET",label:"Reset Pivot",x:x0,y:py,width:88,height:size,panel},
+                {action:"PIVOT_SCENE",label:"Pivot Scene",x:x0+93,y:py,width:88,height:size,panel},
+                {action:"PIVOT_SELECTED",label:"Pivot Cam",x:x0+186,y:py,width:82,height:size,panel},
+            );
+        }
+        return rects;
+    }
+
+    function hitViewActionControl(x, y) {
+        const candidates = [
+            ...(perspectivePanel() ? [perspectivePanel()] : []),
+            ...(state.projection?.panels || []),
+        ];
+        for (const panel of candidates) {
+            for (const rect of viewActionControlRects(panel)) {
+                if (insideRect(rect,x,y)) return rect;
+            }
+        }
+        return null;
+    }
+
+    function viewActionNeedsSelectedPoint(action) {
+        return new Set([
+            "MOVE_LEFT","MOVE_RIGHT","MOVE_UP","MOVE_DOWN",
+            "YAW_MINUS","YAW_PLUS","PITCH_MINUS","PITCH_PLUS",
+            "DELETE","PIVOT_SELECTED",
+        ]).has(action);
+    }
+
+    function drawViewActionControls(panel) {
+        const selectedAvailable = state.selectedPoint != null && Boolean(selectedPointObject());
+        ctx.save();
+        for (const rect of viewActionControlRects(panel)) {
+            const disabled = viewActionNeedsSelectedPoint(rect.action) && !selectedAvailable;
+            const destructive = rect.action === "DELETE";
+            const pivot = rect.action.startsWith("PIVOT_");
+            ctx.fillStyle = disabled
+                ? "rgba(38,38,38,0.58)"
+                : destructive
+                    ? "rgba(112,38,46,0.94)"
+                    : pivot
+                        ? "rgba(48,61,78,0.94)"
+                        : "rgba(42,42,42,0.96)";
+            ctx.strokeStyle = disabled ? "#555" : destructive ? "#df6875" : pivot ? "#7ca6d8" : "#8a8a8a";
+            ctx.lineWidth = 1.2;
+            ctx.fillRect(rect.x,rect.y,rect.width,rect.height);
+            ctx.strokeRect(rect.x,rect.y,rect.width,rect.height);
+            ctx.fillStyle = disabled ? "#777" : "#f2f2f2";
+            ctx.font = pivot ? "bold 11px sans-serif" : "bold 15px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(rect.label,rect.x+rect.width*0.5,rect.y+rect.height*0.5+0.5);
+        }
+        ctx.restore();
+    }
+
+    function selectedWaypointNudgeStep() {
+        const radius = Math.max(Number(state.metadata?.preview_geometry?.radius) || 1, 1e-3);
+        return Math.max(0.02,Math.min(0.50,radius*0.0025));
+    }
+
+    function moveSelectedWaypoint(panel, action) {
+        const point = selectedPointObject();
+        if (!point) return false;
+        const step = selectedWaypointNudgeStep();
+        let vector = {right:0,up:0,forward:0};
+        if (panel === perspectivePanel()) {
+            const cy=Math.cos(state.orbitYaw), sy=Math.sin(state.orbitYaw);
+            const cp=Math.cos(state.orbitPitch), sp=Math.sin(state.orbitPitch);
+            const screenRight={right:cy,up:0,forward:-sy};
+            const screenUp={right:-sp*sy,up:cp,forward:-sp*cy};
+            const chosen=(action==="MOVE_LEFT"||action==="MOVE_RIGHT") ? screenRight : screenUp;
+            const sign=(action==="MOVE_LEFT"||action==="MOVE_DOWN") ? -1 : 1;
+            vector={
+                right:chosen.right*step*sign,
+                up:chosen.up*step*sign,
+                forward:chosen.forward*step*sign,
+            };
+        } else {
+            const sign=(action==="MOVE_LEFT"||action==="MOVE_DOWN") ? -1 : 1;
+            const axis=(action==="MOVE_LEFT"||action==="MOVE_RIGHT") ? panel.x_axis : panel.y_axis;
+            vector[axis]=step*sign;
+        }
+        pushHistory();
+        point.right=Number(point.right)+vector.right;
+        point.up=Number(point.up)+vector.up;
+        point.forward=Number(point.forward)+vector.forward;
+        persist();
+        return true;
+    }
+
+    function adjustSelectedAim(action) {
+        const mission=activeMission();
+        const point=selectedPointObject();
+        if (!mission || !point || state.selectedPoint == null) return false;
+        const look=lookVectorForMission(mission,state.selectedPoint);
+        const current=yawPitchFromDirection(look);
+        let yaw=current.yaw;
+        let pitch=current.pitch;
+        if (action==="YAW_MINUS") yaw-=5;
+        if (action==="YAW_PLUS") yaw+=5;
+        if (action==="PITCH_MINUS") pitch-=5;
+        if (action==="PITCH_PLUS") pitch+=5;
+        pitch=Math.max(-89,Math.min(89,pitch));
+        const yawRad=yaw*Math.PI/180;
+        const pitchRad=pitch*Math.PI/180;
+        const cp=Math.cos(pitchRad);
+        pushHistory();
+        point.look_direction=normalizeVector({
+            right:Math.sin(yawRad)*cp,
+            up:Math.sin(pitchRad),
+            forward:Math.cos(yawRad)*cp,
+        });
+        state.editingTarget=false;
+        persist();
+        return true;
+    }
+
+    function deleteSelectedWaypoint() {
+        const mission=activeMission();
+        if (!mission || state.selectedPoint == null) return false;
+        pushHistory();
+        mission.waypoints.splice(state.selectedPoint,1);
+        state.selectedPoint=mission.waypoints.length
+            ? Math.min(state.selectedPoint,mission.waypoints.length-1)
+            : null;
+        persist();
+        return true;
+    }
+
+    function applyViewAction(control) {
+        if (!control) return false;
+        const action=control.action;
+        if (viewActionNeedsSelectedPoint(action) && state.selectedPoint == null) return false;
+        if (action.startsWith("MOVE_")) return moveSelectedWaypoint(control.panel,action);
+        if (action.startsWith("YAW_") || action.startsWith("PITCH_")) return adjustSelectedAim(action);
+        if (action==="DELETE") return deleteSelectedWaypoint();
+        if (action==="PIVOT_RESET") {
+            state.orbitPivot=state.orbitPivotInitial ? {...state.orbitPivotInitial} : scenePivot();
+            state.orbitPanX=0; state.orbitPanY=0; draw(); return true;
+        }
+        if (action==="PIVOT_SCENE") {
+            state.orbitPivot=scenePivot();
+            state.orbitPanX=0; state.orbitPanY=0; draw(); return true;
+        }
+        if (action==="PIVOT_SELECTED") {
+            const point=selectedPointObject();
+            if (!point) return false;
+            state.orbitPivot={right:Number(point.right),up:Number(point.up),forward:Number(point.forward)};
+            state.orbitPanX=0; state.orbitPanY=0; draw(); return true;
+        }
+        return false;
     }
 
     function projectPerspective(point) {
@@ -1509,9 +1689,6 @@ function setupEditor(node) {
             drawOrthographicScene(panel);
         }
 
-        if (perspective) drawZoomControls(perspective);
-        for (const panel of state.projection.panels || []) drawZoomControls(panel);
-
         for (let missionIndex = 0; missionIndex < state.plan.missions.length; missionIndex++) {
             const mission = state.plan.missions[missionIndex];
             if (mission.enabled === false) continue;
@@ -1591,6 +1768,14 @@ function setupEditor(node) {
                 }
                 ctx.restore();
             }
+        }
+        if (perspective) {
+            drawZoomControls(perspective);
+            drawViewActionControls(perspective);
+        }
+        for (const panel of state.projection.panels || []) {
+            drawZoomControls(panel);
+            drawViewActionControls(panel);
         }
         drawSelectedCameraView();
     }
@@ -1849,6 +2034,14 @@ function setupEditor(node) {
             event.stopPropagation();
             const factor = zoomControl.action === "in" ? 1.35 : (1 / 1.35);
             applyPanelZoom(zoomControl.panel, factor);
+            return;
+        }
+
+        const viewControl = hitViewActionControl(xy.x,xy.y);
+        if (viewControl) {
+            event.preventDefault();
+            event.stopPropagation();
+            applyViewAction(viewControl);
             return;
         }
 
@@ -2213,14 +2406,7 @@ function setupEditor(node) {
     });
 
     deletePoint.addEventListener("click", () => {
-        const mission = activeMission();
-        if (!mission || state.selectedPoint == null) return;
-        pushHistory();
-        mission.waypoints.splice(state.selectedPoint, 1);
-        state.selectedPoint = mission.waypoints.length
-            ? Math.min(state.selectedPoint, mission.waypoints.length - 1)
-            : null;
-        persist();
+        deleteSelectedWaypoint();
     });
 
     clearRoute.addEventListener("click", () => {
