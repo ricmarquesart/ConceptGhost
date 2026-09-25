@@ -944,7 +944,7 @@ report["checks"]["atlas_depth_model_cache"]={
     if old not in text: raise RuntimeError("legacy Depth Anything verifier block missing")
     wt(verify,text.replace(old,new))
 
-    wt(root/"Installer/test_r6f12_p9_baseline_quality_restore.py",r'''from pathlib import Path
+    wt(root/"Installer/test_r6f12_atlas_depth_cache_inherited.py",r'''from pathlib import Path
 import json,subprocess,sys
 def main(root):
     root=Path(root); errors=[]
@@ -1420,6 +1420,7 @@ def main():
             "test_gate7_r3_route_ux_colmap_fix.py",
             "test_gate7_r5_geometric_evidence_audit_fix.py",
             "test_gate7_r6f_route_editor_final.py",
+            "test_r6f12_atlas_depth_cache_inherited.py",
             "test_r6f12_p9_baseline_quality_restore.py",
         )
         for name in tests:
