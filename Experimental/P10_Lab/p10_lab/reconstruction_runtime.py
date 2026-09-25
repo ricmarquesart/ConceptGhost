@@ -15,6 +15,12 @@ from .p9_roundtrip_audit import run_p9_roundtrip_audit
 from .reconstruction_overlay import build_metric_reconstruction_overlay
 from .geometry_quality import write_gate6_geometry_quality
 from .gate6_geometry_output import publish_gate6_geometry_output
+from .gate_output_contract import (
+    publish_gate1_to_gate3_snapshots,
+    publish_gate4_output,
+    publish_gate5_output,
+    publish_gate6_output_tree,
+)
 
 
 def standard_colmap_candidates(*, localappdata: str | None = None) -> tuple[Path, ...]:
@@ -451,6 +457,43 @@ def run_reconstruction_pipeline(
         geometry_quality=geometry_quality,
         metric_overlay=metric_overlay if isinstance(metric_overlay,dict) else None,
     )
+    gate_output_contract=None
+    if source_p9_run_dir:
+        attempt_root_value=str(wan.get("p10_attempt_root") or "").strip()
+        attempt_id_value=str(wan.get("p10_attempt_id") or "").strip()
+        if attempt_root_value and attempt_id_value:
+            # Backfill Gates 1-5 as well. This is important for resumed attempts
+            # created before the per-gate output contract existed.
+            publish_gate1_to_gate3_snapshots(
+                source_p9_run_dir,
+                attempt_root_value,
+                p10_attempt_id=attempt_id_value,
+            )
+            gate4_contract=publish_gate4_output(
+                source_p9_run_dir,
+                attempt_root_value,
+                p10_attempt_id=attempt_id_value,
+            )
+            gate5_contract=publish_gate5_output(
+                source_p9_run_dir,
+                attempt_root_value,
+                p10_attempt_id=attempt_id_value,
+            )
+            gate_output_contract=publish_gate6_output_tree(
+                source_p9_run_dir,
+                attempt_root_value,
+                p10_attempt_id=attempt_id_value,
+            )
+            if gate4_contract.get("functional_status")!="PASS":
+                raise ContractError("Gate 6 closeout found Gate 4 required outputs incomplete")
+            if gate5_contract.get("functional_status")!="PASS":
+                raise ContractError("Gate 6 closeout found Gate 5 required outputs incomplete")
+            if gate_output_contract.get("functional_status")!="PASS":
+                raise ContractError(
+                    "Gate 6 cannot close without its required 3D deliverables: "
+                    f"{gate_output_contract.get('missing_required_outputs')}"
+                )
+
     stages["geometry_output"]={
         "state":"PUBLISHED",
         "status":gate6_geometry_output.get("status"),
@@ -486,6 +529,7 @@ def run_reconstruction_pipeline(
         "gate6_geometry_output_manifest_path":gate6_geometry_output.get("manifest_path"),
         "gate6_geometry_output_sidecar_root":gate6_geometry_output.get("p9_run_sidecar_root"),
         "gate6_geometry_generated":gate6_geometry_output.get("geometry_generated") is True,
+        "gate_output_contract":gate_output_contract,
         "mesh_preview_svg_path":str((dataset_root/"dense"/"pre_fusion_mesh_preview.svg").resolve()),
         "stages":stages,
         "mesh_health":final_mesh_manifest.get("mesh_health"),
