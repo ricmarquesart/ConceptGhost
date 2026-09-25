@@ -145,6 +145,15 @@ class RunAuditBundleTests(unittest.TestCase):
             control_frames=attempt/"gate4"/"control_sequence"/"frames"
             control_frames.mkdir(parents=True)
             (control_frames/"frame_0000.png").write_bytes(b"bulk")
+            control_masks=attempt/"gate4"/"control_sequence"/"masks"
+            control_masks.mkdir(parents=True)
+            (control_masks/"frame_0000.png").write_bytes(b"bulk")
+            wan_raw=attempt/"gate5"/"wan_raw"/"00_drone_1"
+            wan_raw.mkdir(parents=True)
+            (wan_raw/"frame_0000.png").write_bytes(b"bulk")
+            composite=attempt/"gate5"/"composite"/"00_drone_1"
+            composite.mkdir(parents=True)
+            (composite/"frame_0000.png").write_bytes(b"bulk")
 
             useful=attempt/"gate6"/"diagnostics"
             useful.mkdir(parents=True)
@@ -160,12 +169,16 @@ class RunAuditBundleTests(unittest.TestCase):
             self.assertNotIn("p10_attempt/gate6/dataset/dense/images/frame_000000.png",names)
             self.assertNotIn("p10_attempt/gate6/dataset/images/frame_000000.png",names)
             self.assertNotIn("p10_attempt/gate4/control_sequence/frames/frame_0000.png",names)
+            self.assertNotIn("p10_attempt/gate4/control_sequence/masks/frame_0000.png",names)
+            self.assertNotIn("p10_attempt/gate5/wan_raw/00_drone_1/frame_0000.png",names)
+            self.assertNotIn("p10_attempt/gate5/composite/00_drone_1/frame_0000.png",names)
             self.assertIn("p10_attempt/gate6/diagnostics/metric_overlay.png",names)
             self.assertIn("p10_attempt/gate4/raw_holes_contact_sheet.png",names)
             reasons={row["reason"] for row in result["omitted"]}
             self.assertIn("BULK_DENSE_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS",reasons)
             self.assertIn("BULK_DATASET_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS",reasons)
-            self.assertIn("BULK_CONTROL_FRAME_EXCLUDED_KEEP_GIF_CONTACT_SHEET",reasons)
+            self.assertIn("BULK_CONTROL_FRAME_OR_MASK_EXCLUDED_KEEP_GIF_CONTACT_SHEET",reasons)
+            self.assertIn("BULK_WAN_OR_COMPOSITE_FRAME_EXCLUDED_KEEP_DRONE_GIFS_AND_CONTACT_SHEETS",reasons)
 
     def test_p9_authority_is_prioritized_before_optional_p10_when_budget_is_tight(self):
         from p10_lab.run_audit_bundle import build_partial_run_audit_bundle
