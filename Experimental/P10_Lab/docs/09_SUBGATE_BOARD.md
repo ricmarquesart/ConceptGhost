@@ -1033,3 +1033,31 @@ No intermediate user runtime test. Save each subgate checkpoint to GitHub and Go
 - **R6H — Gate 6 Live Progress & Streaming Logs:** NEXT PLANNED after R6G. Observability-only; no camera, geometry, WAN, COLMAP-quality or Gate-7 authority changes.
 - **Gate 8.1 — Defect Analysis:** SOURCE/CI COMPLETE in parallel, but runtime promotion remains blocked behind Gate 7 acceptance.
 - **Gate 8.2+:** not promoted until the Gate 7 runtime boundary and queued R6 refinements are reconciled.
+
+### Gate 7 R6F15 target-PC correction — COLMAP auto-discovery
+
+R6F14 target-PC runtime reached Gate 7.3 and failed only when the Delaunay
+visibility branch tried to launch the bare executable token `colmap`. Gate 6
+had already used the ConceptGhost private COLMAP runtime successfully, so this
+was an executable-resolution handoff defect rather than a missing COLMAP
+installation or geometry failure.
+
+R6F15 fixes the handoff by reusing the Gate 6 COLMAP resolver for every Gate 7
+native call, preferring the exact executable recorded in the dense manifest and
+treating blank/`colmap` as AUTO. The Delaunay call now resolves before
+`subprocess.run`; the preview node no longer forces an empty field to the
+bare token.
+
+Regression: `tests/test_gate7_colmap_resolution.py`.
+ConceptGhost Tests run `36178840378`: SUCCESS.
+R6F15 hotfix package build run `36178840498`: SUCCESS.
+
+Target-PC recovery is intentionally in-place: the Evaluation_Builds hotfix
+`ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX.zip` patches only the two
+installed P10 Lab source files and includes `03_RESUME_LAST_GATE7.bat` to
+resume the latest existing failed Gate 7 attempt without creating a new
+Production attempt or regenerating WAN/Gate 6.
+
+Gate 7 remains OPEN pending resumed target-PC PASS and visual acceptance.
+Gate 8 runtime promotion remains blocked.
+
