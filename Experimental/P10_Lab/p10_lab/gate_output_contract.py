@@ -453,6 +453,25 @@ def _read_ply_mesh(path: Path) -> tuple[list[tuple[float, float, float]], list[t
     return vertices, faces
 
 
+def _write_obj_from_ply(source_ply: Path, target_obj: Path) -> tuple[int, int]:
+    """Materialize an inspectable OBJ from an existing triangular PLY.
+
+    This is a representation-only backfill. It never reconstructs, filters, moves,
+    or otherwise changes P10 geometry; it exists so pre-R6I Gate 6 attempts can
+    satisfy the artist-facing R6J contract without rerunning COLMAP or WAN.
+    """
+    vertices, faces = _read_ply_mesh(source_ply)
+    target_obj.parent.mkdir(parents=True, exist_ok=True)
+    with target_obj.open("w", encoding="utf-8", newline="\n") as stream:
+        stream.write("# ConceptGhost Gate 6 legacy representation backfill\n")
+        stream.write(f"# source_ply {source_ply.resolve()}\n")
+        for x, y, z in vertices:
+            stream.write(f"v {x:.9g} {y:.9g} {z:.9g}\n")
+        for face in faces:
+            stream.write("f " + " ".join(str(int(index) + 1) for index in face) + "\n")
+    return len(vertices), len(faces)
+
+
 def _write_selected_obj(
     source_ply: Path,
     face_indices: Iterable[int],
@@ -646,23 +665,38 @@ def publish_gate6_output_tree(
     dataset = source / "dataset"
     diagnostics = source / "diagnostics"
 
-    raw_ply = explicit / "GATE6_RAW_P10_GEOMETRY.ply"
-    raw_obj = explicit / "GATE6_RAW_P10_GEOMETRY.obj"
-    dense_ply = explicit / "GATE6_DENSE_POINTS.ply"
+    explicit_raw_ply = explicit / "GATE6_RAW_P10_GEOMETRY.ply"
+    explicit_raw_obj = explicit / "GATE6_RAW_P10_GEOMETRY.obj"
+    explicit_dense_ply = explicit / "GATE6_DENSE_POINTS.ply"
+    legacy_raw_ply = dataset / "dense" / "pre_fusion_mesh.ply"
+    legacy_dense_ply = dataset / "dense" / "fused.ply"
+    raw_ply = explicit_raw_ply if explicit_raw_ply.is_file() else legacy_raw_ply
+    raw_obj = explicit_raw_obj if explicit_raw_obj.is_file() else None
+    dense_ply = explicit_dense_ply if explicit_dense_ply.is_file() else legacy_dense_ply
+    legacy_geometry_backfill = bool(
+        not explicit_raw_ply.is_file()
+        and legacy_raw_ply.is_file()
+    )
     runtime_manifest = source / "reconstruction_runtime_manifest.json"
     quality = diagnostics / "gate6_geometry_quality.json"
     camera_manifest = attempt_root / "gate4" / "control_sequence" / "camera_manifest.json"
 
     for src, name in (
         (raw_ply, "reconstructed_mesh.ply"),
-        (raw_obj, "reconstructed_mesh.obj"),
         (dense_ply, "dense_points.ply"),
         (runtime_manifest, "reconstruction_manifest.json"),
         (quality, "geometry_quality.json"),
         (camera_manifest, "reconstruction_camera_set.json"),
     ):
-        if src.is_file():
+        if src is not None and src.is_file():
             _copy_file(src, root / "OUTPUTS" / name)
+
+    reconstructed_obj = root / "OUTPUTS" / "reconstructed_mesh.obj"
+    generated_obj_counts = None
+    if raw_obj is not None and raw_obj.is_file():
+        _copy_file(raw_obj, reconstructed_obj)
+    elif raw_ply.is_file():
+        generated_obj_counts = _write_obj_from_ply(raw_ply, reconstructed_obj)
 
     sparse_ply = root / "OUTPUTS" / "sparse_points.ply"
     sparse_count = _write_sparse_ply(
@@ -693,8 +727,22 @@ def publish_gate6_output_tree(
     runtime = _read_json(runtime_manifest)
     quality_payload = _read_json(quality)
     explicit_manifest = _read_json(explicit / "GATE6_OUTPUT_MANIFEST.json")
-    vertex_count = int(explicit_manifest.get("vertex_count") or 0)
-    face_count = int(explicit_manifest.get("face_count") or 0)
+    mesh_quality = quality_payload.get("prefusion_mesh") if isinstance(quality_payload.get("prefusion_mesh"), dict) else {}
+    runtime_mesh_health = runtime.get("mesh_health") if isinstance(runtime.get("mesh_health"), dict) else {}
+    vertex_count = int(
+        explicit_manifest.get("vertex_count")
+        or mesh_quality.get("vertex_count")
+        or runtime_mesh_health.get("vertex_count")
+        or (generated_obj_counts[0] if generated_obj_counts else 0)
+        or 0
+    )
+    face_count = int(
+        explicit_manifest.get("face_count")
+        or mesh_quality.get("face_count")
+        or runtime_mesh_health.get("face_count")
+        or (generated_obj_counts[1] if generated_obj_counts else 0)
+        or 0
+    )
     required = {
         "sparse_points.ply": sparse_ply.is_file() and sparse_count > 0,
         "dense_points.ply": (root / "OUTPUTS" / "dense_points.ply").is_file(),
@@ -726,6 +774,11 @@ def publish_gate6_output_tree(
             "Gate 6 PASS is based on the existence of a non-empty new P10 reconstruction, not on visual quality.",
             "Quality may be WARN and Gate 6 can still be functionally complete.",
             "The diagnostic Maya scene imports the raw P10 mesh and materializes sampled reconstruction cameras.",
+            (
+                "Legacy pre-R6I attempt detected: R6J reused dataset/dense/pre_fusion_mesh.ply and fused.ply and generated only an OBJ representation; no WAN/COLMAP/MoGe/geometry was regenerated."
+                if legacy_geometry_backfill
+                else "Native R6I Gate 6 explicit geometry outputs were used."
+            ),
         ],
     )
     _write_gate_index(p9, attempt_id)
