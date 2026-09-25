@@ -1,5 +1,20 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F10 Triton 3.2 reduce_or compatibility fix
+
+- R6F9 successfully passed the private annotation sanitizer and advanced farther through the real ViT-L CUDA/refiner smoke test.
+- The next runtime failure occurred in `flex_gemm/kernels/triton/neighbor_cache/post_process.py` at `tl.reduce_or(gray_code, axis=0)`: Triton Windows 3.2 does not expose `triton.language.reduce_or`.
+- **R6F10 source/package fix: COMPLETE / CI PASS.**
+- R6F10 preserves the intended bitwise-OR reduction exactly by adding a private `@triton.jit` OR combine helper and replacing `tl.reduce_or` with Triton 3.2's supported generic `tl.reduce(..., combine_fn=...)`.
+- The R6F10 self-test validates helper insertion, reduce_or replacement, LF/CRLF compatibility, annotation sanitization, and idempotence.
+- R6F10 build run `36086689836`: SUCCESS. General ConceptGhost Tests `36086689765`: SUCCESS. Source snapshot `36086689794`: SUCCESS.
+- R6F10 package SHA-256: `fa89c61b14693c91f5df31fac537a9e26d38eb8f7149b0e6cc98f16b7e2e7563`.
+- Evaluation_Builds Drive file id: `1UfW4PDMmTaqDW7N3s_CO_FFQ9vV2xNUK`.
+- Runtime matrix remains unchanged: Python 3.11.9, PyTorch 2.6.0, torchvision 0.21.0, cu124, Triton Windows 3.2.x.
+- High Fidelity remains unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7; accepted P9 outputs remain immutable.
+- R6F10 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel. G8.1 is source/CI complete; Gate 8 promotion remains blocked until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F9 Triton 3.2 annotation sanitizer
 
 - R6F8 successfully applied the private FlexGEMM bridge and advanced into the real ViT-L CUDA/refiner smoke test, but Triton 3.2 then failed while parsing the inline helper annotation `coord_stride_vec: tl.tensor | None` with a JIT `_builder` error.
