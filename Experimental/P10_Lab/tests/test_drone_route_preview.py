@@ -140,5 +140,47 @@ class DroneRoutePreviewTests(unittest.TestCase):
             self.assertEqual(geometry["points"],geometry["point_lods"]["POINTS_MEDIUM"]["points"])
 
 
+    def test_preview_lods_use_image_space_coverage_when_grid_is_available(self):
+        try:
+            import numpy as np
+        except ImportError as error:
+            self.skipTest(str(error))
+
+        from p10_lab.drone_route_preview import build_route_preview_geometry
+        from p10_lab.panorama import CameraAuthority
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"grid_mesh.npz"
+            width,height=40,30
+            grid=np.asarray([(x,y) for y in range(height) for x in range(width)],dtype=np.int32)
+            vertices=np.column_stack((
+                grid[:,0].astype(np.float32)*0.01,
+                grid[:,1].astype(np.float32)*0.01,
+                -2.0-np.zeros(grid.shape[0],dtype=np.float32),
+            ))
+            faces=[]
+            for y in range(height-1):
+                for x in range(width-1):
+                    a=y*width+x; b=a+1; c=a+width; d=c+1
+                    faces.extend(((a,b,d),(a,d,c)))
+            np.savez(path,vertices=vertices,faces=np.asarray(faces,dtype=np.int32),grid_xy=grid)
+            camera=CameraAuthority(
+                scene_contract_id="preview_grid",
+                schema="ConceptGhost.CameraBundle.test",
+                width=width,height=height,fx=30.0,fy=30.0,cx=width/2,cy=height/2,
+                lens_model="pinhole",
+                world_matrix=(
+                    (1.0,0.0,0.0,0.0),(0.0,1.0,0.0,0.0),
+                    (0.0,0.0,1.0,0.0),(0.0,0.0,0.0,1.0),
+                ),
+            )
+            geometry=build_route_preview_geometry(path,camera,max_points=700,max_mesh_faces=180)
+            self.assertEqual(geometry["point_lods"]["POINTS_HIGH"]["sampling_policy"],"IMAGE_SPACE_STRATIFIED")
+            self.assertEqual(geometry["mesh_lod"]["lod_policy"],"IMAGE_GRID_CLUSTERED_CONNECTED_LOD")
+            self.assertEqual(geometry["mesh_lod"]["face_sampling_stride"],0)
+            self.assertLessEqual(geometry["mesh_lod"]["face_count"],180)
+            self.assertGreater(geometry["mesh_lod"]["face_count"],0)
+
+
 if __name__=="__main__":
     unittest.main()
