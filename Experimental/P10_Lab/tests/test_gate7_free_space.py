@@ -46,7 +46,8 @@ def _write_consistency(path: Path, width: int, height: int, records):
     path.parent.mkdir(parents=True, exist_ok=True)
     values = []
     for row, col, sources in records:
-        values.extend([row, col, len(sources), *sources])
+        # COLMAP consistency_graph.cc serializes col first, then row.
+        values.extend([col, row, len(sources), *sources])
     with path.open("wb") as stream:
         stream.write(f"{width}&{height}&1&".encode("ascii"))
         if values:
@@ -83,6 +84,30 @@ class ColmapDenseIOTests(unittest.TestCase):
             )
             self.assertEqual(header, (3, 2, 1))
             self.assertEqual(records, {(0, 1): (0, 2)})
+
+    @unittest.skipIf(np is None, "NumPy unavailable in minimal CI")
+    def test_consistency_graph_uses_col_row_wire_order_on_non_square_image(self):
+        from p10_lab.colmap_dense_io import read_colmap_consistency_graph
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            graph=root/"nonsquare.geometric.bin"
+            # A valid COLMAP record with col=700 would be falsely rejected as a
+            # row on a 832x480 frame if the wire order were decoded backwards.
+            _write_consistency(
+                graph,
+                832,
+                480,
+                [(123,700,[0,2]),(479,831,[1])],
+            )
+            header,records=read_colmap_consistency_graph(
+                graph,
+                selected_pixels=[(123,700),(479,831)],
+                max_source_index=2,
+            )
+            self.assertEqual(header,(832,480,1))
+            self.assertEqual(records[(123,700)],(0,2))
+            self.assertEqual(records[(479,831)],(1,))
 
     def test_dense_sparse_binary_camera_and_image_models_are_supported(self):
         from p10_lab.colmap_dense_io import (
