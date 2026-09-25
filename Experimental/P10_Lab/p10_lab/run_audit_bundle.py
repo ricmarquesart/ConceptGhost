@@ -102,8 +102,10 @@ def _bulk_generated_frame_reason(path: Path, root: Path) -> str | None:
         return "BULK_DENSE_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS"
     if "dataset" in parts and "images" in parts:
         return "BULK_DATASET_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS"
-    if "control_sequence" in parts and "frames" in parts:
-        return "BULK_CONTROL_FRAME_EXCLUDED_KEEP_GIF_CONTACT_SHEET"
+    if "control_sequence" in parts and ("frames" in parts or "masks" in parts):
+        return "BULK_CONTROL_FRAME_OR_MASK_EXCLUDED_KEEP_GIF_CONTACT_SHEET"
+    if ("wan_raw" in parts or "composite" in parts) and path.stem.lower().startswith("frame_"):
+        return "BULK_WAN_OR_COMPOSITE_FRAME_EXCLUDED_KEEP_DRONE_GIFS_AND_CONTACT_SHEETS"
     return None
 
 
