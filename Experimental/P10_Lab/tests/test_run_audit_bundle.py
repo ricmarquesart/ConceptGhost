@@ -112,6 +112,55 @@ class RunAuditBundleTests(unittest.TestCase):
 
 
 
+    def test_bulk_generated_frames_are_omitted_but_diagnostic_previews_remain(self):
+        from p10_lab.run_audit_bundle import build_partial_run_audit_bundle
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            p9=root/"p9"
+            attempt=root/"attempt"
+            p9.mkdir()
+            gate6=attempt/"gate6"/"reconstruction_runtime_manifest.json"
+            gate6.parent.mkdir(parents=True)
+            gate6.write_text(json.dumps({
+                "schema":"ConceptGhost.P10ReconstructionRuntime.v0.2",
+                "runtime_status":"PASS",
+                "run_id":"p9",
+                "p10_attempt_id":"attempt",
+                "p10_attempt_root":str(attempt),
+            }),encoding="utf-8")
+
+            dense_images=attempt/"gate6"/"dataset"/"dense"/"images"
+            dense_images.mkdir(parents=True)
+            (dense_images/"frame_000000.png").write_bytes(b"bulk")
+            dataset_images=attempt/"gate6"/"dataset"/"images"
+            dataset_images.mkdir(parents=True)
+            (dataset_images/"frame_000000.png").write_bytes(b"bulk")
+            control_frames=attempt/"gate4"/"control_sequence"/"frames"
+            control_frames.mkdir(parents=True)
+            (control_frames/"frame_0000.png").write_bytes(b"bulk")
+
+            useful=attempt/"gate6"/"diagnostics"
+            useful.mkdir(parents=True)
+            (useful/"metric_overlay.png").write_bytes(b"preview")
+            gate4=attempt/"gate4"
+            gate4.mkdir(exist_ok=True)
+            (gate4/"raw_holes_contact_sheet.png").write_bytes(b"sheet")
+
+            result=build_partial_run_audit_bundle(p9,gate6,output_root=root/"audit")
+            with zipfile.ZipFile(result["bundle_path"],"r") as archive:
+                names=set(archive.namelist())
+
+            self.assertNotIn("p10_attempt/gate6/dataset/dense/images/frame_000000.png",names)
+            self.assertNotIn("p10_attempt/gate6/dataset/images/frame_000000.png",names)
+            self.assertNotIn("p10_attempt/gate4/control_sequence/frames/frame_0000.png",names)
+            self.assertIn("p10_attempt/gate6/diagnostics/metric_overlay.png",names)
+            self.assertIn("p10_attempt/gate4/raw_holes_contact_sheet.png",names)
+            reasons={row["reason"] for row in result["omitted"]}
+            self.assertIn("BULK_DENSE_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS",reasons)
+            self.assertIn("BULK_DATASET_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS",reasons)
+            self.assertIn("BULK_CONTROL_FRAME_EXCLUDED_KEEP_GIF_CONTACT_SHEET",reasons)
+
     def test_required_reconstruction_manifest_is_reserved_before_optional_size_budget(self):
         from p10_lab.run_audit_bundle import build_partial_run_audit_bundle
 
