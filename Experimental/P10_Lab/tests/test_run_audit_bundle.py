@@ -38,6 +38,8 @@ class RunAuditBundleTests(unittest.TestCase):
             )
             (p9 / "maya").mkdir()
             (p9 / "maya" / "maya_worker_stdout.txt").write_text("PASS\n", encoding="utf-8")
+            (p9 / "logs").mkdir()
+            (p9 / "logs" / "stage06_07_progress.log").write_text("P9 LOG\n", encoding="utf-8")
             # Heavy P9 payload must never enter the audit zip.
             (p9 / "maya" / "scene.ma").write_text("heavy", encoding="utf-8")
 
@@ -106,6 +108,10 @@ class RunAuditBundleTests(unittest.TestCase):
                 "p9_authority/diagnostics/geometry_health.json",
                 names,
             )
+            self.assertIn(
+                "p9_authority/logs/stage06_07_progress.log",
+                names,
+            )
             self.assertNotIn("p10_attempt/gate8/future_mesh.ply", names)
             self.assertNotIn("p9_authority/maya/scene.ma", names)
             self.assertIn("RUN_AUDIT_BUNDLE_index.json", names)
@@ -160,6 +166,42 @@ class RunAuditBundleTests(unittest.TestCase):
             self.assertIn("BULK_DENSE_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS",reasons)
             self.assertIn("BULK_DATASET_IMAGE_EXCLUDED_KEEP_MANIFEST_LOGS_PREVIEWS",reasons)
             self.assertIn("BULK_CONTROL_FRAME_EXCLUDED_KEEP_GIF_CONTACT_SHEET",reasons)
+
+    def test_p9_authority_is_prioritized_before_optional_p10_when_budget_is_tight(self):
+        from p10_lab.run_audit_bundle import build_partial_run_audit_bundle
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            p9=root/"p9"
+            attempt=root/"attempt"
+            p9.mkdir()
+            attempt.mkdir()
+            (p9/"manifest.json").write_text(json.dumps({"status":{"run_status":"PASS"}}),encoding="utf-8")
+            (p9/"logs").mkdir()
+            p9log=p9/"logs"/"critical.log"
+            p9log.write_text("P9"*80,encoding="utf-8")
+            gate6=attempt/"gate6"/"reconstruction_runtime_manifest.json"
+            gate6.parent.mkdir(parents=True)
+            gate6.write_text(json.dumps({
+                "schema":"ConceptGhost.P10ReconstructionRuntime.v0.2",
+                "runtime_status":"PASS",
+                "run_id":"p9",
+                "p10_attempt_id":"attempt",
+                "p10_attempt_root":str(attempt),
+            }),encoding="utf-8")
+            optional=attempt/"a_optional"
+            optional.mkdir()
+            for index in range(5):
+                (optional/f"optional_{index}.txt").write_text("x"*180,encoding="utf-8")
+
+            budget=gate6.stat().st_size+(p9/"manifest.json").stat().st_size+p9log.stat().st_size+64
+            result=build_partial_run_audit_bundle(
+                p9,gate6,output_root=root/"audit",max_total_bytes=budget
+            )
+            with zipfile.ZipFile(result["bundle_path"],"r") as archive:
+                names=set(archive.namelist())
+            self.assertIn("p9_authority/manifest.json",names)
+            self.assertIn("p9_authority/logs/critical.log",names)
 
     def test_required_reconstruction_manifest_is_reserved_before_optional_size_budget(self):
         from p10_lab.run_audit_bundle import build_partial_run_audit_bundle
