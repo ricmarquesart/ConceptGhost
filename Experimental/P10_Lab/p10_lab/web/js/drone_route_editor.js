@@ -1319,7 +1319,8 @@ function setupEditor(node) {
                 const raw=points[index];
                 const p=projectSelectedCamera(raw);
                 if(!p||p.x<0||p.x>width||p.y<0||p.y>height) continue;
-                cameraCtx.fillStyle="rgba("+(raw[3] ?? 150)+","+(raw[4] ?? 150)+","+(raw[5] ?? 150)+",0.82)";
+                const rgb=readableDisplayRgb(raw);
+                cameraCtx.fillStyle="rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.94)";
                 cameraCtx.fillRect(p.x-size*0.5,p.y-size*0.5,size,size);
             }
         }
@@ -1351,14 +1352,19 @@ function setupEditor(node) {
         return mesh?.available ? mesh : null;
     }
 
+    function readableDisplayRgb(raw) {
+        const channel = (value) => Math.max(36, Math.min(255, Math.round((Number(value) || 150) * 0.84 + 38)));
+        return [channel(raw?.[3]), channel(raw?.[4]), channel(raw?.[5])];
+    }
+
     function averageTriangleColor(vertices, face) {
-        const a = vertices[face[0]] || [];
-        const b = vertices[face[1]] || [];
-        const c = vertices[face[2]] || [];
+        const ca = readableDisplayRgb(vertices[face[0]] || []);
+        const cb = readableDisplayRgb(vertices[face[1]] || []);
+        const cc = readableDisplayRgb(vertices[face[2]] || []);
         return [
-            Math.round(((Number(a[3]) || 150) + (Number(b[3]) || 150) + (Number(c[3]) || 150)) / 3),
-            Math.round(((Number(a[4]) || 150) + (Number(b[4]) || 150) + (Number(c[4]) || 150)) / 3),
-            Math.round(((Number(a[5]) || 150) + (Number(b[5]) || 150) + (Number(c[5]) || 150)) / 3),
+            Math.round((ca[0] + cb[0] + cc[0]) / 3),
+            Math.round((ca[1] + cb[1] + cc[1]) / 3),
+            Math.round((ca[2] + cb[2] + cc[2]) / 3),
         ];
     }
 
@@ -1443,7 +1449,7 @@ function setupEditor(node) {
             ctx.lineTo(tri.c.x,tri.c.y);
             ctx.closePath();
             if (mode === "MESH_SURFACE") {
-                ctx.fillStyle = "rgba(" + tri.color[0] + "," + tri.color[1] + "," + tri.color[2] + ",0.42)";
+                ctx.fillStyle = "rgba(" + tri.color[0] + "," + tri.color[1] + "," + tri.color[2] + ",0.96)";
                 ctx.fill();
                 ctx.strokeStyle = "rgba(15,15,15,0.28)";
                 ctx.lineWidth = 0.5;
@@ -1485,7 +1491,8 @@ function setupEditor(node) {
                 const p = projectPerspective(raw);
                 if (!p) continue;
                 if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
-                ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.72)`;
+                const rgb = readableDisplayRgb(raw);
+                ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.88)`;
                 ctx.fillRect(p.x - size * 0.5, p.y - size * 0.5, size, size);
             }
         }
@@ -1667,7 +1674,8 @@ function setupEditor(node) {
                 const raw = points[index];
                 const p = project(panel, geometryPoint(raw));
                 if (p.x < plot.x || p.x > plot.x + plot.width || p.y < plot.y || p.y > plot.y + plot.height) continue;
-                ctx.fillStyle = `rgba(${raw[3] ?? 150},${raw[4] ?? 150},${raw[5] ?? 150},0.78)`;
+                const rgb = readableDisplayRgb(raw);
+                ctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.90)`;
                 ctx.fillRect(p.x - size * 0.5, p.y - size * 0.5, size, size);
             }
         }
