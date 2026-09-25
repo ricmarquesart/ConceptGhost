@@ -18,6 +18,7 @@ from .geometry_confidence import build_geometry_confidence
 from .geometry_quality import write_gate6_geometry_quality
 from .prefusion_mesh import run_delaunay_visibility_meshing, run_prefusion_meshing
 from .protected_fusion import build_protected_fusion_candidate
+from .reconstruction_runtime import resolve_colmap_executable
 from .run_audit_bundle import build_partial_run_audit_bundle, build_run_audit_bundle
 
 
@@ -76,19 +77,34 @@ def _resolve_gate7_repair_colmap(
     dataset_root: Path,
     requested: str,
 ) -> str:
-    """Prefer the exact COLMAP executable that built the current dense workspace."""
+    """Resolve the exact installed COLMAP runtime for every Gate 7 native call.
 
-    dense_manifest_path=dataset_root/"dense_reconstruction_manifest.json"
+    Gate 6 auto-discovers ConceptGhost's private COLMAP runtime, but the Gate 7
+    UI historically converted an empty field to the bare token "colmap".
+    On Windows that token is not on PATH, so Delaunay could fail with WinError 2
+    even though Gate 6 had already used the installed runtime successfully.
+    """
+
+    dense_manifest_path = dataset_root / "dense_reconstruction_manifest.json"
     if dense_manifest_path.is_file():
         try:
-            dense_manifest=_read_json(dense_manifest_path,"Gate 6 dense reconstruction manifest")
+            dense_manifest = _read_json(
+                dense_manifest_path,
+                "Gate 6 dense reconstruction manifest",
+            )
         except ContractError:
-            dense_manifest={}
-        stored=str(dense_manifest.get("colmap_executable") or "").strip()
+            dense_manifest = {}
+        stored = str(dense_manifest.get("colmap_executable") or "").strip()
         if stored and Path(stored).is_file():
-            return stored
-    requested=str(requested or "").strip()
-    return requested or "colmap"
+            return str(Path(stored).resolve())
+
+    requested = str(requested or "").strip()
+    if requested and requested.lower() not in {"colmap", "colmap.exe"}:
+        return resolve_colmap_executable(requested)
+
+    # Empty/default "colmap" means AUTO, matching Gate 6 behavior:
+    # env override -> ConceptGhost ThirdParty runtime -> PATH.
+    return resolve_colmap_executable(None)
 
 
 def _repair_gate6_dense_evidence_for_gate7(
@@ -367,9 +383,13 @@ def run_gate7_pipeline(
                 else:
                     raise ContractError("Existing Delaunay comparison is not a valid Gate 7.3 artifact")
             else:
+                delaunay_executable = _resolve_gate7_repair_colmap(
+                    dataset_root,
+                    colmap_executable,
+                )
                 delaunay_status = run_delaunay_visibility_meshing(
                     dataset_root,
-                    colmap_executable=colmap_executable,
+                    colmap_executable=delaunay_executable,
                     overwrite_output=False,
                 )
         else:
