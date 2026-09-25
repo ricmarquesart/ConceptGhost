@@ -95,7 +95,8 @@ jobs:
             gate7_diagnostic_maya = $true
             copies_all_gate4_control_pngs = $true
             copies_all_gate5_generated_pngs = $true
-            backfill_existing_attempt_supported = $true\n            backfill_pre_r6i_gate6_geometry_supported = $true
+            backfill_existing_attempt_supported = $true
+            backfill_pre_r6i_gate6_geometry_supported = $true
             p9_authority_changed = $false
             existing_wan_changed = $false
             moge_runtime_changed = $false
@@ -149,7 +150,8 @@ jobs:
           }
           $manifest = Get-Content (Join-Path $root 'HOTFIX_MANIFEST.json') -Raw | ConvertFrom-Json
           if ($manifest.gate6_requires_nonempty_new_geometry -ne $true) { throw 'Gate 6 functional contract missing' }
-          if ($manifest.backfill_existing_attempt_supported -ne $true) { throw 'Backfill contract missing' }\n          if ($manifest.backfill_pre_r6i_gate6_geometry_supported -ne $true) { throw 'Legacy Gate 6 backfill contract missing' }
+          if ($manifest.backfill_existing_attempt_supported -ne $true) { throw 'Backfill contract missing' }
+          if ($manifest.backfill_pre_r6i_gate6_geometry_supported -ne $true) { throw 'Legacy Gate 6 backfill contract missing' }
           if ($manifest.p9_authority_changed -ne $false) { throw 'P9 authority mutation flag changed' }
 
       - uses: actions/upload-artifact@v4
