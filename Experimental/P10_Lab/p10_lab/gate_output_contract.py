@@ -140,13 +140,9 @@ def _write_contract_files(
     missing = sorted(name for name, present in required.items() if not present)
     complete = not missing
     status = (
-        "INCOMPLETE"
-        if not complete
-        else (
-            "PASS"
-            if functional_status == "PASS"
-            else "PARTIAL"
-        )
+        "PASS"
+        if complete and functional_status == "PASS"
+        else "FAIL"
     )
     rows = _manifest_rows(root)
     output_manifest = {
