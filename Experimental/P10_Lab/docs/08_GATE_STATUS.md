@@ -692,3 +692,14 @@ Gate 1 contained only contracts and checkpoint infrastructure, so it had no
 honest node-level visual preview. Gate 2 Preview r2 is the first user-facing
 preview and exposes the Completion Bundle boundary with visible validation
 diagnostics.
+
+
+## Authoritative reconciliation — 2026-09-25 R6G implemented / R6H queued
+
+- Official runtime-validation boundary remains **Gate 7 / R6F**. Gate 8 is not promoted until the current target-PC P9+P10 run is accepted.
+- The v0.36-compatible one-root MoGe runtime restored the previously accepted P9 PrimaryMesh quality on the target PC.
+- **R6G Route Editor Visual Quality & Layout** is the latest implemented UI/display refinement. It changes display LOD/layout/controls only and does not change P9 authority.
+- R6G CI exposed an indentation regression in the new coherent mesh-LOD path; it was corrected in commit `1f20901413e1c8169dabe079eb1b043a9f486de2`. CI/runtime acceptance remains pending at this reconciliation point.
+- Parallel **Gate 8.1 Defect Analysis** remains SOURCE/CI COMPLETE but promotion/runtime integration is blocked until Gate 7 acceptance.
+- **R6H — Gate 6 Live Progress & Streaming Logs** is now the next bounded refinement after R6G. It will add stage-visible status, incremental COLMAP stdout/stderr, elapsed/heartbeat information, resume REUSED/BUILT visibility and audit-bundle discovery without changing reconstruction algorithms.
+- The currently running target-PC Workflow 02 test is not modified by R6H planning.
