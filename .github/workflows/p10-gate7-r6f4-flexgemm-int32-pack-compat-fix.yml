@@ -15,7 +15,7 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f4_flexgemm_int32_pack_compat_fix/**'
-      - 'Experimental/P10_Lab/docs/42_R6F4_FLEXGEMM_TRITON32_COMPAT_FIX.md'
+      - 'Experimental/P10_Lab/docs/43_R6F4_FLEXGEMM_INT32_PACK_COMPAT_FIX.md'
       - '.github/workflows/p10-gate7-r6f4-flexgemm-triton32-compat-fix.yml'
   workflow_dispatch:
 
