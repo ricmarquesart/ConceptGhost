@@ -1,4 +1,4 @@
-# ConceptGhost R6J — Gate Output Contract + Gate 6 Functional Proof
+# ConceptGhost R6J r2 — Gate Output Contract + Legacy Gate 6 Backfill Fix
 
 R6J makes each Gate prove its deliverable instead of treating a green node as a
 successful Gate.
@@ -11,6 +11,12 @@ successful Gate.
 
 Step 3 does NOT regenerate WAN, COLMAP, MoGe or geometry. It publishes the
 existing latest attempt into an artist-readable output tree beside the P9 run.
+
+R6J r2 also supports attempts completed before R6I created the explicit
+`gate6_output` sidecar. If that sidecar is absent but the completed Gate 6
+workspace contains `dataset/dense/pre_fusion_mesh.ply` and `fused.ply`, the
+backfill reuses those exact files and creates only an OBJ representation for
+Maya inspection. This is representation conversion, not a new reconstruction.
 
 ## Output location
 
