@@ -160,7 +160,7 @@ class ConceptGhostP10DroneRouteAuthoring:
             camera,
             source_image=boundary.source_image,
             max_points=100000,
-            max_mesh_faces=24000,
+            max_mesh_faces=60000,
         )
 
         # DR9R-F: the four-view editor is rendered dynamically from preview_geometry.
@@ -214,6 +214,7 @@ class ConceptGhostP10DroneRouteAuthoring:
                 "face_count":int(preview_geometry.get("mesh_lod",{}).get("face_count",0)),
                 "vertex_count":int(preview_geometry.get("mesh_lod",{}).get("vertex_count",0)),
                 "authority":"DISPLAY_ONLY_P9_PRIMARYMESH_LOD",
+                "lod_policy":str(preview_geometry.get("mesh_lod",{}).get("lod_policy","UNKNOWN")),
             },
             "route_editor_cache_path":str(output_root.resolve()),
             "interaction_contract":{
