@@ -22,6 +22,12 @@ def _dot(a,b) -> float:
     return sum(float(left)*float(right) for left,right in zip(a,b))
 
 
+def _display_rgb(raw) -> tuple[int,int,int]:
+    def channel(value) -> int:
+        return max(36,min(255,int(round(float(value)*0.84+38.0))))
+    return (channel(raw[3]),channel(raw[4]),channel(raw[5]))
+
+
 def _cross_standard(a,b) -> tuple[float,float,float]:
     return (
         a[1]*b[2]-a[2]*b[1],
@@ -251,7 +257,8 @@ def render_selected_camera_preview(
             x,y,_=projected
             if x<0 or x>=width or y<0 or y>=height:
                 continue
-            color=(int(raw[3]),int(raw[4]),int(raw[5]),205)
+            rgb=_display_rgb(raw)
+            color=(*rgb,238)
             draw.rectangle((x-radius,y-radius,x+radius,y+radius),fill=color)
     else:
         mesh=geometry.get("mesh_lod") or {}
@@ -277,9 +284,10 @@ def render_selected_camera_preview(
             )
             if pa is None or pb is None or pc is None:
                 continue
+            vertex_rgb=[_display_rgb(vertices[idx]) for idx in face]
             color=tuple(
-                int(round(sum(int(vertices[idx][channel]) for idx in face)/3.0))
-                for channel in (3,4,5)
+                int(round(sum(rgb[channel] for rgb in vertex_rgb)/3.0))
+                for channel in (0,1,2)
             )
             triangles.append((sum((pa[2],pb[2],pc[2]))/3.0,pa,pb,pc,color))
         if mode=="MESH_SURFACE":
@@ -306,6 +314,10 @@ def render_selected_camera_preview(
         "waypoint_index":int(waypoint_index),
         "preview_mode":mode,
         "preview_size":[width,height],
+        "preview_quality_profile":"HQ_SELECTED_CAMERA",
+        "preview_point_budget":160000,
+        "preview_mesh_face_budget":120000,
+        "mesh_lod_policy":str((geometry.get("mesh_lod") or {}).get("lod_policy","UNKNOWN")),
         "position":{"right":point.right,"up":point.up,"forward":point.forward},
         "look":{"right":look[0],"up":look[1],"forward":look[2]},
         "camera_fov_deg":{
