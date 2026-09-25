@@ -851,7 +851,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10ProductionEntryLoader": "P10 Refined · Load Production Entry",
     "ConceptGhostP10WanMaskedConditioning": "P10 Refined · WAN Masked Conditioning",
     "ConceptGhostP10WanSequentialSampler": "P10 Refined · Sequential WAN + Source Composite",
-    "ConceptGhostP10ReconstructionRuntime": "P10 Refined · Reconstruction Runtime + Mesh Preview",
+    "ConceptGhostP10ReconstructionRuntime": "P10 · GATE 6 · 3D Reconstruction · RAW P10 Geometry Output",
     "ConceptGhostP10Gate7VisualReview": "P10 · Gate 7 · Registration + Provenance Review",
     "ConceptGhostP10ConfidenceComparison": "P10 · Visual Evidence · Confidence BEFORE / AFTER",
     "ConceptGhostP10DroneMeshComparisonReplay": "P10 · Visual Evidence · Same-Camera BEFORE / AFTER GIF",
