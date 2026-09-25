@@ -72,10 +72,10 @@ class Gate6GeometryOutputTests(unittest.TestCase):
             self.assertTrue((sidecar/"GATE6_RAW_P10_GEOMETRY.ply").is_file())
             self.assertTrue((sidecar/"GATE6_RAW_P10_GEOMETRY.obj").is_file())
             self.assertTrue((sidecar/"GATE6_OUTPUT_MANIFEST.json").is_file())
-            self.assertEqual(
-                (p9/"LATEST_P10_GATE6_OUTPUT.txt").read_text(encoding="utf-8"),
-                str(sidecar),
-            )
+            pointer=Path(
+                (p9/"LATEST_P10_GATE6_OUTPUT.txt").read_text(encoding="utf-8")
+            ).resolve()
+            self.assertEqual(pointer,sidecar.resolve())
 
     def test_refuses_to_close_gate6_without_mesh(self):
         from p10_lab.gate6_geometry_output import publish_gate6_geometry_output
