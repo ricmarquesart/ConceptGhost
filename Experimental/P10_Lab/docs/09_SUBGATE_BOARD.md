@@ -1029,7 +1029,7 @@ No intermediate user runtime test. Save each subgate checkpoint to GitHub and Go
 ## 2026-09-25 — Runtime-validation refinement queue
 
 - **Current official acceptance boundary:** Gate 7 / R6F target-PC P9+P10 validation.
-- **R6G — Route Editor Visual Quality & Layout:** SOURCE IMPLEMENTED; CI/runtime acceptance pending.
+- **R6G — Route Editor Visual Quality & Layout:** SOURCE/CI COMPLETE; target-PC visual acceptance pending. Corrected implementation commit `1f20901413e1c8169dabe079eb1b043a9f486de2`; ConceptGhost Tests `36169054232` SUCCESS; Source Snapshot `36169053996` SUCCESS.
 - **R6H — Gate 6 Live Progress & Streaming Logs:** NEXT PLANNED after R6G. Observability-only; no camera, geometry, WAN, COLMAP-quality or Gate-7 authority changes.
 - **Gate 8.1 — Defect Analysis:** SOURCE/CI COMPLETE in parallel, but runtime promotion remains blocked behind Gate 7 acceptance.
 - **Gate 8.2+:** not promoted until the Gate 7 runtime boundary and queued R6 refinements are reconciled.
