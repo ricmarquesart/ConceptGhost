@@ -1,0 +1,131 @@
+name: Build Gate 7 R6F15 COLMAP Auto-Discovery Hotfix
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - 'Experimental/P10_Lab/p10_lab/gate7_runtime.py'
+      - 'Experimental/P10_Lab/p10_lab/preview_nodes.py'
+      - 'Experimental/P10_Lab/tests/test_gate7_colmap_resolution.py'
+      - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f15_colmap_autodiscovery_hotfix/**'
+      - '.github/workflows/p10-gate7-r6f15-colmap-autodiscovery-hotfix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate Gate 7 COLMAP resolution regression
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PYTHONPATH = (Resolve-Path 'Experimental/P10_Lab').Path
+          python -m unittest Experimental/P10_Lab/tests/test_gate7_colmap_resolution.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m py_compile Experimental/P10_Lab/p10_lab/gate7_runtime.py Experimental/P10_Lab/p10_lab/preview_nodes.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build hotfix ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $name = 'ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX'
+          $src = Resolve-Path 'Experimental/P10_Lab/release_hotfixes/gate7_r6f15_colmap_autodiscovery_hotfix'
+          $release = Join-Path (Resolve-Path '.').Path 'release'
+          $root = Join-Path $release $name
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+
+          foreach ($file in @(
+            'apply_hotfix.py',
+            'verify_hotfix.py',
+            'resume_gate7.py',
+            '01_APPLY_HOTFIX.bat',
+            '02_VERIFY_HOTFIX.bat',
+            '03_RESUME_LAST_GATE7.bat',
+            'README_R6F15.md'
+          )) {
+            Copy-Item (Join-Path $src $file) (Join-Path $root $file) -Force
+          }
+
+          foreach ($bat in Get-ChildItem $root -Filter '*.bat' -File) {
+            $text = [IO.File]::ReadAllText($bat.FullName).Replace([char]13 + [char]10, [char]10)
+            $text = $text.Replace([char]10, [char]13 + [char]10)
+            [IO.File]::WriteAllText($bat.FullName, $text, (New-Object Text.UTF8Encoding($false)))
+          }
+
+          $manifest = [ordered]@{
+            schema = 'ConceptGhost.R6F15ColmapAutodiscoveryHotfix.v0.1'
+            release = $name
+            source_commit = $env:GITHUB_SHA
+            scope = 'GATE7_DELAUNAY_COLMAP_EXECUTABLE_RESOLUTION_ONLY'
+            shared_comfy_python_changed = $false
+            moge_runtime_changed = $false
+            p9_authority_changed = $false
+            wan_or_gate6_data_changed = $false
+            resume_existing_attempt_supported = $true
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $root 'HOTFIX_MANIFEST.json')
+          "$env:GITHUB_SHA" | Set-Content -Encoding ascii (Join-Path $root 'SOURCE_COMMIT.txt')
+
+          $lines = @()
+          foreach ($file in Get-ChildItem $root -File | Sort-Object Name) {
+            if ($file.Name -eq 'SHA256SUMS.txt') { continue }
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lines += "$hash  $($file.Name)"
+          }
+          $lines | Set-Content -Encoding ascii (Join-Path $root 'SHA256SUMS.txt')
+
+          $zip = Join-Path $release ($name + '.zip')
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path (Join-Path $root '*') -DestinationPath $zip -CompressionLevel Optimal
+
+          $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$zipHash  $name.zip" | Set-Content -Encoding ascii (Join-Path $release ($name + '_SHA256.txt'))
+          Write-Host "R6F15_BYTES=$((Get-Item $zip).Length)"
+          Write-Host "R6F15_SHA256=$zipHash"
+
+      - name: Static hotfix package validation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'release/ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX'
+          foreach ($p in @(
+            'apply_hotfix.py',
+            'verify_hotfix.py',
+            'resume_gate7.py',
+            '01_APPLY_HOTFIX.bat',
+            '02_VERIFY_HOTFIX.bat',
+            '03_RESUME_LAST_GATE7.bat',
+            'README_R6F15.md',
+            'HOTFIX_MANIFEST.json',
+            'SOURCE_COMMIT.txt',
+            'SHA256SUMS.txt'
+          )) {
+            if (-not (Test-Path (Join-Path $root $p) -PathType Leaf)) { throw "missing $p" }
+          }
+          python -m py_compile (Join-Path $root 'apply_hotfix.py') (Join-Path $root 'verify_hotfix.py') (Join-Path $root 'resume_gate7.py')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $manifest = Get-Content (Join-Path $root 'HOTFIX_MANIFEST.json') -Raw | ConvertFrom-Json
+          if ($manifest.p9_authority_changed -ne $false) { throw 'P9 mutation flag changed' }
+          if ($manifest.wan_or_gate6_data_changed -ne $false) { throw 'WAN/Gate6 mutation flag changed' }
+          if ($manifest.resume_existing_attempt_supported -ne $true) { throw 'resume contract missing' }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX
+          path: |
+            release/ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX.zip
+            release/ConceptGhost_R6F15_COLMAP_AUTODISCOVERY_HOTFIX_SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
