@@ -421,25 +421,22 @@ def patch_text(source: str) -> tuple[str, dict]:
 
 
 def self_test() -> int:
-    pristine = r'''
-def host(keys, queries, D_32):
-    keys_i32 = keys.view(torch.int32)
-    queries_i32 = queries.view(torch.int32)
-    call(keys_i32, D=D_32)
-    call(queries_i32, D=D_32)
-
-def build_a():
-    tl.static_assert(D * keys_ptr.dtype.element_ty.itemsize % 4 == 0, "keys byte width must be divisible by 4")
-    D_32: tl.constexpr = D * keys_ptr.dtype.element_ty.itemsize // 4
-
-def build_b():
-    tl.static_assert(D * keys_ptr.dtype.element_ty.itemsize % 4 == 0, "keys byte width must be divisible by 4")
-    D_32: tl.constexpr = D * keys_ptr.dtype.element_ty.itemsize // 4
-
-def lookup():
-    query_vec_32 = _vec_pack_little_endian_to_int32(query_vec)
-    D_32: tl.constexpr = D * query_vec.dtype.itemsize // 4
-'''
+    pristine = (
+        "def host(keys, queries, D_32):\n"
+        "    keys_i32 = keys.view(torch.int32)\n"
+        "    queries_i32 = queries.view(torch.int32)\n"
+        "    call(keys_i32, D=D_32)\n"
+        "    call(queries_i32, D=D_32)\n\n"
+        "def build_a():\n"
+        "    tl.static_assert(D * keys_ptr.dtype.element_ty.itemsize % 4 == 0, \"keys byte width must be divisible by 4\")\n"
+        "    D_32: tl.constexpr = D * keys_ptr.dtype.element_ty.itemsize // 4\n\n"
+        "def build_b():\n"
+        "    tl.static_assert(D * keys_ptr.dtype.element_ty.itemsize % 4 == 0, \"keys byte width must be divisible by 4\")\n"
+        "    D_32: tl.constexpr = D * keys_ptr.dtype.element_ty.itemsize // 4\n\n"
+        "def lookup():\n"
+        "    query_vec_32 = _vec_pack_little_endian_to_int32(query_vec)\n"
+        "    D_32: tl.constexpr = D * query_vec.dtype.itemsize // 4\n"
+    )
     prior = pristine.replace(
         "keys_ptr.dtype.element_ty.itemsize",
         "(keys_ptr.dtype.element_ty.primitive_bitwidth // 8)",
