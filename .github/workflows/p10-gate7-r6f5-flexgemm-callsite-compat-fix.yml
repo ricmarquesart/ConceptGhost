@@ -15,8 +15,8 @@ on:
       - 'Experimental/P10_Lab/release_hotfixes/gate7_preview_r3_route_ux_colmap_fix/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f_route_editor_final/**'
       - 'Experimental/P10_Lab/release_hotfixes/gate7_r6f5_flexgemm_callsite_compat_fix/**'
-      - 'Experimental/P10_Lab/docs/43_R6F5_FLEXGEMM_INT32_PACK_COMPAT_FIX.md'
-      - '.github/workflows/p10-gate7-r6f5-flexgemm-triton32-compat-fix.yml'
+      - 'Experimental/P10_Lab/docs/44_R6F5_FLEXGEMM_CALLSITE_COMPAT_FIX.md'
+      - '.github/workflows/p10-gate7-r6f5-flexgemm-callsite-compat-fix.yml'
   workflow_dispatch:
 
 permissions:
