@@ -297,7 +297,8 @@ def build_route_preview_geometry(
             # Cluster the dense image-grid mesh, then remap ALL source faces
             # through those cells.  This creates one coherent coarse surface
             # instead of disconnected every-Nth triangles.
-            target_cells=max(500,int(max_mesh_faces//2))
+            min_mesh_cells=16
+        target_cells=max(min_mesh_cells,int(max_mesh_faces//2))
             for _ in range(8):
                 partition=_image_grid_partition(target_cells)
                 if partition is None:
@@ -311,17 +312,17 @@ def build_route_preview_geometry(
                 )
                 candidate=candidate[keep]
                 if not len(candidate):
-                    target_cells=max(500,int(target_cells*0.6))
+                    target_cells=max(min_mesh_cells,int(target_cells*0.6))
                     continue
                 canonical=np.sort(candidate,axis=1)
                 _,first_indices=np.unique(canonical,axis=0,return_index=True)
                 candidate=candidate[np.sort(first_indices)]
-                if len(candidate)<=max_mesh_faces or target_cells<=500:
+                if len(candidate)<=max_mesh_faces or target_cells<=min_mesh_cells:
                     remapped=candidate
                     lod_policy="IMAGE_GRID_CLUSTERED_CONNECTED_LOD"
                     break
                 scale=max(0.25,min(0.90,float(max_mesh_faces)/float(len(candidate))*0.90))
-                target_cells=max(500,int(target_cells*scale))
+                target_cells=max(min_mesh_cells,int(target_cells*scale))
 
             if remapped is not None and len(remapped):
                 used=np.unique(remapped.reshape(-1))
