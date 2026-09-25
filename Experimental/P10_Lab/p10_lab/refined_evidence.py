@@ -14,6 +14,7 @@ from .disocclusion import build_disocclusion_mask
 from .control_sequence import ControlFrameRecord, ControlSequenceManifest
 from .camera_sequence import CameraFrameRecord, CameraSequenceManifest
 from .drone_route_diagnostics import build_drone_route_diagnostics
+from .gate_output_contract import publish_gate4_output
 from .drone_route_plan import (
     DroneRoutePlan,
     apply_hold_and_resume_clearance,
@@ -920,6 +921,19 @@ def build_refined_evidence(
             "source_authority_preserved": True,
         },
     }
+
+    if str(p10_attempt_root or "").strip():
+        gate_output = publish_gate4_output(
+            boundary.root,
+            p10_attempt_root,
+            p10_attempt_id=Path(str(p10_attempt_root)).name,
+        )
+        diagnostics["gate_output_contract"] = gate_output
+        if gate_output.get("functional_status") != "PASS":
+            raise ContractError(
+                "Gate 4 output contract is incomplete; Gate 5 is blocked. "
+                f"Missing: {gate_output.get('missing_required_outputs')}"
+            )
 
     def image_tensor(array):
         return torch.from_numpy(array.astype(np.float32) / 255.0).unsqueeze(0)
