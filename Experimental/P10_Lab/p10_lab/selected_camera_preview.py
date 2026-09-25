@@ -225,8 +225,8 @@ def render_selected_camera_preview(
         boundary.primary_mesh,
         camera,
         source_image=boundary.source_image,
-        max_points=100000,
-        max_mesh_faces=60000,
+        max_points=160000,
+        max_mesh_faces=120000,
     )
     image=Image.new("RGB",(width,height),(15,15,15))
     draw=ImageDraw.Draw(image,"RGBA")
@@ -287,7 +287,7 @@ def render_selected_camera_preview(
         for _,pa,pb,pc,color in triangles:
             xy=[(pa[0],pa[1]),(pb[0],pb[1]),(pc[0],pc[1])]
             if mode=="MESH_SURFACE":
-                draw.polygon(xy,fill=(*color,118),outline=(25,25,25,65))
+                draw.polygon(xy,fill=(*color,238),outline=(25,25,25,90))
             else:
                 draw.line((xy[0],xy[1],xy[2],xy[0]),fill=(210,220,230,155),width=1)
 
@@ -332,7 +332,7 @@ class ConceptGhostP10SelectedDroneCameraPreview:
                     ["POINTS_HIGH","POINTS_MEDIUM","MESH_SURFACE","MESH_WIREFRAME"],
                     {"default":"POINTS_HIGH"},
                 ),
-                "preview_width":("INT",{"default":960,"min":320,"max":1600,"step":16}),
+                "preview_width":("INT",{"default":1280,"min":320,"max":1920,"step":16}),
             }
         }
 
