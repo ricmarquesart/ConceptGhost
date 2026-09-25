@@ -1,0 +1,22 @@
+{
+  "schema": "ConceptGhost.R6F13V036RuntimeCompatPatchSpec.v1",
+  "date": "2026-09-25",
+  "base_release": "ConceptGhost_v1.54_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE",
+  "runtime_root": "%LOCALAPPDATA%\\ConceptGhost-MoGeRuntime-v1",
+  "second_runtime_root_created": false,
+  "preserve_model_cache": true,
+  "compatibility_matrix": {
+    "python": "3.11.9",
+    "torch": "2.14.0+cu130",
+    "torchvision": "0.29.0+cu130",
+    "triton_windows": "3.8.0.post28",
+    "moge": "3.0.0",
+    "flex_gemm_commit": "b2fadb29d41846c7981ade6801ffc689fae119cf",
+    "moge_source_sha256": "b9a28e6a1aa86bd23399f995feb9d496a461405fe22b53b9878c21b48d46fe6d"
+  },
+  "worker_profile": "V036_COMPAT",
+  "p9_primarymesh_policy": "V036_STABLE_FIXED_DEPTH_RTOL_0.04",
+  "run_audit_bundle": "<P9_RUN_DIR>/RUN_AUDIT_BUNDLE.zip",
+  "rollback": "R6F12_TORCH_2_6_CU124_TRITON_3_2_IN_SAME_RUNTIME_ROOT",
+  "target_pc_acceptance": "PENDING"
+}
