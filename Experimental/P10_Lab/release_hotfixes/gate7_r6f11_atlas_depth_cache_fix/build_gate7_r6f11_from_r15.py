@@ -945,7 +945,7 @@ report["checks"]["atlas_depth_model_cache"]={
     wt(verify,text.replace(old,new))
 
     wt(root/"Installer/test_r6f11_atlas_depth_cache_fix.py",r'''from pathlib import Path
-import json,sys
+import json,subprocess,sys
 def main(root):
     root=Path(root); errors=[]
     p=(root/"Installer/precache_atlas_models.py").read_text(encoding="utf-8-sig")
@@ -957,6 +957,10 @@ def main(root):
     m=(root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py").read_text(encoding="utf-8-sig")
     for t in ("patch_reduce_or_compat","_conceptghost_or_combine","sanitize_triton32_annotations"):
         if t not in m: errors.append("R6F10 MoGe bridge regression "+t)
+    patch_path=root/"Runtime/MoGeRuntime/worker/patch_flexgemm_triton32.py"
+    probe=subprocess.run([sys.executable,str(patch_path),"--self-test"],capture_output=True,text=True)
+    if probe.returncode!=0 or "CONCEPTGHOST_FLEXGEMM_TRITON32_R6F11_SELFTEST_PASS" not in probe.stdout:
+        errors.append("inherited MoGe compatibility self-test failed: "+probe.stdout+" "+probe.stderr)
     lock=json.loads((root/"Runtime/MoGeRuntime/SOURCE_LOCK.json").read_text(encoding="utf-8-sig"))
     if lock.get("high_fidelity_refine_steps")!=7 or lock.get("high_fidelity_resolution_level")!=9:
         errors.append("High Fidelity contract changed")
