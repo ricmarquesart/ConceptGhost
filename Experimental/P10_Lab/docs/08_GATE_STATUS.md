@@ -1,5 +1,18 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F5 FlexGEMM active-callsite compatibility fix
+
+- R6F4 correctly preserved the Turing-safe private runtime but its compatibility patch stopped with exit code 4 before MoGe smoke inference because the patcher depended on a brittle whole-helper source boundary.
+- **R6F5 source/package fix: COMPLETE / CI PASS.**
+- R6F5 patches only the active FlexGEMM hashmap callsites used by the MoGe sparse refiner. The host wrappers already prepack keys/queries as `torch.int32` and pass `D` as the int32-word count, so active kernels consume that existing contract directly with `D_32=D`.
+- The generic dtype-introspection helper is no longer required by the active hashmap lookup path and is not used as a patch anchor.
+- High Fidelity remains unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7; accepted P9 outputs remain immutable.
+- R6F5 build run `36082866772`: SUCCESS. General tests `36082866729`: SUCCESS. Source snapshot `36082866638`: SUCCESS.
+- R6F5 package SHA-256: `a110121efd5cac0325c3730fc984805629eebb51ba06a05b3be5854f9c2084a7`.
+- Evaluation_Builds Drive file id: `1w-c3aEfyMe74AnQBWEPU5fSBRlr77EiY`.
+- R6F5 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel and cannot be promoted until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F4 FlexGEMM int32-pack compatibility fix
 
 - R6F3 correctly applied the Turing-safe private runtime and reached the FlexGEMM smoke test, but Triton 3.2 rejected the intermediate `primitive_bitwidth` pointer/JIT dtype introspection with `NotImplementedType`.
