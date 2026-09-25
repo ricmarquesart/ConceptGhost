@@ -1,0 +1,46 @@
+{
+  "schema": "ConceptGhost.R6JVerifierFixRelease.v0.1",
+  "release": "ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r3",
+  "date_utc": "2026-09-25",
+  "source_branch": "work/v1.54-p10-multiview-completion",
+  "source_commit": "6d394932f1793117ff1dc778dc7d1f9210566552",
+  "reason": "R6J r2 verifier incorrectly required an exact prose token containing a closing quote immediately after 'detected'. The runtime/backfill implementation was correct, which was proven by the target-PC Gate 6 PASS. R6J r3 verifies structural fallback code instead of prose.",
+  "target_pc_result": {
+    "p9_run_id": "20260925T170319_730339Z_8806dd74",
+    "p10_attempt_id": "20260925T194627_306289Z_a99e3910_7e0e5f78",
+    "gate1": "PASS",
+    "gate2": "PASS",
+    "gate3": "FAIL_EXPECTED_MISSING_EXPLICIT_MASKS",
+    "gate4": "PASS",
+    "gate5": "PASS",
+    "gate6": {
+      "status": "PASS",
+      "runtime": "PASS",
+      "functional": "PASS",
+      "quality": "WARN"
+    }
+  },
+  "verifier_change": {
+    "removed_fragile_prose_token": "\"Legacy pre-R6I attempt detected\"",
+    "checks": [
+      "legacy_raw_ply = dataset / \"dense\" / \"pre_fusion_mesh.ply\"",
+      "legacy_dense_ply = dataset / \"dense\" / \"fused.ply\"",
+      "generated_obj_counts = _write_obj_from_ply"
+    ],
+    "runtime_behavior_changed": false,
+    "geometry_changed": false
+  },
+  "validation": {
+    "workflow": "Build R6J r3 Gate Output Contract",
+    "run_id": 36199508233,
+    "conclusion": "SUCCESS",
+    "artifact_id": 10891316917
+  },
+  "delivery": {
+    "zip_name": "ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r3.zip",
+    "sha256": "d0b8f3e0cb4604d29238fee5d548913b0ae544b967c279fdf8399b02f777713e",
+    "google_drive_file_id": "1YMhUzxa--yKF8Vx-HVhLG2OFAFsWkJN2",
+    "google_drive_path": "ConceptGhost/Storage/Evaluation_Builds/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r3.zip"
+  },
+  "next_acceptance": "Open Gate06_Reconstruction_Diagnostic.ma and visually inspect raw P10 geometry; Gate 7/8 remain blocked until that artist review."
+}
