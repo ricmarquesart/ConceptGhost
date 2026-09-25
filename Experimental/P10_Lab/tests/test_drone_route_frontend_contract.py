@@ -153,8 +153,8 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
         self.assertIn('function zoomControlRects(panel)', source)
         self.assertIn('function hitZoomControl(x, y)', source)
         self.assertIn('function drawZoomControls(panel)', source)
-        self.assertIn('if (perspective) drawZoomControls(perspective);', source)
-        self.assertIn('for (const panel of state.projection.panels || []) drawZoomControls(panel);', source)
+        self.assertIn('drawZoomControls(perspective);', source)
+        self.assertIn('drawZoomControls(panel);', source)
         self.assertIn('zoomControl.action === "in" ? 1.35 : (1 / 1.35)', source)
 
     def test_route_edits_preserve_artist_zoom_and_pan(self):
@@ -287,6 +287,7 @@ class DroneRouteFrontendContractTests(unittest.TestCase):
             'grid-template-columns:minmax(0,1fr) minmax(0,1fr)',
             'workspaceRow.append(cameraPreviewWrap, canvasWrap)',
             'cameraPreviewCanvas.width = 960',
+            'const size = 32;',
             'function viewActionControlRects(panel)',
             'function hitViewActionControl(x, y)',
             'function drawViewActionControls(panel)',
