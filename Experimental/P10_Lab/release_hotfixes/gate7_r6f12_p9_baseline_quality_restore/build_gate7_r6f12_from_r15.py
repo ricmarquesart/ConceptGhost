@@ -1139,10 +1139,21 @@ if __name__=="__main__":
 def patch_contracts(root,source_commit,package_commit):
     root=Path(root)
     p=root/"Installer/verify_p10_dr9.py"
-    wt(p,rt(p).replace(
+    verify=rt(p).replace(
         "CONCEPTGHOST_P10_GATE7_PREVIEW_R5_GEOMETRIC_EVIDENCE_AUDIT_FIX_RUNTIME_VERIFY_PASS",
         "CONCEPTGHOST_P10_GATE7_R6F12_P9_BASELINE_QUALITY_RESTORE_RUNTIME_VERIFY_PASS",
-    ))
+    )
+    verify=verify.replace(
+        "import argparse, hashlib, json, py_compile, sys",
+        "import argparse, hashlib, json, py_compile, re, sys",
+    )
+    verify=re.sub(r"^SOURCE_COMMIT='[0-9a-f]{40}'\\n", "", verify, count=1, flags=re.MULTILINE)
+    verify=verify.replace(
+        "    if manifest.get('source_commit')!=SOURCE_COMMIT: fail(errors,'unexpected DR9R source commit')",
+        "    source_commit=str(manifest.get('source_commit') or '')\\n"
+        "    if not re.fullmatch(r'[0-9a-f]{40}',source_commit): fail(errors,'invalid DR9R source commit metadata')",
+    )
+    wt(p,verify)
 
     p=root/"Installer/test_gate7_preview_bundle.py"
     text=rt(p).replace(
