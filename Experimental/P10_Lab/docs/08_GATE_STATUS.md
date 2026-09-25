@@ -1,5 +1,19 @@
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-25 R6F9 Triton 3.2 annotation sanitizer
+
+- R6F8 successfully applied the private FlexGEMM bridge and advanced into the real ViT-L CUDA/refiner smoke test, but Triton 3.2 then failed while parsing the inline helper annotation `coord_stride_vec: tl.tensor | None` with a JIT `_builder` error.
+- **R6F9 source/package fix: COMPLETE / CI PASS.**
+- R6F9 preserves the hashmap token bridge and sanitizes non-constexpr Triton-language parameter/return annotations throughout the ConceptGhost-private FlexGEMM Triton kernel tree: `tl.pointer_type`, `tl.tensor`, `tl.const` and optional/return variants are removed; `tl.constexpr` is explicitly preserved.
+- The private patcher self-test validates annotation removal, constexpr preservation, idempotence, and the existing LF/CRLF hashmap compatibility fixtures.
+- R6F9 build run `36086298829`: SUCCESS. General ConceptGhost Tests `36086298858`: SUCCESS. Source snapshot `36086298805`: SUCCESS.
+- R6F9 package SHA-256: `d6680acf5d1401f41c1552a5b75c17f57f0f5f4af02c31281f195d7daffc842a`.
+- Evaluation_Builds Drive file id: `16iKxE11V_-_FOOLH4vCtrXwFoCmHHzCk`.
+- Runtime matrix remains unchanged: Python 3.11.9, PyTorch 2.6.0, torchvision 0.21.0, cu124, Triton Windows 3.2.x.
+- High Fidelity remains unchanged: `Ruicheng/moge-3-vitg`, resolution 9, refine 7; accepted P9 outputs remain immutable.
+- R6F9 target-PC acceptance remains PENDING.
+- Gate 8 remains source-only in parallel. G8.1 is source/CI complete; Gate 8 promotion remains blocked until Gate 7 runtime/artist acceptance.
+
 ## Authoritative reconciliation — 2026-09-25 R6F8 Triton 3.2 pointer-annotation compatibility fix
 
 - R6F7 is the first package in the R6F2-R6F7 sequence that successfully applied the private FlexGEMM compatibility bridge and entered the real Low Resolution ViT-L CUDA/refiner smoke test.
