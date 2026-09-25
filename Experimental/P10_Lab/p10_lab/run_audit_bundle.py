@@ -20,6 +20,7 @@ _P9_AUDIT_DIRS = (
     "benchmark",
     "camera",
     "diagnostics",
+    "logs",
     "package",
     "validation",
     "maya",
@@ -281,6 +282,9 @@ def _build_core(
     final_included: list[tuple[str, Path]] = []
 
     # Required audit evidence must be admitted before optional discoveries.
+    # P9 authority logs/manifests are the next priority: the audit bundle exists
+    # specifically so a target-PC failure can be diagnosed together with the
+    # immutable upstream run that fed P10.
     # The previous alphabetical pass could consume max_total_bytes first and
     # then reject reconstruction_runtime_manifest.json even though it was a
     # hard requirement. Reserve/admit required files first, then fill the
@@ -296,7 +300,12 @@ def _build_core(
 
     ordered_items = sorted(
         included.items(),
-        key=lambda item: (0 if item[0] in required_arcs else 1, item[0]),
+        key=lambda item: (
+            0 if item[0] in required_arcs else
+            1 if item[0].startswith("p9_authority/") else
+            2,
+            item[0],
+        ),
     )
     for arc, path in ordered_items:
         size = path.stat().st_size
