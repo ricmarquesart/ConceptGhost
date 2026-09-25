@@ -1,4 +1,4 @@
-name: Build R6J Gate Output Contract
+name: Build R6J r2 Gate Output Contract
 
 on:
   push:
@@ -52,7 +52,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $name = 'ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r1'
+          $name = 'ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2'
           $repoRoot = (Resolve-Path '.').Path
           $src = Resolve-Path 'Experimental/P10_Lab/release_hotfixes/r6j_gate_output_contract'
           $release = Join-Path $repoRoot 'release'
@@ -85,7 +85,7 @@ jobs:
           }
 
           $manifest = [ordered]@{
-            schema = 'ConceptGhost.R6JGateOutputContract.v0.1'
+            schema = 'ConceptGhost.R6JGateOutputContract.v0.2'
             release = $name
             source_commit = $env:GITHUB_SHA
             scope = 'PER_GATE_BLACK_BOX_OUTPUTS_AND_GATE6_FUNCTIONAL_3D_PROOF'
@@ -95,7 +95,7 @@ jobs:
             gate7_diagnostic_maya = $true
             copies_all_gate4_control_pngs = $true
             copies_all_gate5_generated_pngs = $true
-            backfill_existing_attempt_supported = $true
+            backfill_existing_attempt_supported = $true\n            backfill_pre_r6i_gate6_geometry_supported = $true
             p9_authority_changed = $false
             existing_wan_changed = $false
             moge_runtime_changed = $false
@@ -125,7 +125,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $root = 'release/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r1'
+          $root = 'release/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2'
           foreach ($p in @(
             '01_APPLY_GATE_OUTPUT_CONTRACT.bat',
             '02_VERIFY_GATE_OUTPUT_CONTRACT.bat',
@@ -149,14 +149,14 @@ jobs:
           }
           $manifest = Get-Content (Join-Path $root 'HOTFIX_MANIFEST.json') -Raw | ConvertFrom-Json
           if ($manifest.gate6_requires_nonempty_new_geometry -ne $true) { throw 'Gate 6 functional contract missing' }
-          if ($manifest.backfill_existing_attempt_supported -ne $true) { throw 'Backfill contract missing' }
+          if ($manifest.backfill_existing_attempt_supported -ne $true) { throw 'Backfill contract missing' }\n          if ($manifest.backfill_pre_r6i_gate6_geometry_supported -ne $true) { throw 'Legacy Gate 6 backfill contract missing' }
           if ($manifest.p9_authority_changed -ne $false) { throw 'P9 authority mutation flag changed' }
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r1
+          name: ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2
           path: |
-            release/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r1.zip
-            release/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r1_SHA256.txt
+            release/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2.zip
+            release/ConceptGhost_R6J_GATE_OUTPUT_CONTRACT_r2_SHA256.txt
           if-no-files-found: error
           retention-days: 30
