@@ -14,6 +14,7 @@ from .prefusion_mesh import run_prefusion_meshing
 from .p9_roundtrip_audit import run_p9_roundtrip_audit
 from .reconstruction_overlay import build_metric_reconstruction_overlay
 from .geometry_quality import write_gate6_geometry_quality
+from .gate6_geometry_output import publish_gate6_geometry_output
 
 
 def standard_colmap_candidates(*, localappdata: str | None = None) -> tuple[Path, ...]:
@@ -442,6 +443,26 @@ def run_reconstruction_pipeline(
         "alerts":geometry_quality.get("alerts",[]),
     }
 
+    gate6_geometry_output=publish_gate6_geometry_output(
+        dataset_root,
+        output_root,
+        p9_run_dir=source_p9_run_dir or None,
+        p10_attempt_id=str(wan.get("p10_attempt_id") or ""),
+        geometry_quality=geometry_quality,
+        metric_overlay=metric_overlay if isinstance(metric_overlay,dict) else None,
+    )
+    stages["geometry_output"]={
+        "state":"PUBLISHED",
+        "status":gate6_geometry_output.get("status"),
+        "geometry_generated":gate6_geometry_output.get("geometry_generated"),
+        "vertex_count":gate6_geometry_output.get("vertex_count"),
+        "face_count":gate6_geometry_output.get("face_count"),
+        "raw_p10_geometry_ply":gate6_geometry_output.get("raw_p10_geometry_ply"),
+        "raw_p10_geometry_obj":gate6_geometry_output.get("raw_p10_geometry_obj"),
+        "manifest_path":gate6_geometry_output.get("manifest_path"),
+        "p9_run_sidecar_root":gate6_geometry_output.get("p9_run_sidecar_root"),
+    }
+
     diagnostics={
         "schema":"ConceptGhost.P10ReconstructionRuntime.v0.2",
         "status":geometry_quality.get("status","FAIL"),
@@ -460,6 +481,11 @@ def run_reconstruction_pipeline(
         "output_root":str(output_root),
         "dataset_root":str(dataset_root),
         "pre_fusion_mesh_path":str((dataset_root/"dense"/"pre_fusion_mesh.ply").resolve()),
+        "gate6_raw_p10_geometry_path":gate6_geometry_output.get("raw_p10_geometry_ply"),
+        "gate6_raw_p10_geometry_obj_path":gate6_geometry_output.get("raw_p10_geometry_obj"),
+        "gate6_geometry_output_manifest_path":gate6_geometry_output.get("manifest_path"),
+        "gate6_geometry_output_sidecar_root":gate6_geometry_output.get("p9_run_sidecar_root"),
+        "gate6_geometry_generated":gate6_geometry_output.get("geometry_generated") is True,
         "mesh_preview_svg_path":str((dataset_root/"dense"/"pre_fusion_mesh_preview.svg").resolve()),
         "stages":stages,
         "mesh_health":final_mesh_manifest.get("mesh_health"),
@@ -504,6 +530,8 @@ def run_reconstruction_pipeline(
                 "geometry_quality_manifest_path":geometry_quality.get("manifest_path"),
                 "gate6_runtime_manifest_path":str(out),
                 "pre_fusion_mesh_path":diagnostics["pre_fusion_mesh_path"],
+                "gate6_raw_p10_geometry_path":diagnostics["gate6_raw_p10_geometry_path"],
+                "gate6_geometry_output_manifest_path":diagnostics["gate6_geometry_output_manifest_path"],
             })
             attempt_manifest_path.write_text(
                 json.dumps(attempt_manifest,indent=2,sort_keys=True),
