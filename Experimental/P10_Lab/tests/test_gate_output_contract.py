@@ -168,6 +168,40 @@ class GateOutputContractTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def _legacy_gate6(self, attempt: Path):
+        source = attempt / "gate6"
+        dense = source / "dataset" / "dense"
+        sparse = source / "dataset" / "sparse" / "triangulated_txt"
+        logs = source / "dataset" / "logs" / "gate6_5"
+        diagnostics = source / "diagnostics"
+        for folder in (dense, sparse, logs, diagnostics):
+            folder.mkdir(parents=True, exist_ok=True)
+        (dense / "pre_fusion_mesh.ply").write_text(PLY, encoding="ascii")
+        (dense / "fused.ply").write_text(PLY, encoding="ascii")
+        (dense / "pre_fusion_mesh_preview.svg").write_text("<svg/>", encoding="utf-8")
+        (sparse / "points3D.txt").write_text(
+            "# points\n1 0 0 0 255 0 0 0\n2 1 0 0 0 255 0 0\n",
+            encoding="utf-8",
+        )
+        (logs / "00_poisson_mesher.log").write_text("PASS\n", encoding="utf-8")
+        (diagnostics / "p9_p10_metric_overlay.png").write_bytes(b"png")
+        (diagnostics / "gate6_geometry_quality.json").write_text(
+            json.dumps({
+                "status": "WARN",
+                "alerts": ["SPARSE_POINT_DENSITY_LOW"],
+                "prefusion_mesh": {"vertex_count": 4, "face_count": 2},
+            }),
+            encoding="utf-8",
+        )
+        (source / "reconstruction_runtime_manifest.json").write_text(
+            json.dumps({
+                "runtime_status": "PASS",
+                "geometry_quality_status": "WARN",
+                "mesh_health": {"vertex_count": 4, "face_count": 2},
+            }),
+            encoding="utf-8",
+        )
+
     def _gate7(self, attempt: Path, accepted_faces: int):
         try:
             import numpy as np
@@ -263,6 +297,30 @@ class GateOutputContractTests(unittest.TestCase):
             text = ma.read_text(encoding="utf-8")
             self.assertIn("P10_RECONSTRUCTED_RAW", text)
             self.assertIn("CAMERAS_GATE06", text)
+
+    def test_gate6_backfills_pre_r6i_legacy_geometry_without_reconstruction(self):
+        from p10_lab.gate_output_contract import publish_gate6_output_tree
+
+        with tempfile.TemporaryDirectory() as tmp:
+            p9, attempt = self._base(Path(tmp))
+            self._gate4(attempt)
+            self._legacy_gate6(attempt)
+
+            result = publish_gate6_output_tree(p9, attempt)
+            self.assertEqual(result["runtime_status"], "PASS")
+            self.assertEqual(result["functional_status"], "PASS")
+            self.assertEqual(result["quality_status"], "WARN")
+            self.assertEqual(result["metrics"]["reconstructed_vertex_count"], 4)
+            self.assertEqual(result["metrics"]["reconstructed_face_count"], 2)
+            root = p9 / "GATE_OUTPUTS" / "attempt123" / "GATE_06_RECONSTRUCTION_3D"
+            self.assertTrue((root / "OUTPUTS" / "dense_points.ply").is_file())
+            self.assertTrue((root / "OUTPUTS" / "reconstructed_mesh.ply").is_file())
+            obj = root / "OUTPUTS" / "reconstructed_mesh.obj"
+            self.assertTrue(obj.is_file())
+            self.assertIn("v 0 0 0", obj.read_text(encoding="utf-8"))
+            ma = (root / "OUTPUTS" / "Gate06_Reconstruction_Diagnostic.ma").read_text(encoding="utf-8")
+            self.assertIn("P10_RECONSTRUCTED_RAW", ma)
+            self.assertTrue(any("Legacy pre-R6I attempt detected" in note for note in result["notes"]))
 
     def test_gate7_zero_p10_contribution_is_functional_fail_but_outputs_exist(self):
         from p10_lab.gate_output_contract import (
