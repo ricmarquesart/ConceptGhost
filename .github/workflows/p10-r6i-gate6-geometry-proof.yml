@@ -1,0 +1,122 @@
+name: Build R6I Gate 6 Geometry Functional Proof
+
+on:
+  push:
+    branches:
+      - work/v1.54-p10-multiview-completion
+    paths:
+      - 'Experimental/P10_Lab/p10_lab/gate6_geometry_output.py'
+      - 'Experimental/P10_Lab/p10_lab/reconstruction_runtime.py'
+      - 'Experimental/P10_Lab/p10_lab/reconstruction_node.py'
+      - 'Experimental/P10_Lab/p10_lab/preview_nodes.py'
+      - 'Experimental/P10_Lab/p10_lab/workflow_integration.py'
+      - 'Experimental/P10_Lab/tests/test_gate6_geometry_output.py'
+      - 'Experimental/P10_Lab/tests/test_reconstruction_runtime.py'
+      - 'Experimental/P10_Lab/tests/test_reconstruction_preview.py'
+      - 'Experimental/P10_Lab/release_hotfixes/r6i_gate6_geometry_functional_proof/**'
+      - '.github/workflows/p10-r6i-gate6-geometry-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate Gate 6 geometry functional proof
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PYTHONPATH = (Resolve-Path 'Experimental/P10_Lab').Path
+          python -m unittest Experimental/P10_Lab/tests/test_gate6_geometry_output.py Experimental/P10_Lab/tests/test_reconstruction_runtime.py Experimental/P10_Lab/tests/test_reconstruction_preview.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m py_compile Experimental/P10_Lab/p10_lab/gate6_geometry_output.py Experimental/P10_Lab/p10_lab/reconstruction_runtime.py Experimental/P10_Lab/p10_lab/reconstruction_node.py Experimental/P10_Lab/p10_lab/preview_nodes.py Experimental/P10_Lab/p10_lab/workflow_integration.py Experimental/P10_Lab/release_hotfixes/r6i_gate6_geometry_functional_proof/apply_hotfix.py Experimental/P10_Lab/release_hotfixes/r6i_gate6_geometry_functional_proof/patch_workflows.py Experimental/P10_Lab/release_hotfixes/r6i_gate6_geometry_functional_proof/verify_hotfix.py Experimental/P10_Lab/release_hotfixes/r6i_gate6_geometry_functional_proof/resume_gate6.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build R6I package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $name = 'ConceptGhost_R6I_GATE6_GEOMETRY_FUNCTIONAL_PROOF_r1'
+          $repoRoot = (Resolve-Path '.').Path
+          $src = Resolve-Path 'Experimental/P10_Lab/release_hotfixes/r6i_gate6_geometry_functional_proof'
+          $release = Join-Path $repoRoot 'release'
+          $root = Join-Path $release $name
+          $installer = Join-Path $root 'Installer'
+          $payload = Join-Path $root 'Payload\custom_nodes\ConceptGhost_P10_Lab'
+          New-Item -ItemType Directory -Force -Path $installer | Out-Null
+          New-Item -ItemType Directory -Force -Path $payload | Out-Null
+
+          foreach ($file in @('apply_hotfix.py','patch_workflows.py','verify_hotfix.py','resume_gate6.py')) {
+            Copy-Item (Join-Path $src $file) (Join-Path $installer $file) -Force
+          }
+          foreach ($file in @('01_APPLY_GATE6_GEOMETRY_PROOF.bat','02_VERIFY_GATE6_GEOMETRY_PROOF.bat','03_RESUME_LAST_GATE6.bat','README_R6I.md')) {
+            Copy-Item (Join-Path $src $file) (Join-Path $root $file) -Force
+          }
+          foreach ($file in @('gate6_geometry_output.py','reconstruction_runtime.py','reconstruction_node.py','preview_nodes.py','workflow_integration.py')) {
+            Copy-Item (Join-Path 'Experimental/P10_Lab/p10_lab' $file) (Join-Path $payload $file) -Force
+          }
+
+          $manifest = [ordered]@{
+            schema = 'ConceptGhost.R6IGate6GeometryFunctionalProof.v0.1'
+            release = $name
+            source_commit = $env:GITHUB_SHA
+            scope = 'GATE6_FUNCTIONAL_GEOMETRY_OUTPUT_AND_WORKFLOW_LABELS'
+            gate6_requires_nonempty_geometry = $true
+            raw_p10_geometry_before_gate7 = $true
+            reuse_existing_wan_supported = $true
+            p9_authority_changed = $false
+            wan_data_changed = $false
+            moge_runtime_changed = $false
+            shared_comfy_python_changed = $false
+          }
+          $manifest | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 (Join-Path $root 'HOTFIX_MANIFEST.json')
+          "$env:GITHUB_SHA" | Set-Content -Encoding ascii (Join-Path $root 'SOURCE_COMMIT.txt')
+
+          $lines = @()
+          foreach ($file in Get-ChildItem $root -File -Recurse | Sort-Object FullName) {
+            if ($file.Name -eq 'SHA256SUMS.txt') { continue }
+            $relative = $file.FullName.Substring($root.Length + 1).Replace('\','/')
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lines += "$hash  $relative"
+          }
+          $lines | Set-Content -Encoding ascii (Join-Path $root 'SHA256SUMS.txt')
+
+          $zip = Join-Path $release ($name + '.zip')
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path (Join-Path $root '*') -DestinationPath $zip -CompressionLevel Optimal
+          $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$zipHash  $name.zip" | Set-Content -Encoding ascii (Join-Path $release ($name + '_SHA256.txt'))
+
+          Write-Host "R6I_BYTES=$((Get-Item $zip).Length)"
+          Write-Host "R6I_SHA256=$zipHash"
+
+      - name: Static package validation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'release/ConceptGhost_R6I_GATE6_GEOMETRY_FUNCTIONAL_PROOF_r1'
+          foreach ($p in @('01_APPLY_GATE6_GEOMETRY_PROOF.bat','02_VERIFY_GATE6_GEOMETRY_PROOF.bat','03_RESUME_LAST_GATE6.bat','README_R6I.md','HOTFIX_MANIFEST.json','SOURCE_COMMIT.txt','SHA256SUMS.txt','Installer/apply_hotfix.py','Installer/patch_workflows.py','Installer/verify_hotfix.py','Installer/resume_gate6.py','Payload/custom_nodes/ConceptGhost_P10_Lab/gate6_geometry_output.py','Payload/custom_nodes/ConceptGhost_P10_Lab/reconstruction_runtime.py','Payload/custom_nodes/ConceptGhost_P10_Lab/reconstruction_node.py','Payload/custom_nodes/ConceptGhost_P10_Lab/preview_nodes.py','Payload/custom_nodes/ConceptGhost_P10_Lab/workflow_integration.py')) {
+            if (-not (Test-Path (Join-Path $root $p) -PathType Leaf)) { throw "missing $p" }
+          }
+          $manifest = Get-Content (Join-Path $root 'HOTFIX_MANIFEST.json') -Raw | ConvertFrom-Json
+          if ($manifest.gate6_requires_nonempty_geometry -ne $true) { throw 'Gate 6 geometry contract missing' }
+          if ($manifest.raw_p10_geometry_before_gate7 -ne $true) { throw 'Raw geometry contract missing' }
+          if ($manifest.p9_authority_changed -ne $false) { throw 'P9 mutation flag changed' }
+          if ($manifest.wan_data_changed -ne $false) { throw 'WAN mutation flag changed' }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ConceptGhost_R6I_GATE6_GEOMETRY_FUNCTIONAL_PROOF_r1
+          path: |
+            release/ConceptGhost_R6I_GATE6_GEOMETRY_FUNCTIONAL_PROOF_r1.zip
+            release/ConceptGhost_R6I_GATE6_GEOMETRY_FUNCTIONAL_PROOF_r1_SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
