@@ -311,6 +311,24 @@ def run_gate7_pipeline(
     if resume_existing:
         reused = _reuse_runtime(runtime_manifest_path, p9_run_dir, gate6_runtime_path)
         if reused is not None:
+            # R6K contract: a successful/reused Gate 7 runtime may never return
+            # without publishing the artist-facing per-gate output tree. This
+            # self-heals attempts completed before automatic Gate 7 publication.
+            gate_output_contract = publish_gate7_output_tree(
+                p9_run_dir,
+                attempt_root,
+                p10_attempt_id=str(
+                    reused.get("p10_attempt_id")
+                    or gate6.get("p10_attempt_id")
+                    or attempt_root.name
+                ),
+            )
+            reused["gate_output_contract"] = gate_output_contract
+            reused["gate_output_autopublished"] = True
+            runtime_manifest_path.write_text(
+                json.dumps(reused, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
             try:
                 audit = build_run_audit_bundle(runtime_manifest_path)
                 reused["auto_audit"] = {
@@ -324,6 +342,10 @@ def run_gate7_pipeline(
                     "status": "WARN",
                     "error": f"{type(audit_error).__name__}: {audit_error}",
                 }
+            runtime_manifest_path.write_text(
+                json.dumps(reused, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
             return reused
 
     current_stage = "G7_0_DENSE_GEOMETRIC_PREFLIGHT"
@@ -493,6 +515,7 @@ def run_gate7_pipeline(
             p10_attempt_id=str(registration.get("p10_attempt_id") or attempt_root.name),
         )
         result["gate_output_contract"] = gate_output_contract
+        result["gate_output_autopublished"] = True
         runtime_manifest_path.write_text(
             json.dumps(result, indent=2, sort_keys=True),
             encoding="utf-8",
