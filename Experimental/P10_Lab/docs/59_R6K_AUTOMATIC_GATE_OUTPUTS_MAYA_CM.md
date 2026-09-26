@@ -1,4 +1,4 @@
-# R6K — Automatic Gate Outputs + Maya Centimeter Bridge
+# R6K r2 — Automatic Gate Outputs + Maya Centimeter Bridge
 
 Date: 2026-09-25 UTC
 
@@ -33,8 +33,13 @@ Maya-facing diagnostics now materialize centimeter-only representations:
 Camera translations written into diagnostic Maya ASCII are also multiplied by
 100. Rotations and intrinsics are not rescaled.
 
-Gate07_Fusion_Diagnostic.ma references P9 under P9_ORIGINAL and imports the raw
-P10 reconstruction plus the accepted P10 fill as separate namespaces.
+Gate07_Fusion_Diagnostic.ma exposes four separate namespaces:
+- P9_ORIGINAL;
+- P9_PLUS_P10_FILLED_CANDIDATE;
+- P10_RAW_RECONSTRUCTION;
+- P10_ACCEPTED_FILL.
+
+This supports both full original-vs-filled comparison and fill-only provenance inspection.
 
 ## Automatic output contract
 
