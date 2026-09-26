@@ -60,14 +60,14 @@ def main() -> int:
     ],check=True)
 
     (node_root/"CONCEPTGHOST_P10_VERSION.txt").write_text(
-        "ConceptGhost R6K Gate7 Auto Output + Maya Centimeter Bridge\n",
+        "ConceptGhost R6K r2 Gate7 Auto Output + Maya Centimeter Bridge\n",
         encoding="utf-8",
     )
     marker=install_root/"R6K_GATE7_MAYA_AUTOPUBLISH.json"
     marker.write_text(json.dumps({
         "schema":"ConceptGhost.R6KGate7MayaAutopublish.v0.1",
         "status":"APPLIED",
-        "release":"ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1",
+        "release":"ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r2",
         "applied_at_utc":datetime.now(timezone.utc).isoformat(),
         "comfy_root":str(comfy_root),
         "backup_root":str(backup),
@@ -79,10 +79,10 @@ def main() -> int:
         "moge_runtime_mutated":False,
         "shared_comfy_python_mutated":False,
     },indent=2,sort_keys=True),encoding="utf-8")
-    print("[PASS] R6K installed.")
+    print("[PASS] R6K r2 installed.")
     print("[PASS] Future Workflow 02 runs publish Gate 1-6 automatically.")
     print("[PASS] Gate 7 publishes automatically on fresh AND resumed runs.")
-    print("[PASS] Gate 7 Maya keeps P9 original and P10 accepted fill in separate namespaces.")
+    print("[PASS] Gate 7 Maya keeps P9 original, complete filled candidate, raw P10 and accepted fill as separate namespaces.")
     print("[PASS] Maya diagnostic coordinates use explicit meters->centimeters x100.")
     print("[UNCHANGED] Canonical P9/P10 geometry, P9 authority, MoGe runtime, shared pip packages.")
     return 0
