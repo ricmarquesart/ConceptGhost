@@ -53,7 +53,7 @@ def main() -> int:
         '"reconstructed_mesh_MAYA_CM.obj"',
         '"P10_ACCEPTED_FILL_MAYA_CM.obj"',
         '"P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj"',
-        '"P10_ACCEPTED_FILL"',
+        '"P10_ACCEPTED_FILL"',\n        '"P9_PLUS_P10_FILLED_CANDIDATE"',
         "P9/P10 canonical meters -> Maya centimeters x100",
     ):
         if token not in contract:
@@ -86,7 +86,7 @@ def main() -> int:
     if not verified:
         raise RuntimeError("Workflow 02 does not contain verified Reconstruction -> Gate 7 automatic path")
 
-    print("[PASS] R6K source verified.")
+    print("[PASS] R6K r2 source verified.")
     print("[PASS] Gate 6 automatic publication is wired.")
     print("[PASS] Gate 7 fresh/resumed automatic publication is wired.")
     print("[PASS] Maya meter->centimeter bridge is present.")
