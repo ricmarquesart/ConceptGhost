@@ -23,7 +23,8 @@ class AuthorDatasetProjectTests(unittest.TestCase):
                 str(attempt),"attempt1","scene1"
             )
             dataset=Path(dataset_dir)
-            self.assertEqual(dataset.resolve(),(attempt/"author_dataset").resolve())
+            self.assertTrue(dataset.is_dir())
+            self.assertTrue(dataset.samefile(attempt/"author_dataset"))
             self.assertTrue((dataset/"condition").is_dir())
             self.assertTrue((dataset/"camera_plot").is_dir())
             self.assertTrue((dataset/"wan_inpaint").is_dir())
