@@ -99,6 +99,18 @@ class RouteHandoffTests(unittest.TestCase):
             pointer=json.loads(Path(second["latest_pointer_path"]).read_text(encoding="utf-8"))
             self.assertEqual(pointer["p10_attempt_id"],second["p10_attempt_id"])
             self.assertTrue(Path(first["attempt_manifest_path"]).is_file())
+            first_manifest=json.loads(Path(first["attempt_manifest_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(
+                first_manifest["gate_output_initialization"]["mode"],
+                "AUTOMATIC_AT_ATTEMPT_CREATION",
+            )
+            self.assertFalse(
+                first_manifest["gate_output_initialization"]["manual_backfill_required"]
+            )
+            gate_root=Path(first_manifest["gate_output_root"])
+            self.assertTrue((gate_root/"GATE_01_FOUNDATION_RUN").is_dir())
+            self.assertTrue((gate_root/"GATE_02_P9_TO_P10_HANDOFF").is_dir())
+            self.assertTrue((gate_root/"GATE_03_KNOWN_UNKNOWN").is_dir())
 
     def test_auto_latest_resolves_committed_entry(self):
         from p10_lab.route_handoff import _resolve_production_entry_path
