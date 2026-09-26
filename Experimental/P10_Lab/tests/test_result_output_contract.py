@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -28,7 +29,13 @@ class ResultOutputContractTests(unittest.TestCase):
             result_root=Path(result["result_root"])
             self.assertEqual(result["stage_count"],19)
             self.assertFalse(result["manual_backfill_required"])
-            self.assertTrue((result_root/"RESULT_INDEX.json").is_file())
+            index_path=result_root/"RESULT_INDEX.json"
+            self.assertTrue(index_path.is_file())
+            index=json.loads(index_path.read_text(encoding="utf-8"))
+            self.assertEqual(
+                index["result_tree_location_policy"],
+                "DURABLE_SIBLING_P10_BESIDE_P9_SCENE_FROM_CREATION",
+            )
             self.assertTrue((result_root/"CG_00_P9_AUTHORITY"/"OUTPUTS"/"source_concept.png").is_file())
             self.assertTrue((result_root/"CG_00_P9_AUTHORITY"/"OUTPUTS"/"camera.json").is_file())
             self.assertTrue((result_root/"CG_00_P9_AUTHORITY"/"PREVIEWS"/"source_concept.png").is_file())
