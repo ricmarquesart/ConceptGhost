@@ -66,6 +66,13 @@ class Gate2PreviewNodeTests(unittest.TestCase):
 
     def test_source_concept_node_exposes_exact_p9_source(self):
         try:
+            import numpy  # noqa: F401
+            import torch  # noqa: F401
+            from PIL import Image  # noqa: F401
+        except ImportError as error:
+            self.skipTest(f"ComfyUI image runtime dependencies unavailable: {error}")
+
+        try:
             from p10_lab.preview_nodes import ConceptGhostP10SourceConceptImage
         except ImportError as error:
             self.fail(f"Source concept node is missing: {error}")
