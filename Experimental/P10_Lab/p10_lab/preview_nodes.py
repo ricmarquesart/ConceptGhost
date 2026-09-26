@@ -8,7 +8,7 @@ from .completion_envelope import (
     build_generation_candidate_map,
 )
 from .observation_map import build_observation_map
-from .p9_boundary import build_completion_bundle, load_completion_bundle
+from .p9_boundary import build_completion_bundle, load_completion_bundle, validate_official_run
 from .panorama import CameraAuthority, PanoramaSpec
 from .panorama_projection import build_projection_plan
 from .wan_conditioning import ConceptGhostP10WanMaskedConditioning
@@ -131,6 +131,69 @@ class ConceptGhostP10BundleLoader:
                 str(bundle.source_image),
                 str(bundle.camera),
                 str(bundle.primary_mesh),
+                rendered,
+            ),
+        }
+
+
+class ConceptGhostP10SourceConceptImage:
+    """Expose the exact accepted P9 source image as a ComfyUI IMAGE.
+
+    This is a boundary adapter for the private author panorama workflow. It does
+    not alter, rescale, regenerate or reinterpret the source: the returned image
+    is loaded directly from <P9_RUN>/source/source.png after validating the
+    official P9 boundary.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "run_dir": ("STRING", {"forceInput": True}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING")
+    RETURN_NAMES = (
+        "source_image",
+        "source_image_path",
+        "scene_contract_id",
+        "diagnostics_json",
+    )
+    FUNCTION = "load"
+    CATEGORY = "ConceptGhost/P10 Refined"
+    OUTPUT_NODE = True
+
+    def load(self, run_dir: str):
+        try:
+            import numpy as np
+            import torch
+            from PIL import Image
+        except ImportError as error:
+            raise RuntimeError(
+                "P10 source concept loader requires NumPy, Pillow and torch"
+            ) from error
+
+        boundary = validate_official_run(run_dir)
+        with Image.open(boundary.source_image) as opened:
+            array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
+        tensor = torch.from_numpy(array).unsqueeze(0)
+        diagnostics = {
+            "status": "PASS",
+            "purpose": "AUTHOR_PANORAMA_SOURCE_BOUNDARY",
+            "source_run_id": boundary.run_id,
+            "scene_contract_id": boundary.scene_contract_id,
+            "source_image_path": str(boundary.source_image),
+            "source_pixels_modified": False,
+            "p9_authority_changed": False,
+        }
+        rendered = _pretty(diagnostics)
+        return {
+            "ui": {"text": [rendered]},
+            "result": (
+                tensor,
+                str(boundary.source_image),
+                boundary.scene_contract_id,
                 rendered,
             ),
         }
@@ -819,6 +882,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10WorkflowInstructions": ConceptGhostP10WorkflowInstructions,
     "ConceptGhostP10CompletionBundleBuilder": ConceptGhostP10CompletionBundleBuilder,
     "ConceptGhostP10BundleLoader": ConceptGhostP10BundleLoader,
+    "ConceptGhostP10SourceConceptImage": ConceptGhostP10SourceConceptImage,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
     "ConceptGhostP10DroneRouteAuthoring": ConceptGhostP10DroneRouteAuthoring,
@@ -843,6 +907,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10WorkflowInstructions": "P10 · START HERE · Workflow Instructions",
     "ConceptGhostP10CompletionBundleBuilder": "P10 P9 Completion Bundle Builder",
     "ConceptGhostP10BundleLoader": "P10 P9 Bundle Loader / Validator",
+    "ConceptGhostP10SourceConceptImage": "P10 · Exact P9 Source Concept Image",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
     "ConceptGhostP10DroneRouteAuthoring": "P10 Refined · Artist Drone Route Authoring",
