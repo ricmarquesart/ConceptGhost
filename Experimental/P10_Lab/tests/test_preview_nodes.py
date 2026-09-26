@@ -81,13 +81,15 @@ class Gate2PreviewNodeTests(unittest.TestCase):
             root = Path(temp_dir)
             run = _write_official_run(root / "run-refined", branch_mode="Refined / P9 Clone")
             response = ConceptGhostP10SourceConceptImage().load(str(run))
-            image, source_path, scene_contract_id, diagnostics = response["result"]
+            image, source_path, scene_contract_id, diagnostics, horizontal_fov_deg = response["result"]
             report = json.loads(diagnostics)
 
             self.assertEqual(tuple(image.shape[-1:]), (3,))
             self.assertEqual(Path(source_path), (run / "source" / "source.png").resolve())
             self.assertEqual(scene_contract_id, "cgsc_test_identity")
             self.assertEqual(report["status"], "PASS")
+            self.assertGreater(horizontal_fov_deg, 0.0)
+            self.assertEqual(report["fov_authority"], "P9_CAMERA_INTRINSICS")
             self.assertFalse(report["source_pixels_modified"])
             self.assertFalse(report["p9_authority_changed"])
 
