@@ -46,8 +46,18 @@ def _route_setup_root(comfy_output_root: str | Path) -> Path:
     return Path(comfy_output_root).resolve()/"conceptghost"/"p10_route_setup"
 
 
-def _source_handoff_root(comfy_output_root: str | Path) -> Path:
-    return Path(comfy_output_root).resolve()/"conceptghost"/"p10_source_handoff"
+def _local_locator_root(comfy_output_root: str | Path) -> Path:
+    root=Path(comfy_output_root).resolve()/"conceptghost"/"p10_locators"
+    root.mkdir(parents=True,exist_ok=True)
+    return root
+
+
+def _durable_p10_root(p9_run_dir: str | Path) -> Path:
+    return Path(p9_run_dir).expanduser().resolve().parent/"P10"
+
+
+def _source_handoff_root_for_run(p9_run_dir: str | Path) -> Path:
+    return _durable_p10_root(p9_run_dir)/"p10_source_handoff"
 
 
 def _read_latest_run_pointer(pointer: Path) -> Path | None:
@@ -148,7 +158,7 @@ def _discover_latest_valid_p9_run(comfy_output_root: str | Path) -> tuple[Path,s
 
 def _create_source_only_entry(run_dir: str | Path, comfy_output_root: str | Path) -> dict[str,object]:
     boundary=validate_official_run(run_dir)
-    root=_source_handoff_root(comfy_output_root)/boundary.run_id
+    root=_source_handoff_root_for_run(boundary.root)/boundary.run_id
     root.mkdir(parents=True,exist_ok=True)
     inventory_path=root/"p9_dependency_inventory.json"
     if inventory_path.is_file():
@@ -165,6 +175,8 @@ def _create_source_only_entry(run_dir: str | Path, comfy_output_root: str | Path
         "scene_contract_id":boundary.scene_contract_id,
         "source_run_id":boundary.run_id,
         "source_p9_run_dir":str(boundary.root),
+        "p9_scene_root":str(boundary.root.parent),
+        "p10_output_root":str(_durable_p10_root(boundary.root)),
         "route_authority":"DEFERRED_UNTIL_CG04",
         "route_plan_sha256":"",
         "committed_route_path":"",
@@ -174,6 +186,7 @@ def _create_source_only_entry(run_dir: str | Path, comfy_output_root: str | Path
         "p9_persisted_file_count":inventory.get("persisted_file_count"),
         "p9_authority_changed":False,
         "handoff_policy":"CG02_CG03_P9_SOURCE_ONLY_ROUTE_REQUIRED_FROM_CG04",
+        "storage_policy":"P10_DURABLE_BESIDE_P9_SCENE_P9_RUN_IMMUTABLE",
         "route_required_from_stage":"CG_04_CAMERA_RAILS",
     }
     entry_path=root/"source_entry.json"
