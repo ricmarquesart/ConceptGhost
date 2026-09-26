@@ -353,6 +353,17 @@ Private ConceptGhost summaries/crosswalks derived from those materials live only
 
 `G:\My Drive\ConceptGhost\Drones\90_CONCEPTGHOST_DERIVED_NOTES_PRIVATE`
 
+
+A second private adjunct reference for single-image → 360 panorama construction lives at:
+
+`G:\My Drive\ConceptGhost\360\00_ORIGINAL_READ_ONLY`
+
+Its private ConceptGhost-derived notes live at:
+
+`G:\My Drive\ConceptGhost\360\90_CONCEPTGHOST_DERIVED_NOTES_PRIVATE`
+
+The same privacy/immutability rules apply. The 360 source is mandatory consultation when changing panorama generation, equirectangular projection, seam repair, perspective extraction, 360 world priors, or panorama-informed camera coverage.
+
 Authority precedence is:
 
 - product/visual authority: original Concept Art → accepted P9 source/camera authority → ConceptGhost contracts;
