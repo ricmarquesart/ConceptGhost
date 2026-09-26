@@ -24,6 +24,7 @@ from .result_output_nodes import ConceptGhostP10PanoramaResultPublisher
 from .panorama_validation_node import ConceptGhostP10PanoramaValidation
 from .author_rail_adapter import ConceptGhostP10AuthorRouteAdapter, ConceptGhostP10AuthorRailGate
 from .author_coverage_gate import ConceptGhostP10AuthorCoverageGate
+from .author_dataset_path import ConceptGhostP10AuthorDatasetProjectPath
 from .author_dataset_project import ConceptGhostP10AuthorDatasetProject
 
 
@@ -913,6 +914,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10AuthorRouteAdapter": ConceptGhostP10AuthorRouteAdapter,
     "ConceptGhostP10AuthorRailGate": ConceptGhostP10AuthorRailGate,
     "ConceptGhostP10AuthorCoverageGate": ConceptGhostP10AuthorCoverageGate,
+    "ConceptGhostP10AuthorDatasetProjectPath": ConceptGhostP10AuthorDatasetProjectPath,
     "ConceptGhostP10AuthorDatasetProject": ConceptGhostP10AuthorDatasetProject,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
@@ -944,6 +946,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10AuthorRouteAdapter": "P10 · CG-04 · Adapt ConceptGhost Route to Author CameraPlot",
     "ConceptGhostP10AuthorRailGate": "P10 · CG-04 · Publish Author Rail Evidence + Gate",
     "ConceptGhostP10AuthorCoverageGate": "P10 · CG-05 · Author Rail Coverage + Closed-Loop Evidence",
+    "ConceptGhostP10AuthorDatasetProjectPath": "P10 · CG-08 · Author Dataset Project Inside Current Attempt",
     "ConceptGhostP10AuthorDatasetProject": "P10 · Author Dataset Project Inside Current Attempt",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
