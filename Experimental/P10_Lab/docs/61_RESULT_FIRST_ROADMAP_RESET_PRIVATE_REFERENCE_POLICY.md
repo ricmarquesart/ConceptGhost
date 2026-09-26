@@ -59,13 +59,13 @@ Every new P10 attempt creates its official output hierarchy from the beginning. 
 
 Produce persistent camera rails and direct evidence that intended missing/occluded regions are observed from multiple useful trajectories.
 
-### R2-PANO — Shared 360 world-prior experiment
+### R2-PANO — Mandatory shared 360 world prior
 
-Before R3, run a bounded A/B lane that converts the original concept into a seam-corrected 2:1 equirectangular 360 world prior. P9 remains authoritative for the original concept view. The panorama is lower-authority generated context for unseen directions only.
+Before R3, every normal P10 result-first run converts the original concept into a seam-corrected 2:1 equirectangular 360 world prior. P9 remains authoritative for the original concept view. The panorama is mandatory lower-authority generated context for unseen directions.
 
 Do **not** feed the flat equirectangular image into the existing perspective MoGe path as if it were a normal camera frame. When panorama-derived depth/proxy geometry is needed, project the ERP into ordinary known-yaw/pitch/FOV perspective views first and align those views to P9 overlap.
 
-Promotion condition: the panorama-informed lane must improve agreement across independent camera routes, explorable-world stability, P9-aligned reconstruction, or useful hole coverage without changing the exact original concept-camera result.
+Acceptance condition: the mandatory panorama stage must preserve the exact original concept-camera result and provide a valid continuous world prior for all downstream routes. The project does not fall back to a panorama-free production path; failures are fixed at this stage.
 
 Private source for this lane:
 `G:\My Drive\ConceptGhost\360\00_ORIGINAL_READ_ONLY`
