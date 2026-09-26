@@ -69,3 +69,17 @@ Promote the panorama lane only if it improves one or more of:
 while preserving the exact original concept-camera result.
 
 Gate 8 remains blocked until the explorable-world and useful-surface hard proofs pass.
+
+
+## Source-lock requirement
+
+The generated panorama must not gain authority over the original concept patch.
+
+1. project the original concept into ERP using the accepted P9 camera/FOV;
+2. place the panorama wrap seam behind the original camera when possible;
+3. generate/outpaint unknown ERP regions;
+4. run seam repair/upscale;
+5. composite the exact source concept pixels back into the source ERP patch;
+6. verify that re-projecting the ERP through the exact concept camera reproduces the accepted source/P9 view.
+
+Failure of this source-camera regression blocks the panorama lane.
