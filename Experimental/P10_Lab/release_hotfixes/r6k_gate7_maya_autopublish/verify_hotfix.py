@@ -53,7 +53,8 @@ def main() -> int:
         '"reconstructed_mesh_MAYA_CM.obj"',
         '"P10_ACCEPTED_FILL_MAYA_CM.obj"',
         '"P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj"',
-        '"P10_ACCEPTED_FILL"',\n        '"P9_PLUS_P10_FILLED_CANDIDATE"',
+        '"P10_ACCEPTED_FILL"',
+        '"P9_PLUS_P10_FILLED_CANDIDATE"',
         "P9/P10 canonical meters -> Maya centimeters x100",
     ):
         if token not in contract:
