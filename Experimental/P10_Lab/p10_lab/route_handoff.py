@@ -427,10 +427,9 @@ def create_p10_attempt(
     now=datetime.now(timezone.utc)
     stamp=now.strftime("%Y%m%dT%H%M%S_%fZ")
     attempt_id=f"{stamp}_{attempt_identity_hash[:8]}_{uuid.uuid4().hex[:8]}"
-    base=(
-        Path(comfy_output_root).resolve()
-        /"conceptghost"/"p10_attempts"/p9_run_id
-    )
+    source_p9_run_dir=Path(str(loaded_entry["source_p9_run_dir"])).expanduser().resolve()
+    p10_output_root=_durable_p10_root(source_p9_run_dir)
+    base=p10_output_root/"p10_attempts"/p9_run_id
     attempt_root=base/attempt_id
     attempt_root.mkdir(parents=True,exist_ok=False)
     for name in ("gate4","gate5","gate6","diagnostics"):
@@ -444,7 +443,10 @@ def create_p10_attempt(
         "attempt_root":str(attempt_root),
         "parent_p9_run_id":p9_run_id,
         "scene_contract_id":scene_contract_id,
-        "source_p9_run_dir":str(loaded_entry["source_p9_run_dir"]),
+        "source_p9_run_dir":str(source_p9_run_dir),
+        "p9_scene_root":str(source_p9_run_dir.parent),
+        "p10_output_root":str(p10_output_root),
+        "storage_policy":"P10_DURABLE_BESIDE_P9_SCENE_P9_RUN_IMMUTABLE",
         "production_entry_path":str(loaded_entry["production_entry_path"]),
         "route_plan_sha256":route_hash or None,
         "route_authority":loaded_entry.get("route_authority"),
@@ -468,7 +470,7 @@ def create_p10_attempt(
         p10_attempt_id=attempt_id,
         p9_run_id=p9_run_id,
         scene_contract_id=scene_contract_id,
-        source_p9_run_dir=str(loaded_entry["source_p9_run_dir"]),
+        source_p9_run_dir=str(source_p9_run_dir),
     )
     manifest["result_output_root"]=result_output_tree["result_root"]
     manifest["result_output_index_path"]=result_output_tree["result_index_path"]
@@ -486,14 +488,11 @@ def create_p10_attempt(
     # explicit masks exist; the important rule is that evidence is published
     # at its own boundary rather than reconstructed after the run.
     initial_gate_outputs=publish_gate1_to_gate3_snapshots(
-        loaded_entry["source_p9_run_dir"],
+        source_p9_run_dir,
         attempt_root,
         p10_attempt_id=attempt_id,
     )
-    manifest["gate_output_root"]=str(
-        Path(loaded_entry["source_p9_run_dir"]).resolve()
-        /"GATE_OUTPUTS"/attempt_id
-    )
+    manifest["gate_output_root"]=str(source_p9_run_dir.parent/"P10"/"GATE_OUTPUTS"/attempt_id)
     manifest["gate_output_initialization"]={
         "mode":"AUTOMATIC_AT_ATTEMPT_CREATION",
         "manual_backfill_required":False,
