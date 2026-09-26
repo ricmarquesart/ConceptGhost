@@ -3,6 +3,21 @@
 
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-26 CG-02/CG-03 AUTO_LATEST P9 handoff fix
+
+- Target-PC panorama test v0.3 exposed a result-first ordering bug before Krea execution: `ConceptGhostP10ProductionEntryLoader` required a committed artist route when `AUTO_LATEST` was used.
+- That dependency was invalid for the current CG ordering because **CG-02 panorama** and **CG-03 panorama validation** precede **CG-04 camera rails**.
+- **SOURCE FIX COMPLETE:** `AUTO_LATEST` still prefers a committed production entry when available, but otherwise may now create a validated P9-only source handoff for CG-02/CG-03.
+- The source-only handoff carries `route_authority=DEFERRED_UNTIL_CG04`, no fabricated route hash, and an explicit `route_required_from_stage=CG_04_CAMERA_RAILS`.
+- CG-04+ route authority remains fail-closed; this fix does not weaken the artist-route contract downstream.
+- Runtime fix commit: `3e87e4c249269fc747bff68986045eb9a2743596`.
+- Regression-test commit: `3c30e79f49bc61bd770856f4e3f3ebd17bbed82b`.
+- Formal fix record: `62_CG02_CG03_AUTO_LATEST_P9_SOURCE_HANDOFF_FIX.md`.
+- Evaluation bundle: `ConceptGhost_CG02_CG03_PANORAMA_TEST_v0.4.zip`.
+- Bundle SHA-256: `7a971b011d9bf7377138ac09bf6fff726a4836744a3de1c24471893be644b97f`.
+- Google Drive Evaluation_Builds file id: `1qiYwMkX8N441su1zns6temDi2unaQE9J`.
+- **Acceptance status remains unchanged:** CG-02 is ACTIVE for real target-PC output acceptance; CG-03/CG-04 remain blocked on upstream physical evidence. No CG gate is promoted by this source fix alone.
+
 ## Authoritative reconciliation — 2026-09-25 R6F11 Atlas Depth cache fix
 
 - R6F10 crossed the complete private MoGe-3 compatibility smoke chain on the target RTX 2080 Ti: Low Resolution ViT-L CUDA/refiner smoke PASS and High Fidelity ViT-G/Turing compatibility gate PASS. This closes the installer-level Triton/FlexGEMM compatibility blockers, but does not yet guarantee the full production resolution_level=9/refine_steps=7 workload.
