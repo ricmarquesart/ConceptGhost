@@ -1,0 +1,44 @@
+{
+  "schema": "ConceptGhost.EvaluationRelease.v0.1",
+  "release": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v0.9",
+  "date": "2026-09-26",
+  "status": "PUBLISHED_TARGET_PC_RETEST_PENDING",
+  "purpose": "Add SOURCE LOCK / MAX PRESERVE and TOP-DOWN / BIRD'S-EYE panorama presets while retaining v0.8 organization and v0.6 durable-storage behavior.",
+  "drive_file_id": "1iZvMPXVme1vThIGB5ovVZjp2fXe-mLUg",
+  "drive_filename": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v0.9.zip",
+  "bytes": 1179243,
+  "sha256": "269dd799a8e159f1d831add0627663d85e09a7db747dfc777ad8a32165a6f764",
+  "workflow": "Workflows/02_ConceptGhost_CG02_CG03_PANORAMA_v0.9.json",
+  "presets": {
+    "source_lock_max_preserve": {
+      "purpose": "Prioritize fidelity to the observed P9 source over beautification or reinterpretation.",
+      "editable_nodes": [
+        41,
+        42,
+        44,
+        45,
+        74,
+        77
+      ],
+      "recommended_ultimate_sd_denoise": 0.08
+    },
+    "top_down_birds_eye": {
+      "purpose": "Preserve a downward-facing / bird's-eye source interpretation without forcing a conventional eye-level horizon.",
+      "editable_nodes": [
+        41,
+        42,
+        44,
+        45,
+        74,
+        77
+      ],
+      "recommended_ultimate_sd_denoise": 0.1,
+      "horizon_policy": "Do not require or invent an eye-level horizon when the accepted P9 camera/source does not show one."
+    }
+  },
+  "authority": {
+    "p9": "source image + accepted camera/FOV + known geometry",
+    "cg02": "generated prior for unseen 360 surroundings",
+    "cg03": "fail-closed source-camera reprojection + ERP seam validation"
+  }
+}
