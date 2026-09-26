@@ -1,0 +1,48 @@
+{
+  "schema": "ConceptGhost.CG02CG03PanoramaTestRelease.v0.3",
+  "date": "2026-09-26",
+  "release": "ConceptGhost_CG02_CG03_PANORAMA_TEST_v0.3",
+  "purpose": [
+    "target-PC quick acceptance of mandatory Krea image-to-ERP panorama",
+    "physical CG-02 output evidence during execution",
+    "hard CG-03 source-camera reprojection and ERP seam validation"
+  ],
+  "workflow": {
+    "file": "ConceptGhost_TEST_CG02_CG03_PANORAMA_v0.3.json",
+    "nodes": 73,
+    "links": 137,
+    "sha256": "7c0e565eaffb4cad48181655cf1e3c1964a0f8dd2b771b6168eb0608c82a1ea2",
+    "dangling_links": 0,
+    "duplicate_node_ids": 0
+  },
+  "payload": {
+    "runtime_source_commit": "89ed73aa2f6f4c0b81df21d87b363a38d05348b3",
+    "validation_commit": "59bcc1c0b7602879d1ff772fdcf2e325c39ed489",
+    "github_tests_run": 36228182227,
+    "github_tests_conclusion": "success",
+    "source_snapshot_run": 36228182238,
+    "source_snapshot_conclusion": "success"
+  },
+  "package": {
+    "file": "ConceptGhost_CG02_CG03_PANORAMA_TEST_v0.3.zip",
+    "size_bytes": 377442,
+    "sha256": "dcbc50519c9492e6152ba2dcdd446b59125d15c6e3cce7b590dcf49fb3d16fdc"
+  },
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "file_id": "1_k5Kq1JyhojNLYmn7qE_KG0Voun98DLn"
+  },
+  "installer": {
+    "installs_models": false,
+    "installs_third_party_custom_nodes": false,
+    "installs_python_dependencies": false,
+    "updates_conceptghost_node_payload": true,
+    "installs_test_workflow": true
+  },
+  "expected_result_root": "<COMFYUI_OUTPUT>/conceptghost/p10_attempts/<P9_RUN_ID>/<P10_ATTEMPT_ID>/RESULTS",
+  "expected_stages": [
+    "CG_02_PANORAMA_360",
+    "CG_03_PANORAMA_VALIDATION"
+  ],
+  "normal_backfill_required": false
+}
