@@ -446,3 +446,18 @@ The authoritative public-safe dependency map for each result-first gate is:
 `Experimental/P10_Lab/docs/63_REQUIRED_SOFTWARE_BY_RESULT_FIRST_GATE.md`
 
 The canonical dependency installer is `ConceptGhost_REQUIRED_PIPELINE_INSTALLER_r2.zip`. It intentionally excludes SAM3/RMBG, GGUF, RAFT and the ADV workflow because they are not required for the refined-blockout objective.
+
+
+### Mandatory physical result evidence tree
+
+Every new P10 attempt must create and use:
+
+`<COMFYUI_OUTPUT>\conceptghost\p10_attempts\<P9_RUN_ID>\<P10_ATTEMPT_ID>\RESULTS\`
+
+The complete CG-00..CG-18 result tree is created at attempt creation time. Each stage owns `OUTPUTS/`, `PREVIEWS/`, `LOGS/`, `MANIFESTS/`, and `STATUS.json`, with a root `RESULT_INDEX.json`.
+
+A stage cannot be functionally PASS merely because an executable, node, model, CI job, or log succeeded. Code must reject functional PASS unless physical `OUTPUTS`, human-inspectable `PREVIEWS`, and machine-readable `MANIFESTS` already exist. Artist acceptance cannot precede functional PASS.
+
+Historical `<P9_RUN>\GATE_OUTPUTS\<P10_ATTEMPT_ID>` mirrors may remain for compatibility, but they are not the canonical active-run evidence location and normal new runs must never require a post-run backfill batch.
+
+See `Experimental/P10_Lab/docs/64_RESULT_OUTPUT_EVIDENCE_CONTRACT.md`.
