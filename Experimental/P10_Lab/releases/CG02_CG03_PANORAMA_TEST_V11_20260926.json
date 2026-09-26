@@ -1,0 +1,21 @@
+{
+  "schema": "ConceptGhost.EvaluationRelease.v0.1",
+  "release": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v1.1",
+  "date": "2026-09-26",
+  "status": "PUBLISHED_TARGET_PC_RETEST_PENDING",
+  "purpose": "Hotfix workflow-copy packaging failure inherited from v0.6 installer.",
+  "drive_file_id": "1rFL6Yt4F3qXOeo-tE_c47WWyEnRkQU-K",
+  "drive_filename": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v1.1.zip",
+  "bytes": 1180928,
+  "sha256": "5a234a0e30125f4a829ddcc4cba865864ba7d3fae37b404572ccac6b65604211",
+  "workflow": "Workflows/02_ConceptGhost_CG02_CG03_PANORAMA_v1.1.json",
+  "root_cause": "v1.0 inherited Installer/01_INSTALL_AND_PREPARE_TEST.bat from v0.6, which still attempted to copy 02_ConceptGhost_CG02_CG03_PANORAMA_v0.6.json even though that file was no longer in the bundle.",
+  "fixes": [
+    "Installer now references the workflow version present in the bundle.",
+    "Workflow source files are checked before copy.",
+    "Installer tries all standard ComfyUI workflow directories instead of failing on the first unwritable one.",
+    "Copied workflow is verified after copy.",
+    "Verifier explicitly checks for Workflow 02 v1.1.",
+    "Graph behavior is unchanged from v1.0."
+  ]
+}
