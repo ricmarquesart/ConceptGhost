@@ -1,4 +1,4 @@
-name: Build R6K Gate7 Maya Autopublish
+name: Build R6K r2 Gate7 Maya Autopublish
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $name = 'ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1'
+          $name = 'ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r2'
           $repoRoot = (Resolve-Path '.').Path
           $src = Resolve-Path 'Experimental/P10_Lab/release_hotfixes/r6k_gate7_maya_autopublish'
           $release = Join-Path $repoRoot 'release'
@@ -66,7 +66,7 @@ jobs:
           }
 
           $manifest = [ordered]@{
-            schema = 'ConceptGhost.R6KGate7MayaAutopublish.v0.1'
+            schema = 'ConceptGhost.R6KGate7MayaAutopublish.v0.2'
             release = $name
             source_commit = $env:GITHUB_SHA
             scope = 'AUTOMATIC_GATE1_7_OUTPUTS_PLUS_MAYA_CM_GATE7_COMPARISON'
@@ -77,6 +77,7 @@ jobs:
             maya_cm_per_meter = 100.0
             gate7_separate_p9_and_p10_fill = $true
             gate7_combined_candidate_obj = $true
+            gate7_combined_candidate_in_maya = $true
             manual_backfill_required_for_future_runs = $false
             canonical_geometry_changed = $false
             p9_authority_changed = $false
@@ -107,7 +108,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $root = 'release/ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1'
+          $root = 'release/ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r2'
           foreach ($p in @(
             '01_APPLY_R6K_GATE7_OUTPUTS.bat',
             '02_VERIFY_R6K_GATE7_OUTPUTS.bat',
@@ -128,14 +129,15 @@ jobs:
           if ($manifest.automatic_gate7_publication_fresh -ne $true) { throw 'fresh Gate 7 autopublish missing' }
           if ($manifest.automatic_gate7_publication_resumed -ne $true) { throw 'resumed Gate 7 autopublish missing' }
           if ($manifest.maya_cm_per_meter -ne 100.0) { throw 'Maya scale bridge missing' }
+          if ($manifest.gate7_combined_candidate_in_maya -ne $true) { throw 'Complete filled candidate must be imported into Maya' }
           if ($manifest.manual_backfill_required_for_future_runs -ne $false) { throw 'manual backfill should not be required' }
           if ($manifest.canonical_geometry_changed -ne $false) { throw 'canonical geometry mutation flag changed' }
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1
+          name: ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r2
           path: |
-            release/ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1.zip
-            release/ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1_SHA256.txt
+            release/ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r2.zip
+            release/ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r2_SHA256.txt
           if-no-files-found: error
           retention-days: 30
