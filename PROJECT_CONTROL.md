@@ -437,3 +437,12 @@ Implementation order:
 10. final Maya world.
 
 The private detailed roadmap and private execution checklist are authoritative for licensed source-file mapping. Public repository docs intentionally describe architecture/contracts without embedding purchased workflow JSON.
+
+
+### Required software map
+
+The authoritative public-safe dependency map for each result-first gate is:
+
+`Experimental/P10_Lab/docs/63_REQUIRED_SOFTWARE_BY_RESULT_FIRST_GATE.md`
+
+The canonical dependency installer is `ConceptGhost_REQUIRED_PIPELINE_INSTALLER_r2.zip`. It intentionally excludes SAM3/RMBG, GGUF, RAFT and the ADV workflow because they are not required for the refined-blockout objective.
