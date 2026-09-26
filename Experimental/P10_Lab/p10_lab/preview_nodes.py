@@ -26,6 +26,7 @@ from .author_rail_adapter import ConceptGhostP10AuthorRouteAdapter, ConceptGhost
 from .author_coverage_gate import ConceptGhostP10AuthorCoverageGate
 from .author_dataset_path import ConceptGhostP10AuthorDatasetProjectPath
 from .author_result_gates import ConceptGhostP10AuthorWanResultGate, ConceptGhostP10AuthorHiResResultGate
+from .author_dataset_result_gate import ConceptGhostP10AuthorDatasetResultGate
 from .author_dataset_project import ConceptGhostP10AuthorDatasetProject
 
 
@@ -918,6 +919,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10AuthorDatasetProjectPath": ConceptGhostP10AuthorDatasetProjectPath,
     "ConceptGhostP10AuthorWanResultGate": ConceptGhostP10AuthorWanResultGate,
     "ConceptGhostP10AuthorHiResResultGate": ConceptGhostP10AuthorHiResResultGate,
+    "ConceptGhostP10AuthorDatasetResultGate": ConceptGhostP10AuthorDatasetResultGate,
     "ConceptGhostP10AuthorDatasetProject": ConceptGhostP10AuthorDatasetProject,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
@@ -952,6 +954,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10AuthorDatasetProjectPath": "P10 · CG-08 · Author Dataset Project Inside Current Attempt",
     "ConceptGhostP10AuthorWanResultGate": "P10 · CG-06 · Publish WAN Frames Before HiRes",
     "ConceptGhostP10AuthorHiResResultGate": "P10 · CG-07 · Publish HiRes/Proxy Evidence Before SphereSfM",
+    "ConceptGhostP10AuthorDatasetResultGate": "P10 · CG-08 · Validate Tangible SphereSfM/COLMAP Dataset",
     "ConceptGhostP10AuthorDatasetProject": "P10 · Author Dataset Project Inside Current Attempt",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
