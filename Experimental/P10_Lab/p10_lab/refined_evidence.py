@@ -14,7 +14,7 @@ from .disocclusion import build_disocclusion_mask
 from .control_sequence import ControlFrameRecord, ControlSequenceManifest
 from .camera_sequence import CameraFrameRecord, CameraSequenceManifest
 from .drone_route_diagnostics import build_drone_route_diagnostics
-from .gate_output_contract import publish_gate4_output
+from .gate_output_contract import publish_gate1_to_gate3_snapshots, publish_gate4_output
 from .drone_route_plan import (
     DroneRoutePlan,
     apply_hold_and_resume_clearance,
@@ -923,6 +923,15 @@ def build_refined_evidence(
     }
 
     if str(p10_attempt_root or "").strip():
+        # Refresh the early snapshots at the Gate 4 boundary so Gate 3 gains
+        # the known/unknown visualization produced by this stage. This is an
+        # automatic runtime publication path, never a post-run backfill.
+        early_gate_outputs = publish_gate1_to_gate3_snapshots(
+            boundary.root,
+            p10_attempt_root,
+            p10_attempt_id=Path(str(p10_attempt_root)).name,
+        )
+        diagnostics["early_gate_output_contracts"] = early_gate_outputs
         gate_output = publish_gate4_output(
             boundary.root,
             p10_attempt_root,
