@@ -1,4 +1,4 @@
-# ConceptGhost R6K — Gate 7 Maya Comparison + Automatic Gate Outputs
+# ConceptGhost R6K r2 — Gate 7 Maya Comparison + Automatic Gate Outputs
 
 R6K fixes two separate problems discovered on the target PC.
 
