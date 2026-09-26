@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 import uuid
@@ -18,6 +19,8 @@ from .p9_dependency_inventory import (
 
 
 _ENTRY_SCHEMA="ConceptGhost.P10ProductionEntry.v0.1"
+_SOURCE_ENTRY_SCHEMA="ConceptGhost.P10SourceEntry.v0.1"
+_DEFAULT_ARTIST_OUTPUT_ROOT=r"G:\\My Drive\\ConceptGhost\\Outputs\\ConceptGhost"
 
 
 def _sha256_file(path: Path) -> str:
@@ -37,6 +40,196 @@ def _read_json(path: Path,label: str) -> dict:
         raise ContractError(f"{label} must contain a JSON object")
     return payload
 
+
+
+def _route_setup_root(comfy_output_root: str | Path) -> Path:
+    return Path(comfy_output_root).resolve()/"conceptghost"/"p10_route_setup"
+
+
+def _source_handoff_root(comfy_output_root: str | Path) -> Path:
+    return Path(comfy_output_root).resolve()/"conceptghost"/"p10_source_handoff"
+
+
+def _read_latest_run_pointer(pointer: Path) -> Path | None:
+    try:
+        raw=pointer.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    if not raw:
+        return None
+    return Path(os.path.expandvars(os.path.expanduser(raw))).resolve()
+
+
+def _discover_latest_valid_p9_run(comfy_output_root: str | Path) -> tuple[Path,str]:
+    """Resolve the newest accepted P9 without requiring an artist route.
+
+    Priority is given to Route Setup evidence because it is already bound to a
+    specific accepted P9 run. If no Route Setup has ever been executed, fall
+    back to the normal ConceptGhost artist-output LATEST_RUN pointers.
+    """
+
+    candidates: list[tuple[float,Path,str]]=[]
+    route_root=_route_setup_root(comfy_output_root)
+    if route_root.is_dir():
+        for status_path in route_root.glob("*/route_setup_status.json"):
+            try:
+                payload=_read_json(status_path,"route setup status")
+                raw=str(payload.get("source_p9_run_dir") or "").strip()
+                if raw:
+                    candidates.append((status_path.stat().st_mtime,Path(raw).expanduser().resolve(),"ROUTE_SETUP_STATUS"))
+            except (OSError,ContractError):
+                continue
+        for entry_path in route_root.glob("*/production_entry.json"):
+            try:
+                payload=_read_json(entry_path,"production entry candidate")
+                raw=str(payload.get("source_p9_run_dir") or "").strip()
+                if raw:
+                    candidates.append((entry_path.stat().st_mtime,Path(raw).expanduser().resolve(),"PRODUCTION_ENTRY_FALLBACK"))
+            except (OSError,ContractError):
+                continue
+
+    artist_roots=[]
+    env_root=str(os.environ.get("CONCEPTGHOST_ARTIST_OUTPUT_ROOT") or "").strip()
+    if env_root:
+        artist_roots.append(Path(os.path.expandvars(os.path.expanduser(env_root))))
+    artist_roots.append(Path(_DEFAULT_ARTIST_OUTPUT_ROOT))
+
+    for artist_root in artist_roots:
+        try:
+            if not artist_root.is_dir():
+                continue
+        except OSError:
+            continue
+        pointers=[]
+        direct=artist_root/"LATEST_RUN.txt"
+        if direct.is_file():
+            pointers.append(direct)
+        try:
+            pointers.extend(path for path in artist_root.glob("*/LATEST_RUN.txt") if path.is_file())
+        except OSError:
+            pass
+        for pointer in pointers:
+            run=_read_latest_run_pointer(pointer)
+            if run is not None:
+                try:
+                    stamp=pointer.stat().st_mtime
+                except OSError:
+                    stamp=0.0
+                candidates.append((stamp,run,"ARTIST_OUTPUT_LATEST_RUN"))
+
+    dedup: dict[str,tuple[float,Path,str]]={}
+    for stamp,run,source in candidates:
+        key=str(run)
+        previous=dedup.get(key)
+        if previous is None or stamp>previous[0]:
+            dedup[key]=(stamp,run,source)
+
+    rejected=[]
+    for _stamp,run,source in sorted(dedup.values(),key=lambda item:item[0],reverse=True):
+        try:
+            boundary=validate_official_run(run)
+            return boundary.root,source
+        except Exception as error:
+            rejected.append(f"{run}: {error}")
+
+    detail=("; ".join(rejected[:3]) if rejected else "no P9 pointers were found")
+    raise ContractError(
+        "AUTO_LATEST could not find an accepted P9 source for CG-02/CG-03. "
+        "Run the normal ConceptGhost P9 workflow once, or run Route Setup once to publish its P9 pointer. "
+        f"Discovery detail: {detail}"
+    )
+
+
+def _create_source_only_entry(run_dir: str | Path, comfy_output_root: str | Path) -> dict[str,object]:
+    boundary=validate_official_run(run_dir)
+    root=_source_handoff_root(comfy_output_root)/boundary.run_id
+    root.mkdir(parents=True,exist_ok=True)
+    inventory_path=root/"p9_dependency_inventory.json"
+    if inventory_path.is_file():
+        inventory=validate_p9_dependency_inventory(inventory_path)
+    else:
+        inventory=write_p9_dependency_inventory(boundary.root,inventory_path)
+
+    entry={
+        "schema":_SOURCE_ENTRY_SCHEMA,
+        "status":"READY",
+        "production_ready":False,
+        "source_only":True,
+        "created_at_utc":datetime.now(timezone.utc).isoformat(),
+        "scene_contract_id":boundary.scene_contract_id,
+        "source_run_id":boundary.run_id,
+        "source_p9_run_dir":str(boundary.root),
+        "route_authority":"DEFERRED_UNTIL_CG04",
+        "route_plan_sha256":"",
+        "committed_route_path":"",
+        "active_mission_count":0,
+        "p9_dependency_inventory_path":str(inventory_path),
+        "p9_dependency_inventory_sha256":inventory.get("inventory_sha256"),
+        "p9_persisted_file_count":inventory.get("persisted_file_count"),
+        "p9_authority_changed":False,
+        "handoff_policy":"CG02_CG03_P9_SOURCE_ONLY_ROUTE_REQUIRED_FROM_CG04",
+        "route_required_from_stage":"CG_04_CAMERA_RAILS",
+    }
+    entry_path=root/"source_entry.json"
+    entry_path.write_text(json.dumps(entry,indent=2,sort_keys=True),encoding="utf-8")
+    entry["production_entry_path"]=str(entry_path)
+
+    pointer_path=root.parent/"LATEST_SOURCE_ENTRY.json"
+    pointer={
+        "schema":"ConceptGhost.P10LatestSourceEntryPointer.v0.1",
+        "source_entry_path":str(entry_path),
+        "scene_contract_id":boundary.scene_contract_id,
+        "source_run_id":boundary.run_id,
+        "updated_at_utc":datetime.now(timezone.utc).isoformat(),
+        "pointer_only":True,
+    }
+    temp=pointer_path.with_suffix(".json.tmp")
+    temp.write_text(json.dumps(pointer,indent=2,sort_keys=True),encoding="utf-8")
+    temp.replace(pointer_path)
+    entry["latest_source_entry_pointer"]=str(pointer_path)
+    return entry
+
+
+def load_source_only_entry(entry_path: str | Path) -> dict[str,object]:
+    entry_path=Path(entry_path).resolve()
+    entry=_read_json(entry_path,"P10 source entry")
+    if entry.get("schema")!=_SOURCE_ENTRY_SCHEMA or entry.get("status")!="READY":
+        raise ContractError("P10 source entry is not READY or has an unsupported schema")
+    run_dir=Path(str(entry.get("source_p9_run_dir") or "")).resolve()
+    boundary=validate_official_run(run_dir)
+    if str(entry.get("scene_contract_id") or "")!=boundary.scene_contract_id:
+        raise ContractError("Source entry scene_contract_id no longer matches P9")
+    if str(entry.get("source_run_id") or "")!=boundary.run_id:
+        raise ContractError("Source entry source_run_id no longer matches P9")
+    inventory_path=Path(str(entry.get("p9_dependency_inventory_path") or "")).resolve()
+    inventory=validate_p9_dependency_inventory(inventory_path)
+    expected=str(entry.get("p9_dependency_inventory_sha256") or "").strip().lower()
+    if expected and inventory.get("inventory_sha256")!=expected:
+        raise ContractError("P9 dependency inventory file changed after source handoff")
+    deferred_route={
+        "schema":"ConceptGhost.P10DeferredRoute.v0.1",
+        "status":"ROUTE_NOT_REQUIRED_FOR_CG02_CG03",
+        "route_required_from_stage":"CG_04_CAMERA_RAILS",
+        "scene_contract_id":boundary.scene_contract_id,
+        "source_run_id":boundary.run_id,
+    }
+    return {
+        **entry,
+        "production_entry_path":str(entry_path),
+        "source_p9_run_dir":str(run_dir),
+        "route_plan_json":json.dumps(deferred_route,indent=2,sort_keys=True),
+        "p9_dependency_inventory":inventory,
+        "validated":True,
+    }
+
+
+def _load_entry_by_schema(entry_path: str | Path) -> dict[str,object]:
+    path=Path(entry_path).resolve()
+    payload=_read_json(path,"P10 entry")
+    schema=payload.get("schema")
+    if schema==_SOURCE_ENTRY_SCHEMA:
+        return load_source_only_entry(path)
+    return load_production_entry(path)
 
 def commit_route_setup(
     run_dir: str | Path,
@@ -197,16 +390,24 @@ def create_p10_attempt(
     """Create an immutable P10 attempt directory under one accepted P9 run."""
 
     if not bool(loaded_entry.get("validated")):
-        raise ContractError("P10 attempt requires a validated production entry")
+        raise ContractError("P10 attempt requires a validated production/source entry")
     p9_run_id=str(loaded_entry.get("source_run_id") or "").strip()
     scene_contract_id=str(loaded_entry.get("scene_contract_id") or "").strip()
     route_hash=str(loaded_entry.get("route_plan_sha256") or "").strip().lower()
-    if not p9_run_id or not scene_contract_id or len(route_hash)!=64:
-        raise ContractError("Validated production entry is missing P9/route identity")
+    source_only=bool(loaded_entry.get("source_only"))
+    if not p9_run_id or not scene_contract_id:
+        raise ContractError("Validated P10 entry is missing P9 identity")
+    if not source_only and len(route_hash)!=64:
+        raise ContractError("Validated production entry is missing route identity")
+    attempt_identity_hash=(
+        route_hash if len(route_hash)==64 else hashlib.sha256(
+            f"{p9_run_id}|{scene_contract_id}|CG02_CG03_SOURCE_ONLY".encode("utf-8")
+        ).hexdigest()
+    )
 
     now=datetime.now(timezone.utc)
     stamp=now.strftime("%Y%m%dT%H%M%S_%fZ")
-    attempt_id=f"{stamp}_{route_hash[:8]}_{uuid.uuid4().hex[:8]}"
+    attempt_id=f"{stamp}_{attempt_identity_hash[:8]}_{uuid.uuid4().hex[:8]}"
     base=(
         Path(comfy_output_root).resolve()
         /"conceptghost"/"p10_attempts"/p9_run_id
@@ -226,8 +427,10 @@ def create_p10_attempt(
         "scene_contract_id":scene_contract_id,
         "source_p9_run_dir":str(loaded_entry["source_p9_run_dir"]),
         "production_entry_path":str(loaded_entry["production_entry_path"]),
-        "route_plan_sha256":route_hash,
+        "route_plan_sha256":route_hash or None,
         "route_authority":loaded_entry.get("route_authority"),
+        "source_only_entry":source_only,
+        "route_required_from_stage":loaded_entry.get("route_required_from_stage"),
         "p9_dependency_inventory_path":loaded_entry.get("p9_dependency_inventory_path"),
         "p9_dependency_inventory_sha256":loaded_entry.get("p9_dependency_inventory_sha256"),
         "immutable_attempt_directory":True,
@@ -286,7 +489,8 @@ def create_p10_attempt(
         "attempt_manifest_path":str(manifest_path),
         "parent_p9_run_id":p9_run_id,
         "scene_contract_id":scene_contract_id,
-        "route_plan_sha256":route_hash,
+        "route_plan_sha256":route_hash or None,
+        "source_only_entry":source_only,
         "updated_at_utc":now.isoformat(),
         "pointer_only":True,
     }
@@ -310,16 +514,19 @@ def _resolve_production_entry_path(value: str, comfy_output_root: str | Path) ->
     if raw and raw.upper()!="AUTO_LATEST":
         return Path(raw).expanduser().resolve()
     pointer=_latest_production_pointer_path(comfy_output_root)
-    if not pointer.is_file():
-        raise ContractError(
-            "AUTO_LATEST could not find a committed route. Run the Route Setup "
-            "workflow, edit the artist route, and Queue Prompt once more to commit it."
-        )
-    payload=_read_json(pointer,"latest production entry pointer")
-    target=str(payload.get("production_entry_path") or "").strip()
-    if not target:
-        raise ContractError("Latest production-entry pointer has no production_entry_path")
-    return Path(target).expanduser().resolve()
+    if pointer.is_file():
+        payload=_read_json(pointer,"latest production entry pointer")
+        target=str(payload.get("production_entry_path") or "").strip()
+        if not target:
+            raise ContractError("Latest production-entry pointer has no production_entry_path")
+        return Path(target).expanduser().resolve()
+
+    # CG-02/CG-03 intentionally precede artist-route authority. AUTO_LATEST must
+    # therefore be able to start a source-only P10 attempt from the newest
+    # accepted P9. CG-04 and later still fail closed until a route is committed.
+    run_dir,_source=_discover_latest_valid_p9_run(comfy_output_root)
+    source_entry=_create_source_only_entry(run_dir,comfy_output_root)
+    return Path(str(source_entry["production_entry_path"])).resolve()
 
 
 class ConceptGhostP10RouteCommit:
@@ -387,13 +594,15 @@ class ConceptGhostP10ProductionEntryLoader:
             production_entry_path,
             output_root,
         )
-        result=load_production_entry(resolved_entry)
+        result=_load_entry_by_schema(resolved_entry)
         attempt=create_p10_attempt(result,output_root)
         diagnostics={
             "status":"PASS",
             "workflow_step":"02_P10_PRODUCTION",
             "resolution_mode":resolution_mode,
+            "resolved_entry_mode":("P9_SOURCE_ONLY" if result.get("source_only") else "COMMITTED_ROUTE"),
             "latest_pointer_path":str(pointer_path),
+            "route_required_from_stage":result.get("route_required_from_stage"),
             "resolved_production_entry_path":str(resolved_entry),
             "resolved_production_entry_name":resolved_entry.name,
             "resolved_committed_route_path":result.get("committed_route_path"),
