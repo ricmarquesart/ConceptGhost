@@ -1,0 +1,55 @@
+{
+  "schema": "ConceptGhost.P10ResultFirstR6KCompleteReleaseRecord.v0.2",
+  "date": "2026-09-25",
+  "release": "ConceptGhost_v1.54_P10_R6K_RESULT_FIRST_COMPLETE_r2",
+  "source_commit": "20e7028bff42059cdb169eeb4a446ab24bf75583",
+  "changes_from_r1": [
+    "active P10 roadmap/policy documents now carry the mandatory private-reference preamble",
+    "latest source snapshot at commit 20e7028b is packaged",
+    "r1 Drive ZIP renamed obsolete/superseded"
+  ],
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "file_id": "1jmyviUllgHq8N4luzlB8lg6Xz2NCjXRT",
+    "file_name": "ConceptGhost_v1.54_P10_R6K_RESULT_FIRST_COMPLETE_r2.zip",
+    "size_bytes": 12748150,
+    "sha256": "761c9cb171894c848d8b3142887ed2fc9e98363258660f3287e5be3edf2bd6c0"
+  },
+  "private_reference": {
+    "path": "G:\\My Drive\\ConceptGhost\\Drones\\00_PRIVATE_AUTHOR_REFERENCE_SOURCE_OF_TRUTH_DO_NOT_GITHUB",
+    "included_in_bundle": false,
+    "included_in_github": false,
+    "derived_notes": "G:\\My Drive\\ConceptGhost\\Drones\\90_CONCEPTGHOST_DERIVED_NOTES_PRIVATE"
+  },
+  "integrated": {
+    "automatic_gate_outputs": "GATE_01..GATE_07",
+    "normal_run_backfill_required": false,
+    "maya_coordinate_bridge": "CANONICAL_METERS_TO_MAYA_CENTIMETERS_X100_DIAGNOSTIC_ONLY",
+    "result_first_roadmap_reset": true,
+    "active_roadmap_docs_with_private_reference_pointer": 12
+  },
+  "validation": {
+    "source_snapshot_run": {
+      "id": 36213031218,
+      "conclusion": "success"
+    },
+    "local_static": {
+      "zip_integrity": "PASS",
+      "p10_python_compile": "PASS",
+      "p10_code_manifest_files": 73,
+      "verify_p10_dr9_fake_install": "PASS",
+      "verify_result_first_bundle_fake_install": "PASS",
+      "private_author_file_leak_check": "PASS"
+    },
+    "target_pc_runtime": "PENDING",
+    "artist_reconstruction_quality": "NOT_ACCEPTED_YET"
+  },
+  "status": {
+    "bundle": "CANONICAL_CURRENT_USER_TEST_PACKAGE",
+    "gate8": "BLOCKED",
+    "next_hard_proofs": [
+      "R5_EXPLORABLE_WORLD",
+      "R6_USEFUL_P9_ALIGNED_POLYGONAL_RECONSTRUCTION"
+    ]
+  }
+}
