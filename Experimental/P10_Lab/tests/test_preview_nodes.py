@@ -99,6 +99,8 @@ class Gate2PreviewNodeTests(unittest.TestCase):
         self.assertIn("ConceptGhostP10CompletionBundleBuilder", p10_lab.NODE_CLASS_MAPPINGS)
         self.assertIn("ConceptGhostP10BundleLoader", p10_lab.NODE_CLASS_MAPPINGS)
         self.assertIn("ConceptGhostP10SourceConceptImage", p10_lab.NODE_CLASS_MAPPINGS)
+        self.assertIn("ConceptGhostP10PanoramaResultPublisher", p10_lab.NODE_CLASS_MAPPINGS)
+        self.assertIn("ConceptGhostP10PanoramaValidation", p10_lab.NODE_CLASS_MAPPINGS)
         self.assertEqual(
             p10_lab.NODE_DISPLAY_NAME_MAPPINGS["ConceptGhostP10BundleLoader"],
             "P10 P9 Bundle Loader / Validator",
