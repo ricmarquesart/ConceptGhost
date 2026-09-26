@@ -354,6 +354,7 @@ class GateOutputContractTests(unittest.TestCase):
             text = ma.read_text(encoding="utf-8")
             self.assertIn('namespace "P9_ORIGINAL"', text)
             self.assertIn("P10_RAW_RECONSTRUCTION", text)
+            self.assertIn('namespace "P9_PLUS_P10_FILLED_CANDIDATE"', text)
             self.assertNotIn('namespace "P10_ACCEPTED_FILL"', text)
             self.assertIn("P9/P10 canonical meters -> Maya centimeters x100", text)
 
@@ -383,6 +384,7 @@ class GateOutputContractTests(unittest.TestCase):
             self.assertIn('namespace "P9_ORIGINAL"', text)
             self.assertIn('namespace "P10_RAW_RECONSTRUCTION"', text)
             self.assertIn('namespace "P10_ACCEPTED_FILL"', text)
+            self.assertIn('namespace "P9_PLUS_P10_FILLED_CANDIDATE"', text)
 
     def test_gate3_is_not_silently_closed_without_explicit_free_conflict_outputs(self):
         from p10_lab.gate_output_contract import publish_gate1_to_gate3_snapshots
