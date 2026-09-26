@@ -3,6 +3,20 @@
 
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-26 dynamic P9 path + P10 durable-output bundle v0.5
+
+- The real P9 output contract was verified against a target-PC run where `output_root`, scene name and run ID are variable and the scene-local `LATEST_RUN.txt` points to the accepted P9 run.
+- **AUTO_LATEST_P9 is implemented:** CG-02/CG-03 no longer depend on a fixed Output ID, Scene Name, Run ID, or the old route-backed Production workflow.
+- Windows discovery probes the normal `My Drive\ConceptGhost\Outputs` hierarchy across mounted drive letters and follows bounded scene-local `LATEST_RUN.txt` pointers; explicit P9 run/LATEST_RUN paths remain supported.
+- **Durable output contract changed:** P10 attempts and Gate Outputs are written under the sibling `<P9_SCENE_ROOT>\P10` tree. The accepted P9 run directory is not the P10 write target.
+- ComfyUI C: output stores only small locator JSON files used to print/open the real durable result path.
+- Evaluation bundle: `ConceptGhost_P9_PLUS_CG02_CG03_TEST_v0.5.zip`.
+- Bundle SHA-256: `375b78aeb201258ce235fa4ede28a2725b6d3272a5fd82f9a5c9ff8a0a6b1bdc`.
+- Google Drive Evaluation_Builds file id: `1NaSP0dqJbBMUAGGrZqo0hxelvos4Cr4Z`.
+- Bundle contains exactly two user workflows: proven P9 Master first, CG-02/CG-03 Panorama second. The obsolete `02_ConceptGhost_P10_PRODUCTION.json` is not included.
+- Formal record: `63_CG02_CG03_DYNAMIC_P9_PATH_AND_DURABLE_OUTPUT_ROOT.md`.
+- **Acceptance remains pending:** CG-02 still requires a real target-PC panorama run; CG-03 remains blocked on CG-02 physical output and must pass source-lock/seam validation before downstream work.
+
 ## Authoritative reconciliation — 2026-09-26 CG-02/CG-03 AUTO_LATEST P9 handoff fix
 
 - Target-PC panorama test v0.3 exposed a result-first ordering bug before Krea execution: `ConceptGhostP10ProductionEntryLoader` required a committed artist route when `AUTO_LATEST` was used.
