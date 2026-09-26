@@ -313,7 +313,14 @@ class ConceptGhostP10PanoramaValidation:
         if not passed:
             raise ContractError(
                 "CG-03 panorama validation failed after writing physical evidence to "
-                f"{stage}. source_pass={source_pass}, seam_pass={seam_pass}"
+                f"{stage}. "
+                f"source_pass={source_pass} "
+                f"(mae={metrics['mae']:.6f} <= {float(max_source_mae):.6f}, "
+                f"p95_abs={metrics['p95_abs']:.6f} <= {float(max_source_p95_abs):.6f}); "
+                f"seam_pass={seam_pass} "
+                f"(wrap_to_local_ratio={seam['wrap_to_local_ratio']:.6f} "
+                f"<= {float(max_seam_wrap_ratio):.6f}). "
+                f"Full metrics: {logs / 'validation.log'}"
             )
 
         return {
