@@ -399,3 +399,22 @@ Gate 8 promotion remains blocked while useful aligned reconstruction is missing.
 Normal P10 execution must write official outputs directly to their final run/gate locations as each stage completes. A post-run backfill BAT may exist only as a historical/recovery tool and must never be required for a normal new run.
 
 The next user-facing P10 package after the roadmap reset must be a **COMPLETE ConceptGhost bundle**, not an incremental/hotfix-only archive.
+
+
+### Mandatory panorama / author-aligned implementation
+
+The current result-first roadmap uses the private licensed author workflow as the implementation baseline wherever compatible. Panorama is mandatory, not optional.
+
+Private detailed roadmap:
+`G:\My Drive\ConceptGhost\Drones\90_CONCEPTGHOST_DERIVED_NOTES_PRIVATE\04_REFERENCE_ALIGNED_MASTER_ROADMAP_DETAILED.md`
+
+Short execution checklist:
+`G:\My Drive\ConceptGhost\Drones\90_CONCEPTGHOST_DERIVED_NOTES_PRIVATE\03_EXECUTION_CHECKLIST_FROM_TODAY_TO_MAYA_360.md`
+
+Normal order is:
+
+P9/source authority → mandatory Concept-to-360 ERP → exact source lock → persistent camera rails → panorama-informed perspective controls → masked WAN → source-preserving HiRes composite → extendable multiview dataset → explorable-world proof → P9-aligned polygonal reconstruction → protected Maya fusion → final navigable Maya world.
+
+A panorama-free production path is no longer part of the current roadmap. If the panorama stage is insufficient, fix the stage instead of bypassing it.
+
+The purchased workflow/code remains in the private Google Drive reference/workspace only. Do not publish it to GitHub.
