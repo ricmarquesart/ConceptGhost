@@ -9,6 +9,7 @@ import uuid
 from .contracts import ContractError
 from .drone_route_plan import parse_bound_route_plan
 from .gate_output_contract import publish_gate1_to_gate3_snapshots
+from .result_output_contract import initialize_result_output_tree
 from .p9_boundary import validate_official_run
 from .p9_dependency_inventory import (
     validate_p9_dependency_inventory,
@@ -235,6 +236,26 @@ def create_p10_attempt(
     manifest_path=attempt_root/"attempt_manifest.json"
     manifest_path.write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding="utf-8")
     manifest["attempt_manifest_path"]=str(manifest_path)
+
+    # Result-first physical evidence tree lives inside the ComfyUI executable
+    # output hierarchy from the first moment of the attempt. Each later stage
+    # must write inspectable OUTPUTS/PREVIEWS/MANIFESTS here before it can be
+    # marked functionally complete.
+    result_output_tree=initialize_result_output_tree(
+        attempt_root,
+        p10_attempt_id=attempt_id,
+        p9_run_id=p9_run_id,
+        scene_contract_id=scene_contract_id,
+        source_p9_run_dir=str(loaded_entry["source_p9_run_dir"]),
+    )
+    manifest["result_output_root"]=result_output_tree["result_root"]
+    manifest["result_output_index_path"]=result_output_tree["result_index_path"]
+    manifest["result_output_contract"]={
+        "mode":"AUTOMATIC_AT_ATTEMPT_CREATION",
+        "stage_codes":result_output_tree["stage_codes"],
+        "physical_evidence_required_for_functional_pass":True,
+        "manual_backfill_required":False,
+    }
 
     # R1 result-first contract: official artist-facing output folders begin
     # when the immutable P10 attempt is created, not after Gate 6 and not via
