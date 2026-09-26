@@ -15,7 +15,8 @@
     "file_id": "1eG_EZZQO313Ji5IzjtaSjz-15fwCDBy6",
     "file_name": "ConceptGhost_v1.54_P10_R6K_RESULT_FIRST_COMPLETE_r1.zip",
     "size_bytes": 12651686,
-    "sha256": "1fd025d86aecc31036e23c359630a5941633fa7eed8709411627311631c5f4f8"
+    "sha256": "1fd025d86aecc31036e23c359630a5941633fa7eed8709411627311631c5f4f8",
+    "renamed_file": "OBSOLETE_SUPERSEDED_ConceptGhost_v1.54_P10_R6K_RESULT_FIRST_COMPLETE_r1.zip"
   },
   "private_reference": {
     "path": "G:\\My Drive\\ConceptGhost\\Drones\\00_PRIVATE_AUTHOR_REFERENCE_SOURCE_OF_TRUTH_DO_NOT_GITHUB",
@@ -41,11 +42,12 @@
     "artist_reconstruction_quality": "NOT_ACCEPTED_YET"
   },
   "status": {
-    "bundle": "READY_FOR_TARGET_PC_INSTALL_TEST",
+    "bundle": "OBSOLETE_SUPERSEDED_BY_R2",
     "gate8": "BLOCKED",
     "next_hard_proofs": [
       "R5_EXPLORABLE_WORLD",
       "R6_USEFUL_P9_ALIGNED_POLYGONAL_RECONSTRUCTION"
-    ]
+    ],
+    "superseded_by": "ConceptGhost_v1.54_P10_R6K_RESULT_FIRST_COMPLETE_r2"
   }
 }
