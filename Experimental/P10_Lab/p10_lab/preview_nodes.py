@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .contracts import ContractError
+
 from .completion_envelope import (
     build_completion_envelope,
     build_generation_candidate_map,
@@ -161,6 +163,7 @@ class ConceptGhostP10SourceConceptImage:
         "source_image_path",
         "scene_contract_id",
         "diagnostics_json",
+        "horizontal_fov_deg",
     )
     FUNCTION = "load"
     CATEGORY = "ConceptGhost/P10 Refined"
