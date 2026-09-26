@@ -22,6 +22,7 @@ from .route_handoff import ConceptGhostP10RouteCommit, ConceptGhostP10Production
 from .moge_diagnostics import ConceptGhostMoGeDiagnosticsControl, ConceptGhostMoGeDiagnosticProfileTap, ConceptGhostMoGeDepthDiagnostics
 from .result_output_nodes import ConceptGhostP10PanoramaResultPublisher
 from .panorama_validation_node import ConceptGhostP10PanoramaValidation
+from .author_rail_adapter import ConceptGhostP10AuthorRouteAdapter, ConceptGhostP10AuthorRailGate
 
 
 _CATEGORY = "ConceptGhost/P10 Lab"
@@ -907,6 +908,8 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10SourceConceptImage": ConceptGhostP10SourceConceptImage,
     "ConceptGhostP10PanoramaResultPublisher": ConceptGhostP10PanoramaResultPublisher,
     "ConceptGhostP10PanoramaValidation": ConceptGhostP10PanoramaValidation,
+    "ConceptGhostP10AuthorRouteAdapter": ConceptGhostP10AuthorRouteAdapter,
+    "ConceptGhostP10AuthorRailGate": ConceptGhostP10AuthorRailGate,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
     "ConceptGhostP10DroneRouteAuthoring": ConceptGhostP10DroneRouteAuthoring,
@@ -934,6 +937,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10SourceConceptImage": "P10 · Exact P9 Source Concept Image",
     "ConceptGhostP10PanoramaResultPublisher": "P10 · CG-02 · Publish Tangible 360 Panorama Results",
     "ConceptGhostP10PanoramaValidation": "P10 · CG-03 · Validate Source Lock + ERP Seam",
+    "ConceptGhostP10AuthorRouteAdapter": "P10 · CG-04 · Adapt ConceptGhost Route to Author CameraPlot",
+    "ConceptGhostP10AuthorRailGate": "P10 · CG-04 · Publish Author Rail Evidence + Gate",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
     "ConceptGhostP10DroneRouteAuthoring": "P10 Refined · Artist Drone Route Authoring",
