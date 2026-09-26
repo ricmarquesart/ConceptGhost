@@ -931,6 +931,7 @@ def publish_gate7_output_tree(
     ma_path = root / "OUTPUTS" / "Gate07_Fusion_Diagnostic.ma"
     gate7_obj_imports = [
         ("P10_RAW_RECONSTRUCTION", raw_maya_obj, (0.20, 0.45, 1.00)),
+        ("P9_PLUS_P10_FILLED_CANDIDATE", candidate_maya_obj, (0.95, 0.70, 0.15)),
     ]
     if accepted_count > 0 and accepted_maya_obj.is_file():
         gate7_obj_imports.append(("P10_ACCEPTED_FILL", accepted_maya_obj, (0.20, 0.90, 0.30)))
@@ -982,7 +983,8 @@ def publish_gate7_output_tree(
             "Functional PASS requires a measurable P10 contribution after provenance/confidence/free-space filtering.",
             "The diagnostic Maya references immutable P9 and keeps raw P10 reconstruction and accepted P10 hole-fill geometry as separate namespaces.",
             "All Maya diagnostic geometry/camera translations use the explicit meter->centimeter x100 bridge; canonical P9/P10 geometry remains unchanged in meters.",
-            "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj is also published as a combined toggle/inspection candidate; it is not promoted to official geometry.",
+            "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj is imported into the same Maya scene under its own namespace so P9 original and the filled candidate can be toggled as two complete alternatives.",
+            "The combined candidate remains diagnostic only and is not promoted to official geometry.",
         ],
     )
     _write_gate_index(p9, attempt_id)
