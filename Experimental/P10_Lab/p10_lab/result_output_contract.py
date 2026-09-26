@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .exceptions import ContractError
+from .contracts import ContractError
 from .p9_boundary import validate_official_run
 
 
