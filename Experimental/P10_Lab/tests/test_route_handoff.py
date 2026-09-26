@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from tests.test_p9_boundary import _write_official_run
+
 
 class RouteHandoffTests(unittest.TestCase):
     def _bound_plan(self, authority="ARTIST_AUTHORED"):
@@ -82,12 +84,17 @@ class RouteHandoffTests(unittest.TestCase):
     def test_each_production_attempt_is_unique_and_preserves_prior_directory(self):
         from p10_lab.route_handoff import create_p10_attempt
         with tempfile.TemporaryDirectory() as tmp:
+            p9=_write_official_run(
+                Path(tmp)/"run1",
+                branch_mode="Refined / P9 Clone",
+                scene_id="scene1",
+            )
             loaded={
                 "validated":True,
                 "source_run_id":"run1",
                 "scene_contract_id":"scene1",
                 "route_plan_sha256":"a"*64,
-                "source_p9_run_dir":str(Path(tmp)/"p9"),
+                "source_p9_run_dir":str(p9),
                 "production_entry_path":str(Path(tmp)/"entry.json"),
                 "route_authority":"ARTIST_AUTHORED",
             }
@@ -111,6 +118,19 @@ class RouteHandoffTests(unittest.TestCase):
             self.assertTrue((gate_root/"GATE_01_FOUNDATION_RUN").is_dir())
             self.assertTrue((gate_root/"GATE_02_P9_TO_P10_HANDOFF").is_dir())
             self.assertTrue((gate_root/"GATE_03_KNOWN_UNKNOWN").is_dir())
+
+            result_root=Path(first_manifest["result_output_root"])
+            self.assertTrue((result_root/"RESULT_INDEX.json").is_file())
+            self.assertTrue((result_root/"CG_00_P9_AUTHORITY"/"OUTPUTS"/"source_concept.png").is_file())
+            self.assertTrue((result_root/"CG_00_P9_AUTHORITY"/"OUTPUTS"/"camera.json").is_file())
+            self.assertTrue((result_root/"CG_00_P9_AUTHORITY"/"PREVIEWS"/"source_concept.png").is_file())
+            self.assertTrue((result_root/"CG_18_COMPLETE_RELEASE"/"OUTPUTS").is_dir())
+            self.assertFalse(
+                first_manifest["result_output_contract"]["manual_backfill_required"]
+            )
+            self.assertTrue(
+                first_manifest["result_output_contract"]["physical_evidence_required_for_functional_pass"]
+            )
 
     def test_auto_latest_resolves_committed_entry(self):
         from p10_lab.route_handoff import _resolve_production_entry_path
