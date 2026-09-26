@@ -13,7 +13,7 @@ Do not copy the purchased source content into this repository or release bundles
 
 ## Engineering decision
 
-The panorama path is **not** a replacement for the accepted P9 solve.
+The panorama path is mandatory, but it is **not** a replacement for the accepted P9 solve.
 
 P9 remains the high-authority reconstruction for the original concept camera and visible source region.
 
