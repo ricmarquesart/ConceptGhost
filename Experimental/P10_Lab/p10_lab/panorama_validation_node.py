@@ -5,10 +5,20 @@ from pathlib import Path
 
 from .contracts import ContractError
 from .result_output_contract import stage_root, update_stage_status
-from .result_output_nodes import _image_to_pil, _make_contact_sheet, _save_image, _tensor_image_from_pil
+from .result_output_nodes import _image_to_pil, _make_contact_sheet, _save_image
 
 
 _CATEGORY = "ConceptGhost/P10 Result Evidence"
+
+
+def _tensor_image_from_pil(pil):
+    try:
+        import numpy as np
+        import torch
+    except ImportError as error:
+        raise RuntimeError("CG-03 panorama validation requires NumPy and torch") from error
+    array = np.asarray(pil.convert("RGB"), dtype=np.float32) / 255.0
+    return torch.from_numpy(array).unsqueeze(0)
 
 
 def _pretty(payload: dict) -> str:
