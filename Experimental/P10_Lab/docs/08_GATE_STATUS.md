@@ -3,6 +3,19 @@
 
 # P10-Lab Gate Status
 
+## Authoritative reconciliation — 2026-09-26 v0.6 stale-runtime/storage guard + CG-03 metrics
+
+- Target-PC v0.5 evidence proved the panorama workflow could still execute an already-imported older P10 Python module when files were copied while ComfyUI remained running. That stale module created the P10 attempt under the legacy C: ComfyUI output tree even though the v0.5 package itself contained the corrected durable sibling-P10 code.
+- **v0.6 closes that ambiguity at installation time:** the installer refuses to update ConceptGhost_P10_Lab while ComfyUI is listening on port 8188. Close ComfyUI, install/verify, then restart before the test.
+- New v0.6 attempts are expected under `<P9_SCENE_ROOT>\\P10\\p10_attempts\\<P9_RUN_ID>\\<P10_ATTEMPT_ID>`. C: remains locator JSON only for new runs. Historical C: attempts are retained as diagnostic evidence and are not automatically deleted.
+- CG-03 remains fail-closed. Its numerical thresholds were **not** relaxed. Failure text now prints source MAE, source P95 absolute error and ERP seam wrap/local ratio and points directly to `LOGS\\validation.log`.
+- Source commits: `9fc3ebe554447923c9103d0cd3f5dd5e53783c47`, `554b165b5f3ccdad1615d8439ad261c97885c311`, `e6ce5c3cb9ea4caa3dbb939c4c90d96ee49fb813`.
+- Evaluation bundle: `ConceptGhost_P9_PLUS_CG02_CG03_TEST_v0.6.zip`.
+- SHA-256: `0403a0dbe3518ba59c8b6bf977e769eea57ffb61f328164d846fbed939373c95`.
+- Google Drive Evaluation_Builds file id: `16JqabiLssETWrwEXh-05OKEyUw0lmaGs`.
+- Current acceptance: **storage/runtime packaging fix complete; target-PC v0.6 retest pending; CG-03 quality still FAIL until the new metrics identify whether source-lock, seam continuity, or both require correction.**
+
+
 ## Authoritative reconciliation — 2026-09-26 dynamic P9 path + P10 durable-output bundle v0.5
 
 - The real P9 output contract was verified against a target-PC run where `output_root`, scene name and run ID are variable and the scene-local `LATEST_RUN.txt` points to the accepted P9 run.
