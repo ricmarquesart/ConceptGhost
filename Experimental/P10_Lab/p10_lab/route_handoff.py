@@ -8,6 +8,7 @@ import uuid
 
 from .contracts import ContractError
 from .drone_route_plan import parse_bound_route_plan
+from .gate_output_contract import publish_gate1_to_gate3_snapshots
 from .p9_boundary import validate_official_run
 from .p9_dependency_inventory import (
     validate_p9_dependency_inventory,
@@ -234,6 +235,28 @@ def create_p10_attempt(
     manifest_path=attempt_root/"attempt_manifest.json"
     manifest_path.write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding="utf-8")
     manifest["attempt_manifest_path"]=str(manifest_path)
+
+    # R1 result-first contract: official artist-facing output folders begin
+    # when the immutable P10 attempt is created, not after Gate 6 and not via
+    # a later recovery/backfill BAT. Gates 1-3 are immediately materialized
+    # beside the P9 run. Gate 3 may legitimately be FAIL/PENDING until its
+    # explicit masks exist; the important rule is that evidence is published
+    # at its own boundary rather than reconstructed after the run.
+    initial_gate_outputs=publish_gate1_to_gate3_snapshots(
+        loaded_entry["source_p9_run_dir"],
+        attempt_root,
+        p10_attempt_id=attempt_id,
+    )
+    manifest["gate_output_root"]=str(
+        Path(loaded_entry["source_p9_run_dir"]).resolve()
+        /"GATE_OUTPUTS"/attempt_id
+    )
+    manifest["gate_output_initialization"]={
+        "mode":"AUTOMATIC_AT_ATTEMPT_CREATION",
+        "manual_backfill_required":False,
+        "published_gates":[int(item.get("gate") or 0) for item in initial_gate_outputs],
+    }
+    manifest_path.write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding="utf-8")
 
     pointer={
         "schema":"ConceptGhost.P10LatestAttemptPointer.v0.1",
