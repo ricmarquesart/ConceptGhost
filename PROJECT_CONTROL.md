@@ -339,3 +339,52 @@ Before a release is handed to the user:
 
 GitHub Actions cannot by itself prove the state of a post-upload Google Drive folder unless Drive credentials are explicitly provided to CI. Therefore the official workflow is: **GitHub CI PASS → build/validate exact bundle → upload identical ZIP to Drive → recursively verify Drive structure/parity → report READY**.
 
+
+
+## 22. Private author reference + result-first P10 contract
+
+Before changing P10 camera routes, WAN completion, source-preserving compositing, multi-view dataset construction, reconstruction, splat/surface extraction, fusion, or Maya integration, consult the private implementation-reference library:
+
+`G:\My Drive\ConceptGhost\Drones\00_PRIVATE_AUTHOR_REFERENCE_SOURCE_OF_TRUTH_DO_NOT_GITHUB`
+
+This location is intentionally **Google Drive only**. Its contents are purchased/private reference materials and MUST NOT be uploaded, mirrored, vendored, copied, or embedded in GitHub or in public/release bundles.
+
+Private ConceptGhost summaries/crosswalks derived from those materials live only under:
+
+`G:\My Drive\ConceptGhost\Drones\90_CONCEPTGHOST_DERIVED_NOTES_PRIVATE`
+
+Authority precedence is:
+
+- product/visual authority: original Concept Art → accepted P9 source/camera authority → ConceptGhost contracts;
+- implementation-reference precedence: private author-reference library → private ConceptGhost derived notes → experimental implementation.
+
+A private reference implementation never has permission to change the accepted original concept-camera appearance or P9 authority.
+
+### Result-first gate rule
+
+P10 gates are not closed by CI success, runtime success, or file existence alone.
+
+Every P10 gate reports independent:
+
+- `runtime_status`;
+- `functional_status`;
+- `artist_quality_status`.
+
+A gate is CLOSED only when the required artist-visible artifact exists, `functional_status=PASS`, and artist-visible quality is accepted.
+
+The current project roadmap is reset to a result-first order. In particular:
+
+1. prove persistent camera rails/coverage;
+2. prove geometry/source-first generated views;
+3. prove a standard extendable multi-view dataset;
+4. prove an explorable 3D world representation;
+5. only then prove useful polygonal surface reconstruction in P9 metric space;
+6. only then perform protected fusion, cleanup, texture recovery and final Maya assembly.
+
+Gate 8 promotion remains blocked while useful aligned reconstruction is missing. Cleanup/remeshing MUST NOT be used to compensate for failure to reconstruct the world itself.
+
+### Automatic output rule
+
+Normal P10 execution must write official outputs directly to their final run/gate locations as each stage completes. A post-run backfill BAT may exist only as a historical/recovery tool and must never be required for a normal new run.
+
+The next user-facing P10 package after the roadmap reset must be a **COMPLETE ConceptGhost bundle**, not an incremental/hotfix-only archive.
