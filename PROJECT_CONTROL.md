@@ -347,7 +347,7 @@ Before changing P10 camera routes, WAN completion, source-preserving compositing
 
 `G:\My Drive\ConceptGhost\Drones\00_PRIVATE_AUTHOR_REFERENCE_SOURCE_OF_TRUTH_DO_NOT_GITHUB`
 
-This location is intentionally **Google Drive only**. Its contents are purchased/private reference materials and MUST NOT be uploaded, mirrored, vendored, copied, or embedded in GitHub or in public/release bundles.
+This location is intentionally **Google Drive only**. Its contents are purchased/private reference materials and MUST NOT be republished to public GitHub or public releases. The owner has explicitly authorized use of the licensed code for ConceptGhost, so verbatim/adapted working copies may exist only in the private Google Drive implementation workspace and in private user bundles.
 
 Private ConceptGhost summaries/crosswalks derived from those materials live only under:
 
@@ -418,3 +418,22 @@ P9/source authority → mandatory Concept-to-360 ERP → exact source lock → p
 A panorama-free production path is no longer part of the current roadmap. If the panorama stage is insufficient, fix the stage instead of bypassing it.
 
 The purchased workflow/code remains in the private Google Drive reference/workspace only. Do not publish it to GitHub.
+
+
+### Mandatory author-aligned 360 implementation
+
+The panorama stage is mandatory in the standard P10 path; it is no longer an optional A/B feature.
+
+Implementation order:
+1. accepted concept/P9 authority;
+2. author-based image→ERP 360 generation with explicit source-photo restoration and seam repair;
+3. author-style persistent camera rails;
+4. masked WAN completion;
+5. author-style HiRes/source-preserving composite;
+6. extendable SphereSfM/COLMAP dataset;
+7. explorable-world proof;
+8. useful P9-aligned polygonal reconstruction;
+9. protected P9/P10 fusion;
+10. final Maya world.
+
+The private detailed roadmap and private execution checklist are authoritative for licensed source-file mapping. Public repository docs intentionally describe architecture/contracts without embedding purchased workflow JSON.
