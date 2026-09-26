@@ -18,6 +18,7 @@ from .route_authoring_node import ConceptGhostP10DroneRouteAuthoring
 from .selected_camera_preview import ConceptGhostP10SelectedDroneCameraPreview
 from .route_handoff import ConceptGhostP10RouteCommit, ConceptGhostP10ProductionEntryLoader
 from .moge_diagnostics import ConceptGhostMoGeDiagnosticsControl, ConceptGhostMoGeDiagnosticProfileTap, ConceptGhostMoGeDepthDiagnostics
+from .result_output_nodes import ConceptGhostP10PanoramaResultPublisher
 
 
 _CATEGORY = "ConceptGhost/P10 Lab"
@@ -883,6 +884,7 @@ NODE_CLASS_MAPPINGS = {
     "ConceptGhostP10CompletionBundleBuilder": ConceptGhostP10CompletionBundleBuilder,
     "ConceptGhostP10BundleLoader": ConceptGhostP10BundleLoader,
     "ConceptGhostP10SourceConceptImage": ConceptGhostP10SourceConceptImage,
+    "ConceptGhostP10PanoramaResultPublisher": ConceptGhostP10PanoramaResultPublisher,
     "ConceptGhostP10PanoramaPreview": ConceptGhostP10PanoramaPreview,
     "ConceptGhostP10RefinedEvidencePreview": ConceptGhostP10RefinedEvidencePreview,
     "ConceptGhostP10DroneRouteAuthoring": ConceptGhostP10DroneRouteAuthoring,
@@ -908,6 +910,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ConceptGhostP10CompletionBundleBuilder": "P10 P9 Completion Bundle Builder",
     "ConceptGhostP10BundleLoader": "P10 P9 Bundle Loader / Validator",
     "ConceptGhostP10SourceConceptImage": "P10 · Exact P9 Source Concept Image",
+    "ConceptGhostP10PanoramaResultPublisher": "P10 · CG-02 · Publish Tangible 360 Panorama Results",
     "ConceptGhostP10PanoramaPreview": "P10 Temporary Panorama / Authority Preview",
     "ConceptGhostP10RefinedEvidencePreview": "P10 Refined · ERP + Drone + Hole Evidence",
     "ConceptGhostP10DroneRouteAuthoring": "P10 Refined · Artist Drone Route Authoring",
