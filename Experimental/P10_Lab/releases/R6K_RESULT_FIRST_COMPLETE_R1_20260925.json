@@ -1,0 +1,51 @@
+{
+  "schema": "ConceptGhost.P10ResultFirstR6KCompleteReleaseRecord.v0.1",
+  "date": "2026-09-25",
+  "release": "ConceptGhost_v1.54_P10_R6K_RESULT_FIRST_COMPLETE_r1",
+  "source_commit": "d3f42f6d8be52b4d40c95aecd23c85b34e742e8d",
+  "purpose": [
+    "complete bundle rebuilt from full R6F14 base plus current P10 source",
+    "R6K automatic Gate 1-7 output publication integrated into normal Workflow 02",
+    "R6K Maya meter-to-centimeter diagnostic bridge integrated",
+    "result-first roadmap reset documented",
+    "no normal-run post-execution output/backfill BAT required"
+  ],
+  "google_drive": {
+    "folder": "ConceptGhost/Storage/Evaluation_Builds",
+    "file_id": "1eG_EZZQO313Ji5IzjtaSjz-15fwCDBy6",
+    "file_name": "ConceptGhost_v1.54_P10_R6K_RESULT_FIRST_COMPLETE_r1.zip",
+    "size_bytes": 12651686,
+    "sha256": "1fd025d86aecc31036e23c359630a5941633fa7eed8709411627311631c5f4f8"
+  },
+  "private_reference": {
+    "path": "G:\\My Drive\\ConceptGhost\\Drones\\00_PRIVATE_AUTHOR_REFERENCE_SOURCE_OF_TRUTH_DO_NOT_GITHUB",
+    "included_in_bundle": false,
+    "included_in_github": false,
+    "rule": "pointer/engineering decisions only; purchased source material remains Google Drive only"
+  },
+  "validation": {
+    "github_ci_at_source_commit": {
+      "tests_run": 36211119850,
+      "source_snapshot_run": 36211119849,
+      "conclusion": "success"
+    },
+    "local_static": {
+      "zip_test": "PASS",
+      "shipped_p10_python_compile": "PASS",
+      "workflow_contract": "PASS",
+      "p10_code_manifest_files": 73,
+      "verify_p10_dr9_fake_install": "PASS",
+      "verify_result_first_bundle_fake_install": "PASS"
+    },
+    "target_pc_runtime": "PENDING",
+    "artist_reconstruction_quality": "NOT_ACCEPTED_YET"
+  },
+  "status": {
+    "bundle": "READY_FOR_TARGET_PC_INSTALL_TEST",
+    "gate8": "BLOCKED",
+    "next_hard_proofs": [
+      "R5_EXPLORABLE_WORLD",
+      "R6_USEFUL_P9_ALIGNED_POLYGONAL_RECONSTRUCTION"
+    ]
+  }
+}
