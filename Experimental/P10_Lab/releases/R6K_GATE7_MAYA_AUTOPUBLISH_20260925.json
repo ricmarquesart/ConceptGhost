@@ -1,0 +1,59 @@
+{
+  "schema": "ConceptGhost.R6KGate7MayaAutopublishRelease.v0.1",
+  "release": "ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1",
+  "date_utc": "2026-09-25",
+  "source_branch": "work/v1.54-p10-multiview-completion",
+  "package_source_commit": "461b31167ef957ce7368989f7a2288d344b48ba7",
+  "trigger": {
+    "finding": "Gate 6 diagnostic P10 appeared approximately 100x too small when opened beside accepted P9 Maya.",
+    "root_cause": "Canonical P9/P10 geometry is in meters while accepted P9 Maya authoring uses centimeters with authoring factor 100. Previous diagnostic OBJ/camera values were imported without that Maya-only bridge.",
+    "limitation": "Manual rescaling still did not make the rejected P10 mesh correspond to useful holes, so reconstruction quality remains unresolved independently of the Maya unit bug."
+  },
+  "changes": {
+    "automatic_gate_outputs": {
+      "gate6": "Gate 1-6 publication remains wired into reconstruction closeout.",
+      "gate7_fresh": true,
+      "gate7_resumed": true,
+      "manual_backfill_required_for_future_runs": false
+    },
+    "maya_bridge": {
+      "canonical_geometry_units": "meters",
+      "maya_authoring_units": "centimeters",
+      "cm_per_meter": 100,
+      "canonical_geometry_changed": false,
+      "camera_rotation_changed": false,
+      "camera_translation_scale_only": true
+    },
+    "gate7_outputs": [
+      "Gate07_Fusion_Diagnostic.ma",
+      "P10_reconstructed_mesh_MAYA_CM.obj",
+      "P10_ACCEPTED_FILL_MAYA_CM.obj",
+      "P10_REJECTED_MAYA_CM.obj",
+      "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj"
+    ],
+    "gate7_namespaces": [
+      "P9_ORIGINAL",
+      "P10_RAW_RECONSTRUCTION",
+      "P10_ACCEPTED_FILL"
+    ]
+  },
+  "validation": {
+    "workflow": "Build R6K Gate7 Maya Autopublish",
+    "run_id": 36205428788,
+    "conclusion": "SUCCESS",
+    "artifact_id": 10893458455,
+    "artifact_digest": "sha256:6ac346234ba79671aa34ac6add1ca8ce699f125aaf9b473bc7b44bd1db58d071"
+  },
+  "delivery": {
+    "zip_name": "ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1.zip",
+    "sha256": "33c2d6902328c119e79464116b4e3b3e0fe91154ab154795853e9055feacd06e",
+    "google_drive_file_id": "1gGEMKeTn_L6_oRgAlZ-kSaGPSH3agZki",
+    "google_drive_path": "ConceptGhost/Storage/Evaluation_Builds/ConceptGhost_R6K_GATE7_MAYA_AUTOPUBLISH_r1.zip"
+  },
+  "next_quality_lane": {
+    "name": "R6L_KNOWN_CAMERA_DEPTH_ANCHORED_HOLE_FUSION",
+    "purpose": "Use known cameras plus per-view depth anchored to visible P9 pixels so newly generated/hole pixels reconstruct directly in P9 metric world instead of depending only on photogrammetric consistency of WAN imagery.",
+    "acceptance_test": "A/B current known-camera COLMAP against depth-anchored fusion on the user's short-scene high-frame-count five-drone run."
+  },
+  "gate8_promoted": false
+}
