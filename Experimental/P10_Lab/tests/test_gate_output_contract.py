@@ -292,11 +292,15 @@ class GateOutputContractTests(unittest.TestCase):
             self.assertTrue((root / "OUTPUTS" / "dense_points.ply").is_file())
             self.assertTrue((root / "OUTPUTS" / "reconstructed_mesh.ply").is_file())
             self.assertTrue((root / "OUTPUTS" / "reconstructed_mesh.obj").is_file())
+            maya_obj = root / "OUTPUTS" / "reconstructed_mesh_MAYA_CM.obj"
+            self.assertTrue(maya_obj.is_file())
+            self.assertIn("v 100 0 0", maya_obj.read_text(encoding="utf-8"))
             ma = root / "OUTPUTS" / "Gate06_Reconstruction_Diagnostic.ma"
             self.assertTrue(ma.is_file())
             text = ma.read_text(encoding="utf-8")
             self.assertIn("P10_RECONSTRUCTED_RAW", text)
             self.assertIn("CAMERAS_GATE06", text)
+            self.assertIn("P9/P10 canonical meters -> Maya centimeters x100", text)
 
     def test_gate6_backfills_pre_r6i_legacy_geometry_without_reconstruction(self):
         from p10_lab.gate_output_contract import publish_gate6_output_tree
@@ -343,12 +347,42 @@ class GateOutputContractTests(unittest.TestCase):
             self.assertTrue((root / "OUTPUTS" / "P10_reconstructed_mesh.ply").is_file())
             self.assertTrue((root / "OUTPUTS" / "fused_candidate_mesh.ply").is_file())
             self.assertTrue((root / "OUTPUTS" / "P10_REJECTED.obj").is_file())
+            self.assertTrue((root / "OUTPUTS" / "P10_REJECTED_MAYA_CM.obj").is_file())
+            self.assertTrue((root / "OUTPUTS" / "P10_reconstructed_mesh_MAYA_CM.obj").is_file())
+            self.assertTrue((root / "OUTPUTS" / "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj").is_file())
             ma = root / "OUTPUTS" / "Gate07_Fusion_Diagnostic.ma"
             text = ma.read_text(encoding="utf-8")
             self.assertIn('namespace "P9_ORIGINAL"', text)
-            self.assertIn("P10_RECONSTRUCTION", text)
-            self.assertIn("P10_REJECTED", text)
-            self.assertNotIn('namespace "P10_ACCEPTED"', text)
+            self.assertIn("P10_RAW_RECONSTRUCTION", text)
+            self.assertNotIn('namespace "P10_ACCEPTED_FILL"', text)
+            self.assertIn("P9/P10 canonical meters -> Maya centimeters x100", text)
+
+    def test_gate7_maya_keeps_p9_and_accepted_fill_separate_at_maya_scale(self):
+        from p10_lab.gate_output_contract import (
+            publish_gate6_output_tree,
+            publish_gate7_output_tree,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            p9, attempt = self._base(Path(tmp))
+            self._gate4(attempt)
+            self._gate6(attempt)
+            publish_gate6_output_tree(p9, attempt)
+            self._gate7(attempt, accepted_faces=1)
+
+            result = publish_gate7_output_tree(p9, attempt)
+            self.assertEqual(result["functional_status"], "PASS")
+            root = p9 / "GATE_OUTPUTS" / "attempt123" / "GATE_07_P9_P10_FUSION"
+            accepted = root / "OUTPUTS" / "P10_ACCEPTED_FILL_MAYA_CM.obj"
+            candidate = root / "OUTPUTS" / "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj"
+            self.assertTrue(accepted.is_file())
+            self.assertTrue(candidate.is_file())
+            self.assertIn("v 100 0 0", accepted.read_text(encoding="utf-8"))
+            self.assertIn("v 100 0 0", candidate.read_text(encoding="utf-8"))
+            text = (root / "OUTPUTS" / "Gate07_Fusion_Diagnostic.ma").read_text(encoding="utf-8")
+            self.assertIn('namespace "P9_ORIGINAL"', text)
+            self.assertIn('namespace "P10_RAW_RECONSTRUCTION"', text)
+            self.assertIn('namespace "P10_ACCEPTED_FILL"', text)
 
     def test_gate3_is_not_silently_closed_without_explicit_free_conflict_outputs(self):
         from p10_lab.gate_output_contract import publish_gate1_to_gate3_snapshots
