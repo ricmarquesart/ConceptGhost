@@ -63,11 +63,33 @@ class Gate2PreviewNodeTests(unittest.TestCase):
             self.assertEqual(report["source_equivalent_to"], "baseline")
             self.assertIn("primary_mesh_payload", report["optional_inputs"])
 
+
+    def test_source_concept_node_exposes_exact_p9_source(self):
+        try:
+            from p10_lab.preview_nodes import ConceptGhostP10SourceConceptImage
+        except ImportError as error:
+            self.fail(f"Source concept node is missing: {error}")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run = _write_official_run(root / "run-refined", branch_mode="Refined / P9 Clone")
+            response = ConceptGhostP10SourceConceptImage().load(str(run))
+            image, source_path, scene_contract_id, diagnostics = response["result"]
+            report = json.loads(diagnostics)
+
+            self.assertEqual(tuple(image.shape[-1:]), (3,))
+            self.assertEqual(Path(source_path), (run / "source" / "source.png").resolve())
+            self.assertEqual(scene_contract_id, "cgsc_test_identity")
+            self.assertEqual(report["status"], "PASS")
+            self.assertFalse(report["source_pixels_modified"])
+            self.assertFalse(report["p9_authority_changed"])
+
     def test_package_exports_comfyui_node_mappings(self):
         import p10_lab
 
         self.assertIn("ConceptGhostP10CompletionBundleBuilder", p10_lab.NODE_CLASS_MAPPINGS)
         self.assertIn("ConceptGhostP10BundleLoader", p10_lab.NODE_CLASS_MAPPINGS)
+        self.assertIn("ConceptGhostP10SourceConceptImage", p10_lab.NODE_CLASS_MAPPINGS)
         self.assertEqual(
             p10_lab.NODE_DISPLAY_NAME_MAPPINGS["ConceptGhostP10BundleLoader"],
             "P10 P9 Bundle Loader / Validator",
