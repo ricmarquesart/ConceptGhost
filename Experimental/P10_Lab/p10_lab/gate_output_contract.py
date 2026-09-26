@@ -58,7 +58,7 @@ def gate_outputs_root(
     attempt = str(p10_attempt_id or "").strip()
     if not attempt:
         raise ContractError("Gate output contract requires p10_attempt_id")
-    return p9 / "GATE_OUTPUTS" / attempt
+    return p9.parent / "P10" / "GATE_OUTPUTS" / attempt
 
 
 def gate_output_dir(
@@ -248,12 +248,14 @@ def _write_gate_index(
         "updated_at_utc": _utc_now(),
         "gates": gates,
     }
-    index_path = p9_run_dir / "GATE_OUTPUT_INDEX.json"
+    index_root = p9_run_dir.parent / "P10"
+    index_root.mkdir(parents=True, exist_ok=True)
+    index_path = index_root / "GATE_OUTPUT_INDEX.json"
     index_path.write_text(
         json.dumps(payload, indent=2, sort_keys=True),
         encoding="utf-8",
     )
-    (p9_run_dir / "LATEST_GATE_OUTPUTS.txt").write_text(
+    (index_root / "LATEST_GATE_OUTPUTS.txt").write_text(
         str(root) + "\n",
         encoding="utf-8",
     )
