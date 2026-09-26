@@ -512,11 +512,29 @@ def create_p10_attempt(
         "updated_at_utc":now.isoformat(),
         "pointer_only":True,
     }
+    pointer["p10_output_root"]=str(p10_output_root)
+    pointer["result_output_root"]=manifest.get("result_output_root")
+    pointer["source_p9_run_dir"]=str(source_p9_run_dir)
+
     pointer_path=base/"LATEST_P10_RUN.json"
     temp_path=base/"LATEST_P10_RUN.json.tmp"
     temp_path.write_text(json.dumps(pointer,indent=2,sort_keys=True),encoding="utf-8")
     temp_path.replace(pointer_path)
+
+    scene_pointer=p10_output_root/"LATEST_P10_RUN.json"
+    scene_temp=p10_output_root/"LATEST_P10_RUN.json.tmp"
+    scene_temp.write_text(json.dumps(pointer,indent=2,sort_keys=True),encoding="utf-8")
+    scene_temp.replace(scene_pointer)
+
+    local_pointer=_local_locator_root(comfy_output_root)/"LATEST_P10_RUN.json"
+    local_temp=local_pointer.with_suffix(".json.tmp")
+    local_temp.write_text(json.dumps(pointer,indent=2,sort_keys=True),encoding="utf-8")
+    local_temp.replace(local_pointer)
+
     manifest["latest_pointer_path"]=str(pointer_path)
+    manifest["scene_latest_pointer_path"]=str(scene_pointer)
+    manifest["local_locator_path"]=str(local_pointer)
+    manifest_path.write_text(json.dumps(manifest,indent=2,sort_keys=True),encoding="utf-8")
     return manifest
 
 
