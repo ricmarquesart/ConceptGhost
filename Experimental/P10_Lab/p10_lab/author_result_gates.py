@@ -106,6 +106,7 @@ class ConceptGhostP10AuthorWanResultGate:
                 "p10_attempt_root": ("STRING", {"forceInput": True}),
                 "p10_attempt_id": ("STRING", {"forceInput": True}),
                 "scene_contract_id": ("STRING", {"forceInput": True}),
+                "coverage_evidence_ready": ("BOOLEAN", {"forceInput": True}),
                 "route_index": ("INT", {"default": 0, "min": 0, "max": 4, "step": 1}),
                 "route_name": ("STRING", {"forceInput": True}),
                 "control_video": ("IMAGE",),
@@ -126,6 +127,7 @@ class ConceptGhostP10AuthorWanResultGate:
         p10_attempt_root: str,
         p10_attempt_id: str,
         scene_contract_id: str,
+        coverage_evidence_ready: bool,
         route_index: int,
         route_name: str,
         control_video,
@@ -136,6 +138,8 @@ class ConceptGhostP10AuthorWanResultGate:
         attempt, attempt_manifest = _validate_attempt(
             p10_attempt_root, p10_attempt_id, scene_contract_id
         )
+        if not bool(coverage_evidence_ready):
+            raise ContractError("CG-06 cannot run before CG-05 rail coverage evidence is ready")
         index = int(route_index)
         safe = _safe_name(route_name)
         rail = Path(rail_json).expanduser().resolve()
