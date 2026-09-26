@@ -97,6 +97,14 @@ class Gate7RuntimeNodeContractTests(unittest.TestCase):
         self.assertIn("DR9R_R15_RUNTIME_UX_ACCEPTANCE_REQUIRED",source)
 
 
+    def test_runtime_autopublishes_gate7_outputs_on_fresh_and_reused_runs(self):
+        import p10_lab.gate7_runtime as runtime
+
+        source=Path(runtime.__file__).read_text(encoding="utf-8")
+        self.assertGreaterEqual(source.count("publish_gate7_output_tree("), 2)
+        self.assertIn('"gate_output_autopublished"] = True', source)
+        self.assertIn("self-heals attempts completed before automatic Gate 7 publication", source)
+
     def test_runtime_self_heals_incomplete_dense_geometric_evidence(self):
         import p10_lab.gate7_runtime as runtime
 
