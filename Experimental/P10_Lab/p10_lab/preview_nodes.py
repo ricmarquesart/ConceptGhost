@@ -103,6 +103,7 @@ class ConceptGhostP10BundleLoader:
         "camera_json",
         "primary_mesh",
         "diagnostics_json",
+        "horizontal_fov_deg",
     )
     FUNCTION = "load"
     CATEGORY = _CATEGORY
@@ -154,7 +155,7 @@ class ConceptGhostP10SourceConceptImage:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING")
+    RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING", "FLOAT")
     RETURN_NAMES = (
         "source_image",
         "source_image_path",
@@ -175,7 +176,20 @@ class ConceptGhostP10SourceConceptImage:
                 "P10 source concept loader requires NumPy, Pillow and torch"
             ) from error
 
+        import math
+
         boundary = validate_official_run(run_dir)
+        camera_payload = json.loads(boundary.camera.read_text(encoding="utf-8"))
+        intrinsics = camera_payload.get("intrinsics") or {}
+        width = int(camera_payload.get("image_width") or 0)
+        fx = float(intrinsics.get("fx_px") or 0.0)
+        cx = float(intrinsics.get("cx_px") or (width / 2.0 if width else 0.0))
+        if width <= 0 or fx <= 0.0:
+            raise ContractError("Accepted P9 camera is missing valid image_width/fx_px")
+        horizontal_fov_deg = math.degrees(
+            math.atan(cx / fx) + math.atan((width - cx) / fx)
+        )
+
         with Image.open(boundary.source_image) as opened:
             array = np.asarray(opened.convert("RGB"), dtype=np.float32) / 255.0
         tensor = torch.from_numpy(array).unsqueeze(0)
@@ -187,6 +201,8 @@ class ConceptGhostP10SourceConceptImage:
             "source_image_path": str(boundary.source_image),
             "source_pixels_modified": False,
             "p9_authority_changed": False,
+            "horizontal_fov_deg": horizontal_fov_deg,
+            "fov_authority": "P9_CAMERA_INTRINSICS",
         }
         rendered = _pretty(diagnostics)
         return {
@@ -196,6 +212,7 @@ class ConceptGhostP10SourceConceptImage:
                 str(boundary.source_image),
                 boundary.scene_contract_id,
                 rendered,
+                float(horizontal_fov_deg),
             ),
         }
 
