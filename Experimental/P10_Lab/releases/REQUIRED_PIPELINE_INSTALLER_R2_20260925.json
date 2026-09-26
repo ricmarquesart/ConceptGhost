@@ -1,0 +1,59 @@
+{
+  "schema": "ConceptGhost.RequiredPipelineInstallerRelease.v0.2",
+  "release": "ConceptGhost_REQUIRED_PIPELINE_INSTALLER_r2",
+  "date": "2026-09-25",
+  "purpose": "Install only dependencies required by the result-first refined-blockout roadmap, with PC-specific audit before installation.",
+  "included": {
+    "custom_nodes": [
+      "ComfyUI-SplatKit",
+      "ComfyUI-Mickmumpitz-Nodes",
+      "ComfyUI-Krea2-Ostris-Edit",
+      "ComfyUI_essentials",
+      "ComfyUI_UltimateSDUpscale",
+      "ComfyUI_preview360panorama"
+    ],
+    "models_tools": [
+      "Krea 2 Turbo FP8",
+      "Qwen3-VL 4B FP8",
+      "Krea2 text-to-ERP LoRA",
+      "Krea2 image-to-ERP outpaint LoRA",
+      "WAN CLIP Vision H",
+      "WAN Panorama LoRA",
+      "4x UltraSharp",
+      "RealESRGAN x2",
+      "SplatKit MoGe ViT-L",
+      "SphereSfM",
+      "Brush 0.3.0"
+    ],
+    "reused_when_present": [
+      "WAN 2.1 I2V 14B FP8",
+      "UMT5 XXL FP8",
+      "WAN 2.1 VAE",
+      "LightX2V rank64"
+    ]
+  },
+  "excluded_by_design": [
+    "SAM3 / ComfyUI-RMBG",
+    "ComfyUI-GGUF",
+    "RAFT weights",
+    "ADV workflow"
+  ],
+  "rationale": {
+    "target": "refined/polished blockout in Maya, not final production geometry/materials",
+    "sam3": "glass/reflection semantic refinement is unnecessary for the blockout objective",
+    "gguf": "unconnected node in the author's SMPL graph",
+    "raft": "HiResComposite standard path uses base_mode=geometry, which does not load RAFT",
+    "brush": "R5 Gaussian-splat world proof only; Maya remains final DCC"
+  },
+  "operator_files": [
+    "00_AUDIT_REQUIRED_STACK.bat",
+    "01_INSTALL_REQUIRED_STACK.bat",
+    "02_VERIFY_REQUIRED_STACK.bat"
+  ],
+  "delivery": {
+    "google_drive_path": "ConceptGhost/Storage/Evaluation_Builds/ConceptGhost_REQUIRED_PIPELINE_INSTALLER_r2.zip",
+    "google_drive_file_id": "1Wc680Qb5rP_OT13YvRiSsHWeB6hDKhSd",
+    "sha256": "db9cc17b8272fbb10ea4239fd400398b5e6244eb4461e307319962a274017e64",
+    "bytes": 12572
+  }
+}
