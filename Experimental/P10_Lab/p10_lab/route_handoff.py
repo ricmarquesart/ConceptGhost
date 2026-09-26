@@ -20,7 +20,7 @@ from .p9_dependency_inventory import (
 
 _ENTRY_SCHEMA="ConceptGhost.P10ProductionEntry.v0.1"
 _SOURCE_ENTRY_SCHEMA="ConceptGhost.P10SourceEntry.v0.1"
-_DEFAULT_ARTIST_OUTPUT_ROOT=r"G:\\My Drive\\ConceptGhost\\Outputs\\ConceptGhost"
+_DEFAULT_ARTIST_OUTPUT_ROOT=r"G:\\My Drive\\ConceptGhost\\Outputs"
 
 
 def _sha256_file(path: Path) -> str:
@@ -93,6 +93,14 @@ def _discover_latest_valid_p9_run(comfy_output_root: str | Path) -> tuple[Path,s
     if env_root:
         artist_roots.append(Path(os.path.expandvars(os.path.expanduser(env_root))))
     artist_roots.append(Path(_DEFAULT_ARTIST_OUTPUT_ROOT))
+    if os.name=="nt":
+        for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            candidate=Path(f"{letter}:\\\\My Drive\\\\ConceptGhost\\\\Outputs")
+            try:
+                if candidate.is_dir():
+                    artist_roots.append(candidate)
+            except OSError:
+                pass
 
     for artist_root in artist_roots:
         try:
@@ -101,13 +109,11 @@ def _discover_latest_valid_p9_run(comfy_output_root: str | Path) -> tuple[Path,s
         except OSError:
             continue
         pointers=[]
-        direct=artist_root/"LATEST_RUN.txt"
-        if direct.is_file():
-            pointers.append(direct)
-        try:
-            pointers.extend(path for path in artist_root.glob("*/LATEST_RUN.txt") if path.is_file())
-        except OSError:
-            pass
+        for pattern in ("LATEST_RUN.txt","*/LATEST_RUN.txt","*/*/LATEST_RUN.txt","*/*/*/LATEST_RUN.txt"):
+            try:
+                pointers.extend(path for path in artist_root.glob(pattern) if path.is_file())
+            except OSError:
+                pass
         for pointer in pointers:
             run=_read_latest_run_pointer(pointer)
             if run is not None:
