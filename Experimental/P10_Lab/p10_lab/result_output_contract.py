@@ -15,7 +15,8 @@ _SCHEMA = "ConceptGhost.ResultOutputContract.v0.1"
 _STATUS_SCHEMA = "ConceptGhost.ResultStageStatus.v0.1"
 
 # These are artist/result milestones, not historical implementation gates.
-# Every new P10 attempt owns this tree inside the ComfyUI output directory.
+# Every new P10 attempt owns this tree inside its durable sibling P10 root
+# beside the selected P9 scene. ComfyUI's C: output holds locator JSON only.
 _RESULT_STAGES: tuple[tuple[str, str, str], ...] = (
     ("CG_00", "CG_00_P9_AUTHORITY", "Accepted P9 source/camera authority"),
     ("CG_01", "CG_01_PRIVATE_AUTHOR_BASELINE", "Private author implementation baseline"),
@@ -144,7 +145,7 @@ def _refresh_index(
         "parent_p9_run_id": p9_run_id,
         "scene_contract_id": scene_contract_id,
         "result_root": str(root),
-        "result_tree_location_policy": "INSIDE_COMFYUI_OUTPUT_ATTEMPT_FROM_CREATION",
+        "result_tree_location_policy": "DURABLE_SIBLING_P10_BESIDE_P9_SCENE_FROM_CREATION",
         "manual_backfill_required": False,
         "stage_close_requires_physical_evidence": True,
         "evidence_directories": list(_EVIDENCE_DIRS),
@@ -166,8 +167,8 @@ def initialize_result_output_tree(
 ) -> dict[str, Any]:
     """Create the artist-visible result tree at attempt creation time.
 
-    The tree lives under:
-      <ComfyUI output>/conceptghost/p10_attempts/<P9_RUN_ID>/<ATTEMPT_ID>/RESULTS
+    The tree lives under the durable attempt root created beside the P9 scene:
+      <P9_SCENE_ROOT>/P10/p10_attempts/<P9_RUN_ID>/<ATTEMPT_ID>/RESULTS
 
     This is deliberately created before panorama/WAN/reconstruction begins so no
     later helper or backfill script is required to discover official evidence.
