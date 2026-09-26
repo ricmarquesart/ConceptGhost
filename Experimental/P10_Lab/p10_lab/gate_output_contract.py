@@ -13,6 +13,7 @@ from .prefusion_mesh import _PLY_SCALAR, _read_mesh_header
 
 
 _SCHEMA = "ConceptGhost.GateOutputContract.v0.1"
+_MAYA_CM_PER_METER = 100.0
 
 
 _GATE_NAMES = {
@@ -290,6 +291,7 @@ def _write_diagnostic_maya(
         'requires maya "2020";',
         'currentUnit -l centimeter -a degree -t film;',
         'fileInfo "ConceptGhostGate" "' + str(gate) + '";',
+        'fileInfo "ConceptGhostCoordinateBridge" "P9/P10 canonical meters -> Maya centimeters x100";',
         'createNode transform -n "GROUP_GATE%02d";' % gate,
     ]
     if p9_maya_reference is not None and p9_maya_reference.is_file():
@@ -343,7 +345,13 @@ def _write_diagnostic_maya(
                 ):
                     continue
                 try:
-                    flat = [float(value) for row in matrix for value in row]
+                    flat = []
+                    for row_index, row in enumerate(matrix):
+                        for column_index, value in enumerate(row):
+                            numeric = float(value)
+                            if row_index < 3 and column_index == 3:
+                                numeric *= _MAYA_CM_PER_METER
+                            flat.append(numeric)
                     fx = float(camera.get("fx") or 0.0)
                     width = float(camera.get("width") or 0.0)
                 except (TypeError, ValueError):
@@ -453,20 +461,30 @@ def _read_ply_mesh(path: Path) -> tuple[list[tuple[float, float, float]], list[t
     return vertices, faces
 
 
-def _write_obj_from_ply(source_ply: Path, target_obj: Path) -> tuple[int, int]:
+def _write_obj_from_ply(
+    source_ply: Path,
+    target_obj: Path,
+    *,
+    coordinate_scale: float = 1.0,
+    role: str = "representation",
+) -> tuple[int, int]:
     """Materialize an inspectable OBJ from an existing triangular PLY.
 
-    This is a representation-only backfill. It never reconstructs, filters, moves,
-    or otherwise changes P10 geometry; it exists so pre-R6I Gate 6 attempts can
-    satisfy the artist-facing R6J contract without rerunning COLMAP or WAN.
+    The canonical P9/P10 geometry space is meters. Maya scenes authored by
+    ConceptGhost use centimeters, so diagnostic OBJ representations may request
+    coordinate_scale=100 without changing the canonical PLY or reconstruction.
     """
+    scale = float(coordinate_scale)
+    if not (scale > 0.0):
+        raise ContractError("OBJ coordinate_scale must be positive")
     vertices, faces = _read_ply_mesh(source_ply)
     target_obj.parent.mkdir(parents=True, exist_ok=True)
     with target_obj.open("w", encoding="utf-8", newline="\n") as stream:
-        stream.write("# ConceptGhost Gate 6 legacy representation backfill\n")
+        stream.write(f"# ConceptGhost {role}\n")
         stream.write(f"# source_ply {source_ply.resolve()}\n")
+        stream.write(f"# coordinate_scale {scale:.9g}\n")
         for x, y, z in vertices:
-            stream.write(f"v {x:.9g} {y:.9g} {z:.9g}\n")
+            stream.write(f"v {x * scale:.9g} {y * scale:.9g} {z * scale:.9g}\n")
         for face in faces:
             stream.write("f " + " ".join(str(int(index) + 1) for index in face) + "\n")
     return len(vertices), len(faces)
@@ -476,7 +494,12 @@ def _write_selected_obj(
     source_ply: Path,
     face_indices: Iterable[int],
     target_obj: Path,
+    *,
+    coordinate_scale: float = 1.0,
 ) -> tuple[int, int]:
+    scale = float(coordinate_scale)
+    if not (scale > 0.0):
+        raise ContractError("Selected OBJ coordinate_scale must be positive")
     vertices, faces = _read_ply_mesh(source_ply)
     selected = [
         faces[int(index)]
@@ -488,9 +511,10 @@ def _write_selected_obj(
     target_obj.parent.mkdir(parents=True, exist_ok=True)
     with target_obj.open("w", encoding="utf-8", newline="\n") as stream:
         stream.write("# ConceptGhost Gate 7 P10 face subset\n")
+        stream.write(f"# coordinate_scale {scale:.9g}\n")
         for old in used:
             x, y, z = vertices[old]
-            stream.write(f"v {x:.9g} {y:.9g} {z:.9g}\n")
+            stream.write(f"v {x * scale:.9g} {y * scale:.9g} {z * scale:.9g}\n")
         for face in selected:
             stream.write("f " + " ".join(str(remap[index]) for index in face) + "\n")
     return len(used), len(selected)
@@ -698,6 +722,15 @@ def publish_gate6_output_tree(
     elif raw_ply.is_file():
         generated_obj_counts = _write_obj_from_ply(raw_ply, reconstructed_obj)
 
+    maya_obj = root / "OUTPUTS" / "reconstructed_mesh_MAYA_CM.obj"
+    if raw_ply.is_file():
+        _write_obj_from_ply(
+            raw_ply,
+            maya_obj,
+            coordinate_scale=_MAYA_CM_PER_METER,
+            role="Gate 6 Maya-centimeter diagnostic representation",
+        )
+
     sparse_ply = root / "OUTPUTS" / "sparse_points.ply"
     sparse_count = _write_sparse_ply(
         dataset / "sparse" / "triangulated_txt" / "points3D.txt",
@@ -719,7 +752,7 @@ def publish_gate6_output_tree(
         ma_path,
         gate=6,
         obj_imports=[
-            ("P10_RECONSTRUCTED_RAW", root / "OUTPUTS" / "reconstructed_mesh.obj", (0.20, 0.75, 0.30)),
+            ("P10_RECONSTRUCTED_RAW", maya_obj, (0.20, 0.75, 0.30)),
         ],
         camera_manifest_path=root / "OUTPUTS" / "reconstruction_camera_set.json",
     )
@@ -748,6 +781,7 @@ def publish_gate6_output_tree(
         "dense_points.ply": (root / "OUTPUTS" / "dense_points.ply").is_file(),
         "reconstructed_mesh.ply": (root / "OUTPUTS" / "reconstructed_mesh.ply").is_file() and vertex_count > 0 and face_count > 0,
         "reconstructed_mesh.obj": (root / "OUTPUTS" / "reconstructed_mesh.obj").is_file(),
+        "reconstructed_mesh_MAYA_CM.obj": maya_obj.is_file(),
         "reconstruction_camera_set.json": (root / "OUTPUTS" / "reconstruction_camera_set.json").is_file(),
         "reconstruction_manifest.json": (root / "OUTPUTS" / "reconstruction_manifest.json").is_file(),
         "geometry_quality.json": (root / "OUTPUTS" / "geometry_quality.json").is_file(),
@@ -769,11 +803,13 @@ def publish_gate6_output_tree(
             "sparse_point_count": sparse_count,
             "reconstructed_vertex_count": vertex_count,
             "reconstructed_face_count": face_count,
+            "maya_authoring_scale_cm_per_meter": _MAYA_CM_PER_METER,
         },
         notes=[
             "Gate 6 PASS is based on the existence of a non-empty new P10 reconstruction, not on visual quality.",
             "Quality may be WARN and Gate 6 can still be functionally complete.",
-            "The diagnostic Maya scene imports the raw P10 mesh and materializes sampled reconstruction cameras.",
+            "The diagnostic Maya scene imports a centimeter-authored representation of the raw P10 mesh and materializes sampled cameras with meter->centimeter translation x100.",
+            "Canonical P10 PLY/OBJ files remain in P9 world meters; the Maya-only x100 bridge never changes reconstruction geometry.",
             (
                 "Legacy pre-R6I attempt detected: R6J reused dataset/dense/pre_fusion_mesh.ply and fused.ply and generated only an OBJ representation; no WAN/COLMAP/MoGe/geometry was regenerated."
                 if legacy_geometry_backfill
@@ -845,8 +881,27 @@ def publish_gate7_output_tree(
     rejected_count = int(counts.get("p10_rejected_faces") or 0)
     input_faces = int(counts.get("p10_input_faces") or 0)
 
+    raw_maya_obj = root / "OUTPUTS" / "P10_reconstructed_mesh_MAYA_CM.obj"
+    candidate_maya_obj = root / "OUTPUTS" / "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj"
+    if raw_p10.is_file():
+        _write_obj_from_ply(
+            raw_p10,
+            raw_maya_obj,
+            coordinate_scale=_MAYA_CM_PER_METER,
+            role="Gate 7 raw P10 Maya-centimeter representation",
+        )
+    if candidate.is_file():
+        _write_obj_from_ply(
+            candidate,
+            candidate_maya_obj,
+            coordinate_scale=_MAYA_CM_PER_METER,
+            role="Gate 7 P9 plus accepted P10 filled candidate Maya-centimeter representation",
+        )
+
     accepted_obj = root / "OUTPUTS" / "P10_ACCEPTED.obj"
     rejected_obj = root / "OUTPUTS" / "P10_REJECTED.obj"
+    accepted_maya_obj = root / "OUTPUTS" / "P10_ACCEPTED_FILL_MAYA_CM.obj"
+    rejected_maya_obj = root / "OUTPUTS" / "P10_REJECTED_MAYA_CM.obj"
     if raw_p10.is_file() and face_evidence.is_file():
         try:
             import numpy as np
@@ -855,6 +910,18 @@ def publish_gate7_output_tree(
                 rejected_idx = payload["p10_rejected_face_indices"].astype("int64").tolist()
             _write_selected_obj(raw_p10, accepted_idx, accepted_obj)
             _write_selected_obj(raw_p10, rejected_idx, rejected_obj)
+            _write_selected_obj(
+                raw_p10,
+                accepted_idx,
+                accepted_maya_obj,
+                coordinate_scale=_MAYA_CM_PER_METER,
+            )
+            _write_selected_obj(
+                raw_p10,
+                rejected_idx,
+                rejected_maya_obj,
+                coordinate_scale=_MAYA_CM_PER_METER,
+            )
         except Exception as error:
             (root / "LOGS" / "gate7_split_mesh_error.txt").write_text(
                 f"{type(error).__name__}: {error}\n",
@@ -863,12 +930,10 @@ def publish_gate7_output_tree(
 
     ma_path = root / "OUTPUTS" / "Gate07_Fusion_Diagnostic.ma"
     gate7_obj_imports = [
-        ("P10_RECONSTRUCTION", root / "OUTPUTS" / "P10_reconstructed_mesh.obj", (0.20, 0.45, 1.00)),
+        ("P10_RAW_RECONSTRUCTION", raw_maya_obj, (0.20, 0.45, 1.00)),
     ]
-    if accepted_count > 0 and accepted_obj.is_file():
-        gate7_obj_imports.append(("P10_ACCEPTED", accepted_obj, (0.20, 0.90, 0.30)))
-    if rejected_count > 0 and rejected_obj.is_file():
-        gate7_obj_imports.append(("P10_REJECTED", rejected_obj, (0.95, 0.25, 0.20)))
+    if accepted_count > 0 and accepted_maya_obj.is_file():
+        gate7_obj_imports.append(("P10_ACCEPTED_FILL", accepted_maya_obj, (0.20, 0.90, 0.30)))
     _write_diagnostic_maya(
         ma_path,
         gate=7,
@@ -882,7 +947,9 @@ def publish_gate7_output_tree(
     required = {
         "P9_original_reference": (root / "INPUTS" / "P9_ORIGINAL_POINTER.json").is_file() and bool(p9_pointer.get("p9_maya")),
         "P10_reconstructed_mesh": (root / "OUTPUTS" / "P10_reconstructed_mesh.ply").is_file(),
+        "P10_reconstructed_mesh_MAYA_CM": raw_maya_obj.is_file(),
         "fused_candidate_mesh": (root / "OUTPUTS" / "fused_candidate_mesh.ply").is_file(),
+        "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM": candidate_maya_obj.is_file(),
         "face_provenance_reason_codes": (root / "OUTPUTS" / "face_provenance_and_reason_codes.npz").is_file(),
         "confidence": (root / "OUTPUTS" / "confidence_manifest.json").is_file(),
         "free_space_constraints": (root / "OUTPUTS" / "free_space_constraints.npz").is_file(),
@@ -908,11 +975,14 @@ def publish_gate7_output_tree(
             "p10_rejected_faces": rejected_count,
             "accepted_face_fraction": accepted_count / float(input_faces) if input_faces > 0 else None,
             "reason_counts": fusion.get("reason_counts") or {},
+            "maya_authoring_scale_cm_per_meter": _MAYA_CM_PER_METER,
         },
         notes=[
             "Gate 7 runtime PASS does not imply functional PASS.",
             "Functional PASS requires a measurable P10 contribution after provenance/confidence/free-space filtering.",
-            "The diagnostic Maya references P9 and layers raw/accepted/rejected P10 geometry separately.",
+            "The diagnostic Maya references immutable P9 and keeps raw P10 reconstruction and accepted P10 hole-fill geometry as separate namespaces.",
+            "All Maya diagnostic geometry/camera translations use the explicit meter->centimeter x100 bridge; canonical P9/P10 geometry remains unchanged in meters.",
+            "P9_PLUS_P10_FILLED_CANDIDATE_MAYA_CM.obj is also published as a combined toggle/inspection candidate; it is not promoted to official geometry.",
         ],
     )
     _write_gate_index(p9, attempt_id)
