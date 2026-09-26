@@ -148,6 +148,75 @@ class RouteHandoffTests(unittest.TestCase):
             self.assertEqual(_resolve_production_entry_path("AUTO_LATEST",output),target.resolve())
 
 
+    def test_auto_latest_without_route_creates_p9_source_entry_for_cg02_cg03(self):
+        from p10_lab.route_handoff import _load_entry_by_schema,_resolve_production_entry_path
+        boundary=SimpleNamespace(
+            root=None,
+            scene_contract_id="scene1",
+            run_id="run1",
+        )
+        inventory={
+            "inventory_sha256":"i"*64,
+            "persisted_file_count":7,
+            "source_run_id":"run1",
+            "scene_contract_id":"scene1",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            output=Path(tmp)/"output"
+            p9=Path(tmp)/"p9"
+            p9.mkdir()
+            boundary.root=p9.resolve()
+            route_setup=output/"conceptghost"/"p10_route_setup"/"run1"
+            route_setup.mkdir(parents=True)
+            (route_setup/"route_setup_status.json").write_text(json.dumps({
+                "source_p9_run_dir":str(p9),
+                "source_run_id":"run1",
+                "scene_contract_id":"scene1",
+            }),encoding="utf-8")
+
+            def fake_write(_run_dir,path):
+                Path(path).parent.mkdir(parents=True,exist_ok=True)
+                Path(path).write_text("{}",encoding="utf-8")
+                return inventory
+
+            with patch("p10_lab.route_handoff.validate_official_run",return_value=boundary), \
+                 patch("p10_lab.route_handoff.write_p9_dependency_inventory",side_effect=fake_write), \
+                 patch("p10_lab.route_handoff.validate_p9_dependency_inventory",return_value=inventory):
+                resolved=_resolve_production_entry_path("AUTO_LATEST",output)
+                loaded=_load_entry_by_schema(resolved)
+
+            self.assertEqual(resolved.name,"source_entry.json")
+            self.assertTrue(loaded["source_only"])
+            self.assertEqual(loaded["route_authority"],"DEFERRED_UNTIL_CG04")
+            self.assertEqual(loaded["route_required_from_stage"],"CG_04_CAMERA_RAILS")
+            self.assertIn("ROUTE_NOT_REQUIRED_FOR_CG02_CG03",loaded["route_plan_json"])
+
+    def test_source_only_attempt_has_no_fake_route_hash(self):
+        from p10_lab.route_handoff import create_p10_attempt
+        with tempfile.TemporaryDirectory() as tmp:
+            p9=_write_official_run(
+                Path(tmp)/"run1",
+                branch_mode="Refined / P9 Clone",
+                scene_id="scene1",
+            )
+            loaded={
+                "validated":True,
+                "source_only":True,
+                "source_run_id":"run1",
+                "scene_contract_id":"scene1",
+                "route_plan_sha256":"",
+                "source_p9_run_dir":str(p9),
+                "production_entry_path":str(Path(tmp)/"source_entry.json"),
+                "route_authority":"DEFERRED_UNTIL_CG04",
+                "route_required_from_stage":"CG_04_CAMERA_RAILS",
+            }
+            attempt=create_p10_attempt(loaded,Path(tmp)/"output")
+            manifest=json.loads(Path(attempt["attempt_manifest_path"]).read_text(encoding="utf-8"))
+            self.assertTrue(manifest["source_only_entry"])
+            self.assertIsNone(manifest["route_plan_sha256"])
+            self.assertEqual(manifest["route_required_from_stage"],"CG_04_CAMERA_RAILS")
+
+
 class TwoStageWorkflowTests(unittest.TestCase):
     def _base(self):
         return {
