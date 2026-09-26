@@ -1,0 +1,20 @@
+{
+  "schema": "ConceptGhost.EvaluationRelease.v0.1",
+  "release": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v1.2",
+  "date": "2026-09-26",
+  "status": "PUBLISHED_TARGET_PC_RETEST_PENDING",
+  "purpose": "Clarify locator-BAT behavior and add a highlighted FOV-to-source-coverage quick table.",
+  "drive_file_id": "13c5PZcVoX17QlrGwrqHFF-NTW20mf7ly",
+  "drive_filename": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v1.2.zip",
+  "bytes": 1182697,
+  "sha256": "f95dbe1381960b0f027d30b1ef112453f76d7da6de9ed7ee1eaa5de952a16119",
+  "workflow": "Workflows/02_ConceptGhost_CG02_CG03_PANORAMA_v1.2.json",
+  "changes": [
+    "04_OPEN_LATEST_P10_RESULTS.bat now treats a missing locator as INFO, not a panorama/pipeline failure.",
+    "03_SHOW_OUTPUT_LOCATIONS.bat explains the exact locator path and next steps.",
+    "Added highlighted workflow note: FOV → SOURCE COVERAGE QUICK TABLE.",
+    "Quick table includes 18°≈5%, 60°≈16.7%, 90°≈25%, 120°≈33.3%, 144°≈40%.",
+    "Explicitly highlights 144° as approximately 40% of ERP width.",
+    "Keeps warning that manual FOV override may worsen CG-03 when it diverges from accepted P9 camera."
+  ]
+}
