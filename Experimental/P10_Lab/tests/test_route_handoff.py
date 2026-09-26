@@ -217,6 +217,51 @@ class RouteHandoffTests(unittest.TestCase):
             self.assertEqual(manifest["route_required_from_stage"],"CG_04_CAMERA_RAILS")
 
 
+    def test_auto_latest_p9_discovers_dynamic_output_id_and_scene(self):
+        from p10_lab.route_handoff import _discover_latest_valid_p9_run
+        boundary=SimpleNamespace(root=None,scene_contract_id="scene1",run_id="run1")
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root=Path(tmp)/"Outputs"
+            scene=output_root/"ConceptGhost_90frames"/"concept_scene_90frames"
+            run=scene/"run1"
+            run.mkdir(parents=True)
+            (scene/"LATEST_RUN.txt").write_text(str(run),encoding="utf-8")
+            boundary.root=run.resolve()
+            with patch.dict("os.environ",{"CONCEPTGHOST_ARTIST_OUTPUT_ROOT":str(output_root)},clear=False), \
+                 patch("p10_lab.route_handoff.validate_official_run",return_value=boundary):
+                resolved,source=_discover_latest_valid_p9_run(Path(tmp)/"comfy")
+            self.assertEqual(resolved,run.resolve())
+            self.assertIn("ARTIST_OUTPUT_LATEST_RUN",source)
+
+    def test_source_only_attempt_is_written_beside_p9_scene_not_comfy_output(self):
+        from p10_lab.route_handoff import create_p10_attempt
+        with tempfile.TemporaryDirectory() as tmp:
+            scene=Path(tmp)/"Outputs"/"AnyOutputId"/"AnyScene"
+            p9=_write_official_run(
+                scene/"run1",
+                branch_mode="Refined / P9 Clone",
+                scene_id="scene1",
+            )
+            loaded={
+                "validated":True,
+                "source_only":True,
+                "source_run_id":"run1",
+                "scene_contract_id":"scene1",
+                "route_plan_sha256":"",
+                "source_p9_run_dir":str(p9),
+                "production_entry_path":str(scene/"P10"/"p10_source_handoff"/"run1"/"source_entry.json"),
+                "route_authority":"DEFERRED_UNTIL_CG04",
+                "route_required_from_stage":"CG_04_CAMERA_RAILS",
+            }
+            comfy=Path(tmp)/"comfy_output"
+            attempt=create_p10_attempt(loaded,comfy)
+            attempt_root=Path(attempt["attempt_root"])
+            self.assertEqual(attempt_root.parents[2],scene/"P10")
+            self.assertFalse(str(attempt_root).startswith(str(comfy)))
+            self.assertEqual(Path(attempt["p10_output_root"]),scene/"P10")
+            self.assertTrue((comfy/"conceptghost"/"p10_locators"/"LATEST_P10_RUN.json").is_file())
+
+
 class TwoStageWorkflowTests(unittest.TestCase):
     def _base(self):
         return {
