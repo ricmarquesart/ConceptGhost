@@ -153,3 +153,8 @@ The next user-facing package must be a **COMPLETE ConceptGhost bundle** carrying
 Historical backfill helpers may remain recovery-only, but they must not be required for normal new runs.
 
 Gate 8 remains blocked until R5/R6 produce a useful aligned result.
+
+
+## Required software per gate
+
+See `63_REQUIRED_SOFTWARE_BY_RESULT_FIRST_GATE.md` for the authoritative dependency map. The default blockout roadmap intentionally excludes SAM3/RMBG, GGUF, RAFT and the ADV workflow.
