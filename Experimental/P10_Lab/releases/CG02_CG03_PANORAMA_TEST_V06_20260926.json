@@ -1,0 +1,32 @@
+{
+  "schema": "ConceptGhost.EvaluationRelease.v0.1",
+  "release": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v0.6",
+  "date": "2026-09-26",
+  "status": "PUBLISHED_TARGET_PC_RETEST_PENDING",
+  "purpose": "Prevent stale in-memory P10 custom-node code from writing attempts to legacy C: storage and expose exact CG-03 validation metrics.",
+  "drive_file_id": "16JqabiLssETWrwEXh-05OKEyUw0lmaGs",
+  "drive_filename": "ConceptGhost_P9_PLUS_CG02_CG03_TEST_v0.6.zip",
+  "bytes": 1176532,
+  "sha256": "0403a0dbe3518ba59c8b6bf977e769eea57ffb61f328164d846fbed939373c95",
+  "workflows": [
+    "01_ConceptGhost_P9_MASTER_REQUIRED_v1.53.0.json",
+    "02_ConceptGhost_CG02_CG03_PANORAMA_v0.6.json"
+  ],
+  "fixes": [
+    "Installer blocks while ComfyUI is listening on port 8188, preventing stale already-imported Python modules from surviving an in-place payload copy.",
+    "Verifier requires the durable P10 sibling-storage marker and detailed CG-03 metric diagnostics.",
+    "New P10 attempts remain under <P9_SCENE_ROOT>/P10/p10_attempts/<P9_RUN_ID>/<P10_ATTEMPT_ID>.",
+    "ComfyUI C: output is locator-only for new v0.6 runs.",
+    "CG-03 thresholds were not relaxed; failures now report MAE, P95 absolute error and ERP seam wrap/local ratio."
+  ],
+  "source_commits": [
+    "9fc3ebe554447923c9103d0cd3f5dd5e53783c47",
+    "554b165b5f3ccdad1615d8439ad261c97885c311",
+    "e6ce5c3cb9ea4caa3dbb939c4c90d96ee49fb813"
+  ],
+  "acceptance": {
+    "storage_runtime_fix": "SOURCE_AND_PACKAGE_COMPLETE_TARGET_PC_RETEST_PENDING",
+    "cg02_panorama": "PHYSICAL_RESULT_EXISTS_FROM_PRIOR_RUN_BUT_NEW_V0.6_RUN_PENDING",
+    "cg03_validation": "FAIL_CLOSED_PENDING_METRIC_GUIDED_CORRECTION"
+  }
+}
