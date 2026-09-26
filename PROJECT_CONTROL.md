@@ -461,3 +461,20 @@ A stage cannot be functionally PASS merely because an executable, node, model, C
 Historical `<P9_RUN>\GATE_OUTPUTS\<P10_ATTEMPT_ID>` mirrors may remain for compatibility, but they are not the canonical active-run evidence location and normal new runs must never require a post-run backfill batch.
 
 See `Experimental/P10_Lab/docs/64_RESULT_OUTPUT_EVIDENCE_CONTRACT.md`.
+
+
+## Current execution checkpoint — 2026-09-26
+
+Target-PC dependency installation is complete and verified for the required refined-blockout stack.
+
+Current result-first status:
+- CG-00 DONE — accepted P9/private authority frozen.
+- CG-01 DONE — private author baseline plus required target-PC software/models verified.
+- CG-02 ACTIVE — private v0.5 panorama graph is integrated; first real target-PC ERP output is the current blocker.
+- CG-03 READY/BLOCKED — source-lock/seam validator is integrated but requires the first real CG-02 output.
+- CG-04 READY/BLOCKED — five PATH missions are integrated into author CameraPlot semantics but require CG-03 acceptance.
+- CG-05 NOT ACTIVE — promote only after physical CG-02/03/04 evidence is accepted.
+
+Do not infer completion from dependency verification, static graph validation or CI. The next proof is the real target-PC v0.5 run and its physical RESULTS/CG_02_PANORAMA_360, RESULTS/CG_03_PANORAMA_VALIDATION and RESULTS/CG_04_CAMERA_RAILS folders.
+
+The private licensed workflow itself remains Google Drive only.
