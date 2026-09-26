@@ -547,8 +547,23 @@ def _latest_production_pointer_path(comfy_output_root: str | Path) -> Path:
 
 def _resolve_production_entry_path(value: str, comfy_output_root: str | Path) -> Path:
     raw=str(value or "").strip()
-    if raw and raw.upper()!="AUTO_LATEST":
-        return Path(raw).expanduser().resolve()
+    mode=raw.upper() if raw else "AUTO_LATEST"
+    if mode not in {"AUTO_LATEST","AUTO_LATEST_P9"}:
+        explicit=Path(os.path.expandvars(os.path.expanduser(raw))).resolve()
+        if explicit.is_dir():
+            source_entry=_create_source_only_entry(explicit,comfy_output_root)
+            return Path(str(source_entry["production_entry_path"])).resolve()
+        if explicit.is_file() and explicit.name.upper()=="LATEST_RUN.TXT":
+            run_dir=_read_latest_run_pointer(explicit)
+            if run_dir is None:
+                raise ContractError(f"P9 latest-run pointer is empty/unreadable: {explicit}")
+            source_entry=_create_source_only_entry(run_dir,comfy_output_root)
+            return Path(str(source_entry["production_entry_path"])).resolve()
+        return explicit
+    if mode=="AUTO_LATEST_P9":
+        run_dir,_source=_discover_latest_valid_p9_run(comfy_output_root)
+        source_entry=_create_source_only_entry(run_dir,comfy_output_root)
+        return Path(str(source_entry["production_entry_path"])).resolve()
     pointer=_latest_production_pointer_path(comfy_output_root)
     if pointer.is_file():
         payload=_read_json(pointer,"latest production entry pointer")
@@ -603,7 +618,7 @@ class ConceptGhostP10ProductionEntryLoader:
             "required":{
                 "production_entry_path":(
                     "STRING",
-                    {"default":"AUTO_LATEST","multiline":False,"dynamicPrompts":False},
+                    {"default":"AUTO_LATEST_P9","multiline":False,"dynamicPrompts":False},
                 ),
             }
         }
@@ -624,7 +639,8 @@ class ConceptGhostP10ProductionEntryLoader:
         import folder_paths
         output_root=Path(folder_paths.get_output_directory()).resolve()
         raw=str(production_entry_path or "").strip()
-        resolution_mode="AUTO_LATEST" if not raw or raw.upper()=="AUTO_LATEST" else "EXPLICIT_PATH"
+        upper=raw.upper() if raw else "AUTO_LATEST_P9"
+        resolution_mode=(upper if upper in {"AUTO_LATEST","AUTO_LATEST_P9"} else "EXPLICIT_PATH")
         pointer_path=_latest_production_pointer_path(output_root)
         resolved_entry=_resolve_production_entry_path(
             production_entry_path,
