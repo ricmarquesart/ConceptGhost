@@ -1,6 +1,6 @@
 # P10 Panorama World-Prior Architecture
 
-**Status:** PLANNED BOUNDED A/B LANE  
+**Status:** MANDATORY PRODUCTION ARCHITECTURE  
 **Effective:** 2026-09-25
 
 ## Private source boundary
@@ -17,7 +17,7 @@ The panorama path is **not** a replacement for the accepted P9 solve.
 
 P9 remains the high-authority reconstruction for the original concept camera and visible source region.
 
-A generated 360 panorama is a lower-authority **shared world prior** for directions not visible in the concept. Its purpose is to give later camera paths a common hallucinated environment instead of asking independent routes to invent unrelated unseen worlds.
+A generated 360 panorama is a mandatory lower-authority **shared world prior** for directions not visible in the concept. Its purpose is to give every later camera path the same hallucinated environment instead of asking independent routes to invent unrelated unseen worlds.
 
 ## Projection rule
 
@@ -53,20 +53,11 @@ Concept image
 
 ## Acceptance
 
-Run A/B on the same short-scene high-overlap five-route benchmark:
+Panorama is not optional. Validate the mandatory path on the short-scene high-overlap five-route benchmark:
 
-- A: current P9 → route → WAN path;
-- B: P9 → 360 world prior → panorama-informed route/control → WAN path.
+P9 → 360 world prior → panorama-informed route/control → WAN → source-preserving composite → dataset.
 
-Promote the panorama lane only if it improves one or more of:
-
-- cross-route agreement in unseen regions;
-- stable nearby novel views;
-- P9-aligned reconstructed coverage;
-- useful hole filling;
-- reduced fragmentation/contradictory geometry;
-
-while preserving the exact original concept-camera result.
+The stage passes only when it preserves the exact original concept-camera result, produces a seamless spherical prior, and gives downstream routes one shared unseen-world context. If quality is insufficient, fix the panorama/source-lock implementation rather than bypassing it.
 
 Gate 8 remains blocked until the explorable-world and useful-surface hard proofs pass.
 
